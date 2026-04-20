@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://conweb5pvayjf" path="res://scripts/Main.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/target/TargetConveyor.tscn" id="2"]
 [ext_resource type="PackedScene" path="res://scenes/target/TargetSpotterManager.tscn" id="3"]
+[ext_resource type="PackedScene" path="res://scenes/ui/BottomHUD.tscn" id="4"]
 
 [node name="Main" type="Node" unique_id=1286468107]
 script = ExtResource("1")
@@ -21,3 +22,5 @@ unique_name_in_owner = true
 [node name="ProjectileManager" type="Node2D" parent="GameRoot/World2D" unique_id=363159726]
 
 [node name="UI" type="CanvasLayer" parent="GameRoot" unique_id=1734507539]
+
+[node name="BottomHUD" parent="GameRoot/UI" instance=ExtResource("4")]

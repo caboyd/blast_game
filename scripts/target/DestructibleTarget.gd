@@ -58,6 +58,7 @@ func apply_damage_circle_local(local_pos: Vector2, radius_px: float) -> void:
 	var center := _local_to_cell(local_pos)
 
 	var changed_any := false
+	var destroyed_count := 0
 	for dy in range(-r_cells, r_cells + 1):
 		for dx in range(-r_cells, r_cells + 1):
 			if dx * dx + dy * dy > r_cells * r_cells:
@@ -70,7 +71,11 @@ func apply_damage_circle_local(local_pos: Vector2, radius_px: float) -> void:
 			if _cells[idx] == 0:
 				continue
 			_cells[idx] = 0
+			destroyed_count += 1
 			changed_any = true
+
+	if destroyed_count > 0:
+		GameStatistics.add_blocks_destroyed(destroyed_count)
 
 	if changed_any:
 		_try_mark_destroyed()
@@ -170,6 +175,25 @@ func is_cell_solid(cell: Vector2i) -> bool:
 	if cell.x < 0 or cell.y < 0 or cell.x >= _grid_w or cell.y >= _grid_h:
 		return false
 	return _cells[cell.y * _grid_w + cell.x] != 0
+
+
+func get_grid_width_cells() -> int:
+	return _grid_w
+
+
+## Max over rows of each row's rightmost empty column index; -1 if no empty cells (all solid).
+func get_furthest_right_empty_cell_x() -> int:
+	var best := -1
+	for y in range(_grid_h):
+		var row := y * _grid_w
+		var row_best := -1
+		for x in range(_grid_w - 1, -1, -1):
+			if _cells[row + x] == 0:
+				row_best = x
+				break
+		if row_best > best:
+			best = row_best
+	return best
 
 
 ## Leftmost column that still has any solid cell; within that column, the solid cell whose center is nearest to `from_local`.

@@ -10,6 +10,7 @@ signal active_target_changed(new_target: Node2D)
 
 var front_target: Node2D
 var next_target: Node2D
+var _completed_front_targets: int = 0
 var _sliding: bool = false
 var _follow_tween: Tween
 var _follow_target_pos: Vector2 = Vector2.INF
@@ -51,6 +52,7 @@ func _ready() -> void:
 func _physics_process(_delta: float) -> void:
 	begin_swap_if_front_destroyed()
 	_update_follow()
+	_update_game_statistics_depth()
 
 
 func _stack_spacing_x() -> float:
@@ -58,6 +60,26 @@ func _stack_spacing_x() -> float:
 	if dt == null:
 		return 0.0
 	return dt.target_size_px.x
+
+
+func _update_game_statistics_depth() -> void:
+	if front_target == null or next_target == null:
+		return
+	var dt_f := front_target as DestructibleTarget
+	var dt_n := next_target as DestructibleTarget
+	if dt_f == null:
+		return
+	var w: int = dt_f.get_grid_width_cells()
+	var base: int = _completed_front_targets * w
+	var local_front: int = dt_f.get_furthest_right_empty_cell_x()
+	var instant: int = base + maxi(0, local_front)
+	# Next slab starts one full grid width deeper; count it when it already has empty cells.
+	if dt_n != null:
+		var local_next: int = dt_n.get_furthest_right_empty_cell_x()
+		if local_next >= 0:
+			var from_next: int = (_completed_front_targets + 1) * w + local_next
+			instant = maxi(instant, from_next)
+	GameStatistics.update_depth_in_cells(instant)
 
 
 func _enforce_stack_spacing() -> void:
@@ -166,4 +188,5 @@ func _begin_slide_swap() -> void:
 	_update_follow()
 
 	_sliding = false
+	_completed_front_targets += 1
 	active_target_changed.emit(front_target)
