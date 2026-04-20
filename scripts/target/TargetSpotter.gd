@@ -22,11 +22,12 @@ func _ready() -> void:
 	_line.begin_cap_mode = Line2D.LINE_CAP_ROUND
 	_line.end_cap_mode = Line2D.LINE_CAP_ROUND
 
-	var p := get_parent()
-	if p != null:
-		_conveyor = p.get_node_or_null("TargetConveyor") as TargetConveyor
-		if _conveyor == null and p.get_parent() != null:
-			_conveyor = p.get_parent().get_node_or_null("TargetConveyor") as TargetConveyor
+	var n := get_parent()
+	while n != null:
+		_conveyor = n.get_node_or_null("TargetConveyor") as TargetConveyor
+		if _conveyor != null:
+			break
+		n = n.get_parent()
 
 	if _conveyor != null:
 		if not _conveyor.active_target_changed.is_connected(_on_active_target_changed):

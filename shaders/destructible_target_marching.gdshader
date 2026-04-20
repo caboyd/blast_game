@@ -2,7 +2,11 @@ shader_type canvas_item;
 
 // Low-res mask; nearest so texelFetch matches CPU grid.
 uniform sampler2D mask_tex : source_color, filter_nearest;
-uniform vec4 solid_color : source_color = vec4(0.25, 0.85, 0.45, 1.0);
+// R = type id / 255, G = hp ratio 0..1
+uniform sampler2D type_tex : source_color, filter_nearest;
+
+uniform int type_count : hint_range(0, 8) = 3;
+uniform vec4 type_colors[8];
 
 const int HIGHLIGHT_MAX = 8;
 
@@ -208,7 +212,13 @@ void fragment() {
 		discard;
 	}
 
-	COLOR = solid_color;
+	vec4 td = texelFetch(type_tex, cell, 0);
+	int tc1 = max(type_count - 1, 0);
+	float tid_hi = float(tc1);
+	int tid = int(clamp(round(td.r * 255.0), 0.0, tid_hi));
+	vec4 base_color = type_colors[tid];
+	float hp_ratio = clamp(td.g, 0.0, 1.0);
+	COLOR = vec4(base_color.rgb * mix(0.45, 1.0, hp_ratio), base_color.a);
 
 	int hc_n = clamp(highlight_count, 0, HIGHLIGHT_MAX);
 	for (int hi = 0; hi < hc_n; hi++) {

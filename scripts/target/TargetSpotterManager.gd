@@ -2,7 +2,7 @@ class_name TargetSpotterManager
 extends Node2D
 
 @export var spotter_scene: PackedScene
-@export var spotter_count: int = 30
+@export var spotter_count: int = 0
 
 var _conveyor: TargetConveyor
 var _last_highlight_dt: DestructibleTarget

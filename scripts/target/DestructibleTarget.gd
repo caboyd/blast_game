@@ -3,11 +3,29 @@ extends Node2D
 
 signal fully_destroyed
 
+const TYPE_EMPTY := 0
+const TYPE_ROCK := 1
+const TYPE_GOLD := 2
+const TYPE_COUNT := 3
+
+## Not const: Packed* constructors are not compile-time constants in GDScript.
+static var TYPE_MAX_HP: PackedInt32Array = PackedInt32Array([0, 5, 50])
+static var TYPE_COLOR: PackedColorArray = PackedColorArray([
+	Color(0.0, 0.0, 0.0, 0.0),
+	Color(0.55, 0.55, 0.58, 1.0),
+	Color(1.0, 0.82, 0.2, 1.0),
+])
+
+const SHADER_TYPE_COLOR_MAX := 8
+
 @export var target_size_px: Vector2 = Vector2(640.0, 360.0)
 @export var cell_size_px: float = 8.0
 @export var fill_solid_on_reset: bool = true
 
-@export var visual_color: Color = Color(0.25, 0.85, 0.45, 1.0)
+@export var generation_mode: StringName = &"default"
+@export var gold_density: float = 0.015
+@export var gold_cluster_size: int = 3
+@export var generation_seed: int = 0
 
 @export var debug_destroy_on_key: bool = true
 @export var debug_destroy_key: Key = KEY_K
@@ -18,13 +36,17 @@ var _destroyed: bool = false
 
 var _grid_w: int = 0
 var _grid_h: int = 0
-var _cells: PackedByteArray # 1 = solid, 0 = empty
+## Per cell: type id (0 = empty).
+var _cells: PackedByteArray
+var _cell_hp: PackedByteArray
 
 var _leftmost_solid_cell_x: int = 0
 var _leftmost_solid_dirty: bool = true
 
 var _mask_image: Image
 var _mask_texture: ImageTexture
+var _type_image: Image
+var _type_texture: ImageTexture
 var _mask_dirty: bool = true
 
 ## Per row: grid X of leftmost solid cell, or -1. _row_leftmost_pos_local[y] = cell center in local space (invalid if x < 0).
@@ -56,7 +78,7 @@ func reset_target() -> void:
 	_row_leftmost_cache_dirty = true
 
 
-func apply_damage_circle_local(local_pos: Vector2, radius_px: float) -> void:
+func apply_damage_circle_local(local_pos: Vector2, radius_px: float, amount: int = 9999) -> void:
 	if _destroyed:
 		return
 
@@ -74,11 +96,13 @@ func apply_damage_circle_local(local_pos: Vector2, radius_px: float) -> void:
 			if cx < 0 or cy < 0 or cx >= _grid_w or cy >= _grid_h:
 				continue
 			var idx := cy * _grid_w + cx
-			if _cells[idx] == 0:
+			if _cells[idx] == TYPE_EMPTY:
 				continue
-			_cells[idx] = 0
-			destroyed_count += 1
-			changed_any = true
+			var dres := _damage_cell_idx(idx, amount)
+			if dres > 0:
+				changed_any = true
+			if dres == 2:
+				destroyed_count += 1
 
 	if destroyed_count > 0:
 		GameStatistics.add_blocks_destroyed(destroyed_count)
@@ -88,6 +112,27 @@ func apply_damage_circle_local(local_pos: Vector2, radius_px: float) -> void:
 		_leftmost_solid_dirty = true
 		_mask_dirty = true
 		_row_leftmost_cache_dirty = true
+
+
+## Returns true if the cell became empty (destroyed) this tick.
+func apply_damage_cell(cell: Vector2i, amount: int) -> bool:
+	if _destroyed:
+		return false
+	if cell.x < 0 or cell.y < 0 or cell.x >= _grid_w or cell.y >= _grid_h:
+		return false
+	var idx := cell.y * _grid_w + cell.x
+	if _cells[idx] == TYPE_EMPTY:
+		return false
+	var dres := _damage_cell_idx(idx, amount)
+	if dres == 0:
+		return false
+	if dres == 2:
+		GameStatistics.add_blocks_destroyed(1)
+	_try_mark_destroyed()
+	_leftmost_solid_dirty = true
+	_mask_dirty = true
+	_row_leftmost_cache_dirty = true
+	return dres == 2
 
 
 func debug_destroy() -> void:
@@ -135,7 +180,11 @@ func _init_mask_visuals() -> void:
 	_mask_image = Image.create(_grid_w, _grid_h, false, Image.FORMAT_L8)
 	_mask_image.fill(Color(1, 1, 1, 1))
 
+	_type_image = Image.create(_grid_w, _grid_h, false, Image.FORMAT_RG8)
+	_type_image.fill(Color(0, 0, 0, 1))
+
 	_mask_texture = ImageTexture.create_from_image(_mask_image)
+	_type_texture = ImageTexture.create_from_image(_type_image)
 
 	_visual.texture = _mask_texture
 	_visual.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -149,9 +198,20 @@ func _init_mask_visuals() -> void:
 		return
 	sm.shader = sh
 	sm.set_shader_parameter("mask_tex", _mask_texture)
-	sm.set_shader_parameter("solid_color", visual_color)
+	sm.set_shader_parameter("type_tex", _type_texture)
+	_push_shader_type_colors(sm)
 	_visual.material = sm
 	clear_highlight()
+
+
+func _push_shader_type_colors(sm: ShaderMaterial) -> void:
+	var n := mini(TYPE_COUNT, SHADER_TYPE_COLOR_MAX)
+	sm.set_shader_parameter("type_count", n)
+	var pc := PackedColorArray()
+	pc.resize(SHADER_TYPE_COLOR_MAX)
+	for i in range(SHADER_TYPE_COLOR_MAX):
+		pc[i] = TYPE_COLOR[i] if i < TYPE_COUNT else Color(0, 0, 0, 0)
+	sm.set_shader_parameter("type_colors", pc)
 
 
 func _update_mask_texture_if_dirty() -> void:
@@ -159,15 +219,27 @@ func _update_mask_texture_if_dirty() -> void:
 		return
 	if _destroyed:
 		return
-	if _mask_image == null or _mask_texture == null:
+	if _mask_image == null or _mask_texture == null or _type_image == null or _type_texture == null:
 		return
 
 	for y in range(_grid_h):
 		var row := y * _grid_w
 		for x in range(_grid_w):
-			_mask_image.set_pixel(x, y, Color(1, 1, 1, 1) if _cells[row + x] != 0 else Color(0, 0, 0, 1))
+			var idx := row + x
+			var t := int(_cells[idx])
+			if t == TYPE_EMPTY:
+				_mask_image.set_pixel(x, y, Color(0, 0, 0, 1))
+				_type_image.set_pixel(x, y, Color(0, 0, 0, 1))
+			else:
+				_mask_image.set_pixel(x, y, Color(1, 1, 1, 1))
+				var max_hp := maxi(1, int(TYPE_MAX_HP[t]))
+				var hp := clampi(int(_cell_hp[idx]), 0, max_hp)
+				var hp_ratio := float(hp) / float(max_hp)
+				var type_r := clampf(float(t) / 255.0, 0.0, 1.0)
+				_type_image.set_pixel(x, y, Color(type_r, hp_ratio, 0, 1))
 
 	_mask_texture.update(_mask_image)
+	_type_texture.update(_type_image)
 	_mask_dirty = false
 
 
@@ -183,7 +255,7 @@ func is_cell_solid(cell: Vector2i) -> bool:
 		return false
 	if cell.x < 0 or cell.y < 0 or cell.x >= _grid_w or cell.y >= _grid_h:
 		return false
-	return _cells[cell.y * _grid_w + cell.x] != 0
+	return _cells[cell.y * _grid_w + cell.x] != TYPE_EMPTY
 
 
 func get_grid_width_cells() -> int:
@@ -197,7 +269,7 @@ func get_furthest_right_empty_cell_x() -> int:
 		var row := y * _grid_w
 		var row_best := -1
 		for x in range(_grid_w - 1, -1, -1):
-			if _cells[row + x] == 0:
+			if _cells[row + x] == TYPE_EMPTY:
 				row_best = x
 				break
 		if row_best > best:
@@ -220,7 +292,7 @@ func _rebuild_row_leftmost_cache_if_dirty() -> void:
 		var lx := -1
 		var row := y * _grid_w
 		for x in range(_grid_w):
-			if _cells[row + x] != 0:
+			if _cells[row + x] != TYPE_EMPTY:
 				lx = x
 				break
 		_row_leftmost_x[y] = lx
@@ -313,7 +385,7 @@ func _find_leftmost_solid_cell_x() -> int:
 	# Scan columns left->right; first column containing any solid cell wins.
 	for x in range(_grid_w):
 		for y in range(_grid_h):
-			if _cells[y * _grid_w + x] != 0:
+			if _cells[y * _grid_w + x] != TYPE_EMPTY:
 				return x
 	return 0
 
@@ -324,13 +396,99 @@ func _init_grid() -> void:
 
 	_cells = PackedByteArray()
 	_cells.resize(_grid_w * _grid_h)
+	_cell_hp = PackedByteArray()
+	_cell_hp.resize(_grid_w * _grid_h)
 
 	if fill_solid_on_reset:
-		for i in range(_cells.size()):
-			_cells[i] = 1
+		_generate_cells()
 	else:
 		for i in range(_cells.size()):
-			_cells[i] = 0
+			_cells[i] = TYPE_EMPTY
+			_cell_hp[i] = 0
+
+
+func _generate_cells() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = generation_seed if generation_seed != 0 else Time.get_ticks_usec()
+
+	for i in range(_cells.size()):
+		_cells[i] = TYPE_ROCK
+		_cell_hp[i] = clampi(int(TYPE_MAX_HP[TYPE_ROCK]), 0, 255)
+
+	match generation_mode:
+		&"default":
+			_gen_default(rng)
+		_:
+			_gen_default(rng)
+
+
+func _gen_default(rng: RandomNumberGenerator) -> void:
+	var total := _cells.size()
+	var n_seeds := int(round(gold_density * float(total)))
+	n_seeds = clampi(n_seeds, 0, total)
+	var cluster_r := maxi(0, gold_cluster_size)
+
+	for _s in n_seeds:
+		var sx := rng.randi_range(0, _grid_w - 1)
+		var sy := rng.randi_range(0, _grid_h - 1)
+		_paint_gold_blob(Vector2i(sx, sy), cluster_r, rng)
+
+
+func _paint_gold_blob(origin: Vector2i, radius_cells: int, rng: RandomNumberGenerator) -> void:
+	if radius_cells <= 0:
+		_set_cell_type(origin.x, origin.y, TYPE_GOLD)
+		return
+	var q: Array[Vector2i] = [origin]
+	var visited: Dictionary = {}
+	var budget := (radius_cells * 2 + 1) * (radius_cells * 2 + 1)
+	while not q.is_empty() and budget > 0:
+		budget -= 1
+		var c: Vector2i = q.pop_front()
+		var key := Vector2i(c.x, c.y)
+		if visited.has(key):
+			continue
+		visited[key] = true
+		if c.x < 0 or c.y < 0 or c.x >= _grid_w or c.y >= _grid_h:
+			continue
+		if origin.distance_squared_to(c) > float(radius_cells * radius_cells):
+			continue
+		_set_cell_type(c.x, c.y, TYPE_GOLD)
+		var dirs: Array[Vector2i] = [
+			Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)
+		]
+		for di in range(dirs.size() - 1, 0, -1):
+			var j := rng.randi_range(0, di)
+			var tmp := dirs[di]
+			dirs[di] = dirs[j]
+			dirs[j] = tmp
+		for d in dirs:
+			if rng.randf() < 0.65:
+				q.append(c + d)
+
+
+func _set_cell_type(cx: int, cy: int, type_id: int) -> void:
+	var idx := cy * _grid_w + cx
+	if type_id == TYPE_EMPTY:
+		_cells[idx] = TYPE_EMPTY
+		_cell_hp[idx] = 0
+		return
+	_cells[idx] = type_id
+	var mh := clampi(int(TYPE_MAX_HP[type_id]), 0, 255)
+	_cell_hp[idx] = mh
+
+
+## 0 = no change, 1 = hp reduced, 2 = cell destroyed (now empty).
+func _damage_cell_idx(idx: int, amount: int) -> int:
+	if _cells[idx] == TYPE_EMPTY or amount <= 0:
+		return 0
+	var new_hp := int(_cell_hp[idx]) - amount
+	if new_hp <= 0:
+		_cells[idx] = TYPE_EMPTY
+		_cell_hp[idx] = 0
+		return 2
+	_cell_hp[idx] = clampi(new_hp, 0, 255)
+	return 1
+
 
 func _local_to_cell(local_pos: Vector2) -> Vector2i:
 	var gx := int(floor((local_pos.x + target_size_px.x * 0.5) / cell_size_px))
@@ -343,7 +501,7 @@ func _try_mark_destroyed() -> void:
 		return
 
 	for i in range(_cells.size()):
-		if _cells[i] != 0:
+		if _cells[i] != TYPE_EMPTY:
 			return
 
 	_destroyed = true
