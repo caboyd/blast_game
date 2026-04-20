@@ -1,0 +1,20 @@
+[gd_scene format=3 uid="uid://bqhuyhfryq34g"]
+
+[ext_resource type="Script" uid="uid://conweb5pvayjf" path="res://scripts/Main.gd" id="1"]
+[ext_resource type="PackedScene" path="res://scenes/target/TargetConveyor.tscn" id="2"]
+
+[node name="Main" type="Node" unique_id=1286468107]
+script = ExtResource("1")
+
+[node name="GameRoot" type="Node" parent="." unique_id=1239194635]
+
+[node name="World2D" type="Node2D" parent="GameRoot" unique_id=607401636]
+
+[node name="TurretManager" type="Node2D" parent="GameRoot/World2D" unique_id=397585590]
+
+[node name="TargetConveyor" parent="GameRoot/World2D" unique_id=1687813941 instance=ExtResource("2")]
+unique_name_in_owner = true
+
+[node name="ProjectileManager" type="Node2D" parent="GameRoot/World2D" unique_id=363159726]
+
+[node name="UI" type="CanvasLayer" parent="GameRoot" unique_id=1734507539]
