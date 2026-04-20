@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://conweb5pvayjf" path="res://scripts/Main.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/target/TargetConveyor.tscn" id="2"]
+[ext_resource type="PackedScene" path="res://scenes/target/TargetSpotterManager.tscn" id="3"]
 
 [node name="Main" type="Node" unique_id=1286468107]
 script = ExtResource("1")
@@ -14,6 +15,8 @@ script = ExtResource("1")
 
 [node name="TargetConveyor" parent="GameRoot/World2D" unique_id=1687813941 instance=ExtResource("2")]
 unique_name_in_owner = true
+
+[node name="TargetSpotterManager" parent="GameRoot/World2D" instance=ExtResource("3")]
 
 [node name="ProjectileManager" type="Node2D" parent="GameRoot/World2D" unique_id=363159726]
 

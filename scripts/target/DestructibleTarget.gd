@@ -137,6 +137,7 @@ func _init_mask_visuals() -> void:
 	sm.set_shader_parameter("mask_tex", _mask_texture)
 	sm.set_shader_parameter("solid_color", visual_color)
 	_visual.material = sm
+	clear_highlight()
 
 
 func _update_mask_texture_if_dirty() -> void:
@@ -154,6 +155,77 @@ func _update_mask_texture_if_dirty() -> void:
 
 	_mask_texture.update(_mask_image)
 	_mask_dirty = false
+
+
+func cell_center_local(cell: Vector2i) -> Vector2:
+	return Vector2(
+		(float(cell.x) + 0.5) * cell_size_px - target_size_px.x * 0.5,
+		(float(cell.y) + 0.5) * cell_size_px - target_size_px.y * 0.5
+	)
+
+
+func is_cell_solid(cell: Vector2i) -> bool:
+	if _destroyed:
+		return false
+	if cell.x < 0 or cell.y < 0 or cell.x >= _grid_w or cell.y >= _grid_h:
+		return false
+	return _cells[cell.y * _grid_w + cell.x] != 0
+
+
+## Leftmost column that still has any solid cell; within that column, the solid cell whose center is nearest to `from_local`.
+func get_nearest_leftmost_solid_cell(from_local: Vector2) -> Vector2i:
+	if _destroyed:
+		return Vector2i(-1, -1)
+	var col_x := _find_leftmost_solid_cell_x()
+	var best_y := -1
+	var best_d2 := INF
+	for y in range(_grid_h):
+		if _cells[y * _grid_w + col_x] == 0:
+			continue
+		var c := cell_center_local(Vector2i(col_x, y))
+		var d2 := c.distance_squared_to(from_local)
+		if d2 < best_d2:
+			best_d2 = d2
+			best_y = y
+	if best_y < 0:
+		return Vector2i(-1, -1)
+	return Vector2i(col_x, best_y)
+
+
+const HIGHLIGHT_SHADER_MAX: int = 8
+
+
+func set_highlight_cells(cells: Array[Vector2i]) -> void:
+	if _visual == null:
+		return
+	var sm := _visual.material as ShaderMaterial
+	if sm == null:
+		return
+	var packed := PackedVector2Array()
+	var n := 0
+	if not _destroyed:
+		for c in cells:
+			if n >= HIGHLIGHT_SHADER_MAX:
+				break
+			if c.x < 0 or c.y < 0:
+				continue
+			packed.append(Vector2(c.x, c.y))
+			n += 1
+	while packed.size() < HIGHLIGHT_SHADER_MAX:
+		packed.append(Vector2(-1.0, -1.0))
+	sm.set_shader_parameter("highlight_cells", packed)
+	sm.set_shader_parameter("highlight_count", n)
+
+
+func set_highlight_cell(cell: Vector2i) -> void:
+	if cell.x < 0 or cell.y < 0:
+		clear_highlight()
+	else:
+		set_highlight_cells([cell])
+
+
+func clear_highlight() -> void:
+	set_highlight_cells([])
 
 
 func get_leftmost_solid_local_x() -> float:

@@ -4,6 +4,13 @@ shader_type canvas_item;
 uniform sampler2D mask_tex : source_color, filter_nearest;
 uniform vec4 solid_color : source_color = vec4(0.25, 0.85, 0.45, 1.0);
 
+const int HIGHLIGHT_MAX = 8;
+
+uniform int highlight_count : hint_range(0, 8) = 0;
+uniform vec2 highlight_cells[HIGHLIGHT_MAX];
+uniform vec4 highlight_tint : source_color = vec4(1.0, 0.92, 0.15, 1.0);
+uniform float highlight_mix : hint_range(0.0, 1.0) = 0.72;
+
 const int SUBDIV = 8;
 const float ISO = 0.0;
 const float SDF_RADIUS = 3.0;
@@ -202,4 +209,17 @@ void fragment() {
 	}
 
 	COLOR = solid_color;
+
+	int hc_n = clamp(highlight_count, 0, HIGHLIGHT_MAX);
+	for (int hi = 0; hi < hc_n; hi++) {
+		vec2 hcv = highlight_cells[hi];
+		if (hcv.x < -0.5 || hcv.y < -0.5) {
+			continue;
+		}
+		ivec2 hc = ivec2(int(hcv.x + 0.5), int(hcv.y + 0.5));
+		if (cell == hc) {
+			COLOR = mix(COLOR, highlight_tint, highlight_mix);
+			break;
+		}
+	}
 }

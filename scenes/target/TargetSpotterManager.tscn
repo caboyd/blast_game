@@ -1,0 +1,9 @@
+[gd_scene format=3 uid="uid://dtrx184slrt33"]
+
+[ext_resource type="Script" path="res://scripts/target/TargetSpotterManager.gd" id="1"]
+[ext_resource type="PackedScene" uid="uid://crrcvej3cmfh5" path="res://scenes/target/TargetSpotter.tscn" id="2"]
+
+[node name="TargetSpotterManager" type="Node2D"]
+script = ExtResource("1")
+spotter_scene = ExtResource("2")
+spotter_count = 5
