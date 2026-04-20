@@ -64,7 +64,7 @@ func _process(_delta: float) -> void:
 
 	var from_local := dt.to_local(global_position)
 	if _tracked_cell.x < 0 or not dt.is_cell_solid(_tracked_cell):
-		_tracked_cell = dt.get_nearest_leftmost_solid_cell(from_local)
+		_tracked_cell = dt.get_closest_row_leftmost_cell(from_local)
 
 	if _tracked_cell.x < 0:
 		_clear_line_only()

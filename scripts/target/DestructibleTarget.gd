@@ -27,6 +27,11 @@ var _mask_image: Image
 var _mask_texture: ImageTexture
 var _mask_dirty: bool = true
 
+## Per row: grid X of leftmost solid cell, or -1. _row_leftmost_pos_local[y] = cell center in local space (invalid if x < 0).
+var _row_leftmost_x: PackedInt32Array = PackedInt32Array()
+var _row_leftmost_pos_local: PackedVector2Array = PackedVector2Array()
+var _row_leftmost_cache_dirty: bool = true
+
 @onready var _visual: Sprite2D = $Visual
 
 
@@ -48,6 +53,7 @@ func reset_target() -> void:
 	_try_mark_destroyed()
 	_leftmost_solid_dirty = true
 	_mask_dirty = true
+	_row_leftmost_cache_dirty = true
 
 
 func apply_damage_circle_local(local_pos: Vector2, radius_px: float) -> void:
@@ -81,12 +87,14 @@ func apply_damage_circle_local(local_pos: Vector2, radius_px: float) -> void:
 		_try_mark_destroyed()
 		_leftmost_solid_dirty = true
 		_mask_dirty = true
+		_row_leftmost_cache_dirty = true
 
 
 func debug_destroy() -> void:
 	if _destroyed:
 		return
 	_destroyed = true
+	_row_leftmost_cache_dirty = true
 	if _visual != null:
 		_visual.visible = false
 	fully_destroyed.emit()
@@ -114,6 +122,7 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	_update_mask_texture_if_dirty()
+	_rebuild_row_leftmost_cache_if_dirty()
 
 
 func _init_mask_visuals() -> void:
@@ -196,24 +205,64 @@ func get_furthest_right_empty_cell_x() -> int:
 	return best
 
 
-## Leftmost column that still has any solid cell; within that column, the solid cell whose center is nearest to `from_local`.
-func get_nearest_leftmost_solid_cell(from_local: Vector2) -> Vector2i:
+func _rebuild_row_leftmost_cache_if_dirty() -> void:
+	if not _row_leftmost_cache_dirty:
+		return
+	_row_leftmost_cache_dirty = false
+	if _destroyed:
+		_row_leftmost_x.clear()
+		_row_leftmost_pos_local.clear()
+		return
+	if _row_leftmost_x.size() != _grid_h:
+		_row_leftmost_x.resize(_grid_h)
+		_row_leftmost_pos_local.resize(_grid_h)
+	for y in range(_grid_h):
+		var lx := -1
+		var row := y * _grid_w
+		for x in range(_grid_w):
+			if _cells[row + x] != 0:
+				lx = x
+				break
+		_row_leftmost_x[y] = lx
+		if lx < 0:
+			_row_leftmost_pos_local[y] = Vector2.ZERO
+		else:
+			_row_leftmost_pos_local[y] = cell_center_local(Vector2i(lx, y))
+
+
+## Among each row's leftmost solid cell, returns grid cell whose cached center is closest to `from_local`.
+func get_closest_row_leftmost_cell(from_local: Vector2) -> Vector2i:
 	if _destroyed:
 		return Vector2i(-1, -1)
-	var col_x := _find_leftmost_solid_cell_x()
-	var best_y := -1
+	_rebuild_row_leftmost_cache_if_dirty()
+	var best: Vector2i = Vector2i(-1, -1)
 	var best_d2 := INF
 	for y in range(_grid_h):
-		if _cells[y * _grid_w + col_x] == 0:
+		var x := _row_leftmost_x[y]
+		if x < 0:
 			continue
-		var c := cell_center_local(Vector2i(col_x, y))
-		var d2 := c.distance_squared_to(from_local)
+		var d2 := _row_leftmost_pos_local[y].distance_squared_to(from_local)
 		if d2 < best_d2:
 			best_d2 = d2
-			best_y = y
-	if best_y < 0:
+			best = Vector2i(x, y)
+	return best
+
+
+func get_row_leftmost_cell_for_row(row_y: int) -> Vector2i:
+	if row_y < 0 or row_y >= _grid_h:
 		return Vector2i(-1, -1)
-	return Vector2i(col_x, best_y)
+	_rebuild_row_leftmost_cache_if_dirty()
+	var x := _row_leftmost_x[row_y]
+	if x < 0:
+		return Vector2i(-1, -1)
+	return Vector2i(x, row_y)
+
+
+func get_cached_row_leftmost_local_pos(row_y: int) -> Vector2:
+	if row_y < 0 or row_y >= _grid_h:
+		return Vector2.ZERO
+	_rebuild_row_leftmost_cache_if_dirty()
+	return _row_leftmost_pos_local[row_y]
 
 
 const HIGHLIGHT_SHADER_MAX: int = 8
@@ -298,6 +347,7 @@ func _try_mark_destroyed() -> void:
 			return
 
 	_destroyed = true
+	_row_leftmost_cache_dirty = true
 	if _visual != null:
 		_visual.visible = false
 	fully_destroyed.emit()
