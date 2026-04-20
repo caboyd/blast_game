@@ -78,7 +78,12 @@ func reset_target() -> void:
 	_row_leftmost_cache_dirty = true
 
 
-func apply_damage_circle_local(local_pos: Vector2, radius_px: float, amount: int = 9999) -> void:
+func apply_damage_circle_local(
+	local_pos: Vector2,
+	radius_px: float,
+	amount: int = 9999,
+	damage_source: StringName = GameStatistics.DAMAGE_SOURCE_CLICK
+) -> void:
 	if _destroyed:
 		return
 
@@ -87,6 +92,7 @@ func apply_damage_circle_local(local_pos: Vector2, radius_px: float, amount: int
 
 	var changed_any := false
 	var destroyed_count := 0
+	var damage_batch := 0
 	for dy in range(-r_cells, r_cells + 1):
 		for dx in range(-r_cells, r_cells + 1):
 			if dx * dx + dy * dy > r_cells * r_cells:
@@ -99,13 +105,19 @@ func apply_damage_circle_local(local_pos: Vector2, radius_px: float, amount: int
 			if _cells[idx] == TYPE_EMPTY:
 				continue
 			var dres := _damage_cell_idx(idx, amount)
-			if dres > 0:
+			var code := dres.x
+			var hp_rm := dres.y
+			if hp_rm > 0:
+				damage_batch += hp_rm
+			if code > 0:
 				changed_any = true
-			if dres == 2:
+			if code == 2:
 				destroyed_count += 1
 
 	if destroyed_count > 0:
 		GameStatistics.add_blocks_destroyed(destroyed_count)
+	if damage_batch > 0:
+		GameStatistics.add_block_damage(damage_batch, damage_source)
 
 	if changed_any:
 		_try_mark_destroyed()
@@ -115,7 +127,11 @@ func apply_damage_circle_local(local_pos: Vector2, radius_px: float, amount: int
 
 
 ## Returns true if the cell became empty (destroyed) this tick.
-func apply_damage_cell(cell: Vector2i, amount: int) -> bool:
+func apply_damage_cell(
+	cell: Vector2i,
+	amount: int,
+	damage_source: StringName = GameStatistics.DAMAGE_SOURCE_TURRET
+) -> bool:
 	if _destroyed:
 		return false
 	if cell.x < 0 or cell.y < 0 or cell.x >= _grid_w or cell.y >= _grid_h:
@@ -124,15 +140,19 @@ func apply_damage_cell(cell: Vector2i, amount: int) -> bool:
 	if _cells[idx] == TYPE_EMPTY:
 		return false
 	var dres := _damage_cell_idx(idx, amount)
-	if dres == 0:
+	var code := dres.x
+	var hp_rm := dres.y
+	if code == 0:
 		return false
-	if dres == 2:
+	if hp_rm > 0:
+		GameStatistics.add_block_damage(hp_rm, damage_source)
+	if code == 2:
 		GameStatistics.add_blocks_destroyed(1)
 	_try_mark_destroyed()
 	_leftmost_solid_dirty = true
 	_mask_dirty = true
 	_row_leftmost_cache_dirty = true
-	return dres == 2
+	return code == 2
 
 
 func debug_destroy() -> void:
@@ -477,17 +497,19 @@ func _set_cell_type(cx: int, cy: int, type_id: int) -> void:
 	_cell_hp[idx] = mh
 
 
-## 0 = no change, 1 = hp reduced, 2 = cell destroyed (now empty).
-func _damage_cell_idx(idx: int, amount: int) -> int:
+## x: 0 = no change, 1 = hp reduced, 2 = cell destroyed. y: HP actually removed from the cell.
+func _damage_cell_idx(idx: int, amount: int) -> Vector2i:
 	if _cells[idx] == TYPE_EMPTY or amount <= 0:
-		return 0
-	var new_hp := int(_cell_hp[idx]) - amount
+		return Vector2i(0, 0)
+	var hp_before := int(_cell_hp[idx])
+	var new_hp := hp_before - amount
 	if new_hp <= 0:
 		_cells[idx] = TYPE_EMPTY
 		_cell_hp[idx] = 0
-		return 2
-	_cell_hp[idx] = clampi(new_hp, 0, 255)
-	return 1
+		return Vector2i(2, hp_before)
+	var nh := clampi(new_hp, 0, 255)
+	_cell_hp[idx] = nh
+	return Vector2i(1, hp_before - nh)
 
 
 func _local_to_cell(local_pos: Vector2) -> Vector2i:

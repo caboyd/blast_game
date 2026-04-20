@@ -5,6 +5,8 @@ const UpgradeItemScene := preload("res://scenes/ui/UpgradeItem.tscn")
 
 const DEFAULT_STAT_CONFIG: Array[Dictionary] = [
 	{"id": &"blocks", "name": "blocks"},
+	{"id": &"turret_dmg", "name": "turret dmg"},
+	{"id": &"click_dmg", "name": "click dmg"},
 	{"id": &"depth", "name": "depth"},
 ]
 
@@ -203,6 +205,10 @@ func refresh() -> void:
 		match String(sid):
 			"blocks":
 				item.set_value(str(GameStatistics.total_blocks_destroyed))
+			"turret_dmg":
+				item.set_value(str(GameStatistics.damage_to_blocks_turret))
+			"click_dmg":
+				item.set_value(str(GameStatistics.damage_to_blocks_click))
 			"depth":
 				item.set_value(str(GameStatistics.furthest_depth_cells))
 			_:
