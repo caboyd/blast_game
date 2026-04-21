@@ -146,6 +146,7 @@ func _spawn_initial() -> void:
 
 	_wire_target(front_target)
 	_wire_target(next_target)
+	_wire_neighbors()
 
 	active_target_changed.emit(front_target)
 
@@ -155,6 +156,15 @@ func _wire_target(t: Node2D) -> void:
 	if dt == null:
 		return
 	dt.fully_destroyed.connect(_on_front_fully_destroyed.bind(dt))
+
+
+func _wire_neighbors() -> void:
+	var f := front_target as DestructibleTarget
+	var n := next_target as DestructibleTarget
+	if f != null:
+		f.set_neighbors(null, n)
+	if n != null:
+		n.set_neighbors(f, null)
 
 
 func _on_front_fully_destroyed(dt: DestructibleTarget) -> void:
@@ -185,6 +195,7 @@ func _begin_slide_swap() -> void:
 
 	# New front keeps local position; recycled target slots in directly behind (to the right).
 	_enforce_stack_spacing()
+	_wire_neighbors()
 	_update_follow()
 
 	_sliding = false

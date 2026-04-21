@@ -19,6 +19,8 @@ static var TYPE_COLOR: PackedColorArray = PackedColorArray([
 ])
 
 const SHADER_TYPE_COLOR_MAX := 8
+## Extra mask columns on left/right so marching shader sees real neighbor cells at seams (not clamped edge).
+const APRON_COLUMNS := 1
 
 @export var target_size_px: Vector2 = Vector2(640.0, 360.0)
 @export var cell_size_px: float = 8.0
@@ -60,6 +62,10 @@ var _row_leftmost_x: PackedInt32Array = PackedInt32Array()
 var _row_leftmost_pos_local: PackedVector2Array = PackedVector2Array()
 var _row_leftmost_cache_dirty: bool = true
 
+## Adjacent slabs (same cell_size_px / grid height). Used only to fill apron columns on mask textures.
+var _left_neighbor: DestructibleTarget
+var _right_neighbor: DestructibleTarget
+
 @onready var _visual: Sprite2D = $Visual
 
 
@@ -80,8 +86,9 @@ func reset_target() -> void:
 	_init_mask_visuals()
 	_try_mark_destroyed()
 	_leftmost_solid_dirty = true
-	_mask_dirty = true
 	_row_leftmost_cache_dirty = true
+	if not _destroyed:
+		_invalidate_mask_and_neighbor_seams()
 	_click_fire_time_bank_s = _click_interval_s()
 	_click_pending_edge = false
 
@@ -136,8 +143,9 @@ func apply_damage_circle_local(
 	if changed_any:
 		_try_mark_destroyed()
 		_leftmost_solid_dirty = true
-		_mask_dirty = true
 		_row_leftmost_cache_dirty = true
+		if not _destroyed:
+			_invalidate_mask_and_neighbor_seams()
 
 
 ## Returns true if the cell became empty (destroyed) this tick.
@@ -167,8 +175,9 @@ func apply_damage_cell(
 			GameStatistics.add_money(int(TYPE_MONEY[old_type]))
 	_try_mark_destroyed()
 	_leftmost_solid_dirty = true
-	_mask_dirty = true
 	_row_leftmost_cache_dirty = true
+	if not _destroyed:
+		_invalidate_mask_and_neighbor_seams()
 	return code == 2
 
 
@@ -179,6 +188,7 @@ func debug_destroy() -> void:
 	_row_leftmost_cache_dirty = true
 	if _visual != null:
 		_visual.visible = false
+	_invalidate_neighbor_seams_only()
 	fully_destroyed.emit()
 
 
@@ -239,10 +249,11 @@ func _init_mask_visuals() -> void:
 
 	_visual.centered = true
 
-	_mask_image = Image.create(_grid_w, _grid_h, false, Image.FORMAT_L8)
+	var tw := _texture_width()
+	_mask_image = Image.create(tw, _grid_h, false, Image.FORMAT_L8)
 	_mask_image.fill(Color(1, 1, 1, 1))
 
-	_type_image = Image.create(_grid_w, _grid_h, false, Image.FORMAT_RG8)
+	_type_image = Image.create(tw, _grid_h, false, Image.FORMAT_RG8)
 	_type_image.fill(Color(0, 0, 0, 1))
 
 	_mask_texture = ImageTexture.create_from_image(_mask_image)
@@ -250,7 +261,10 @@ func _init_mask_visuals() -> void:
 
 	_visual.texture = _mask_texture
 	_visual.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	# Mask stays _grid_w x _grid_h; shader draws multi-material fill + analytic edge boundaries per texel.
+	# Texture is (grid_w + 2*APRON) x grid_h; sprite only renders the interior so neighbor slabs
+	# don't overdraw each other at the seam. Apron texels still readable by shader via UV*texSize.
+	_visual.region_enabled = true
+	_visual.region_rect = Rect2(float(APRON_COLUMNS), 0.0, float(_grid_w), float(_grid_h))
 	_visual.scale = Vector2(cell_size_px, cell_size_px)
 
 	var sm := ShaderMaterial.new()
@@ -276,6 +290,61 @@ func _push_shader_type_colors(sm: ShaderMaterial) -> void:
 	sm.set_shader_parameter("type_colors", pc)
 
 
+func _texture_width() -> int:
+	return _grid_w + 2 * APRON_COLUMNS
+
+
+func _write_empty_mask_type(dst_x: int, dst_y: int) -> void:
+	_mask_image.set_pixel(dst_x, dst_y, Color(0, 0, 0, 1))
+	_type_image.set_pixel(dst_x, dst_y, Color(0, 0, 0, 1))
+
+
+func _write_interior_cell_to_images(dst_x: int, dst_y: int, idx: int) -> void:
+	var t := int(_cells[idx])
+	if t == TYPE_EMPTY:
+		_write_empty_mask_type(dst_x, dst_y)
+	else:
+		_mask_image.set_pixel(dst_x, dst_y, Color(1, 1, 1, 1))
+		var max_hp := maxi(1, int(TYPE_MAX_HP[t]))
+		var hp := clampi(int(_cell_hp[idx]), 0, max_hp)
+		var hp_ratio := float(hp) / float(max_hp)
+		var type_r := clampf(float(t) / 255.0, 0.0, 1.0)
+		_type_image.set_pixel(dst_x, dst_y, Color(type_r, hp_ratio, 0, 1))
+
+
+func _write_peer_cell_to_images(dst_x: int, dst_y: int, peer: DestructibleTarget, src_x: int, src_y: int) -> void:
+	if peer == null or peer._destroyed:
+		_write_empty_mask_type(dst_x, dst_y)
+		return
+	if src_x < 0 or src_y < 0 or src_x >= peer._grid_w or src_y >= peer._grid_h:
+		_write_empty_mask_type(dst_x, dst_y)
+		return
+	var idx := src_y * peer._grid_w + src_x
+	var t := int(peer._cells[idx])
+	if t == TYPE_EMPTY:
+		_write_empty_mask_type(dst_x, dst_y)
+	else:
+		_mask_image.set_pixel(dst_x, dst_y, Color(1, 1, 1, 1))
+		var max_hp := maxi(1, int(TYPE_MAX_HP[t]))
+		var hp := clampi(int(peer._cell_hp[idx]), 0, max_hp)
+		var hp_ratio := float(hp) / float(max_hp)
+		var type_r := clampf(float(t) / 255.0, 0.0, 1.0)
+		_type_image.set_pixel(dst_x, dst_y, Color(type_r, hp_ratio, 0, 1))
+
+
+func _fill_apron_columns_from_neighbors() -> void:
+	var tw := _texture_width()
+	for y in range(_grid_h):
+		for a in range(APRON_COLUMNS):
+			# Left apron copies right edge of left neighbor.
+			var src_lx := -1
+			if _left_neighbor != null:
+				src_lx = _left_neighbor._grid_w - APRON_COLUMNS + a
+			_write_peer_cell_to_images(a, y, _left_neighbor, src_lx, y)
+			# Right apron copies left edge of right neighbor.
+			_write_peer_cell_to_images(tw - APRON_COLUMNS + a, y, _right_neighbor, a, y)
+
+
 func _update_mask_texture_if_dirty() -> void:
 	if not _mask_dirty:
 		return
@@ -284,21 +353,14 @@ func _update_mask_texture_if_dirty() -> void:
 	if _mask_image == null or _mask_texture == null or _type_image == null or _type_texture == null:
 		return
 
+	var ox := APRON_COLUMNS
 	for y in range(_grid_h):
 		var row := y * _grid_w
 		for x in range(_grid_w):
 			var idx := row + x
-			var t := int(_cells[idx])
-			if t == TYPE_EMPTY:
-				_mask_image.set_pixel(x, y, Color(0, 0, 0, 1))
-				_type_image.set_pixel(x, y, Color(0, 0, 0, 1))
-			else:
-				_mask_image.set_pixel(x, y, Color(1, 1, 1, 1))
-				var max_hp := maxi(1, int(TYPE_MAX_HP[t]))
-				var hp := clampi(int(_cell_hp[idx]), 0, max_hp)
-				var hp_ratio := float(hp) / float(max_hp)
-				var type_r := clampf(float(t) / 255.0, 0.0, 1.0)
-				_type_image.set_pixel(x, y, Color(type_r, hp_ratio, 0, 1))
+			_write_interior_cell_to_images(ox + x, y, idx)
+
+	_fill_apron_columns_from_neighbors()
 
 	_mask_texture.update(_mask_image)
 	_type_texture.update(_type_image)
@@ -416,7 +478,8 @@ func set_highlight_cells(cells: Array[Vector2i]) -> void:
 				break
 			if c.x < 0 or c.y < 0:
 				continue
-			packed.append(Vector2(c.x, c.y))
+			# Shader compares texel coords; interior grid starts at x = APRON_COLUMNS in texture.
+			packed.append(Vector2(float(c.x + APRON_COLUMNS), float(c.y)))
 			n += 1
 	while packed.size() < HIGHLIGHT_SHADER_MAX:
 		packed.append(Vector2(-1.0, -1.0))
@@ -433,6 +496,24 @@ func set_highlight_cell(cell: Vector2i) -> void:
 
 func clear_highlight() -> void:
 	set_highlight_cells([])
+
+
+func set_neighbors(left: DestructibleTarget, right: DestructibleTarget) -> void:
+	_left_neighbor = left
+	_right_neighbor = right
+	_invalidate_mask_and_neighbor_seams()
+
+
+func _invalidate_mask_and_neighbor_seams() -> void:
+	_mask_dirty = true
+	_invalidate_neighbor_seams_only()
+
+
+func _invalidate_neighbor_seams_only() -> void:
+	if is_instance_valid(_left_neighbor):
+		_left_neighbor._mask_dirty = true
+	if is_instance_valid(_right_neighbor):
+		_right_neighbor._mask_dirty = true
 
 
 func get_leftmost_solid_local_x() -> float:
@@ -572,4 +653,5 @@ func _try_mark_destroyed() -> void:
 	_row_leftmost_cache_dirty = true
 	if _visual != null:
 		_visual.visible = false
+	_invalidate_neighbor_seams_only()
 	fully_destroyed.emit()
