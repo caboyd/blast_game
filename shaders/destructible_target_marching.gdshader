@@ -18,7 +18,7 @@ uniform float highlight_mix : hint_range(0.0, 1.0) = 0.72;
 // Contour outline between differing materials / material vs empty.
 uniform vec4 edge_color : source_color = vec4(0.04, 0.04, 0.06, 1.0);
 // Width in bilinear-weight units; larger = thicker outline.
-uniform float edge_width : hint_range(0.0, 0.5) = 0.0;
+uniform float edge_width : hint_range(0.0, 0.5) = 0.25;
 // Pixel smoothing width for alpha boundary (in weight units).
 uniform float alpha_aa : hint_range(0.0, 0.5) = 0.08;
 
