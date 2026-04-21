@@ -10,6 +10,8 @@ const TYPE_COUNT := 3
 
 ## Not const: Packed* constructors are not compile-time constants in GDScript.
 static var TYPE_MAX_HP: PackedInt32Array = PackedInt32Array([0, 5, 50])
+## Money granted when a cell of this type is fully destroyed (index = type id).
+static var TYPE_MONEY: PackedInt32Array = PackedInt32Array([0, 1, 15])
 static var TYPE_COLOR: PackedColorArray = PackedColorArray([
 	Color(0.0, 0.0, 0.0, 0.0),
 	Color(0.55, 0.55, 0.58, 1.0),
@@ -99,6 +101,7 @@ func apply_damage_circle_local(
 	var changed_any := false
 	var destroyed_count := 0
 	var damage_batch := 0
+	var money_batch := 0
 	for dy in range(-r_cells, r_cells + 1):
 		for dx in range(-r_cells, r_cells + 1):
 			if dx * dx + dy * dy > r_cells * r_cells:
@@ -110,6 +113,7 @@ func apply_damage_circle_local(
 			var idx := cy * _grid_w + cx
 			if _cells[idx] == TYPE_EMPTY:
 				continue
+			var old_type := int(_cells[idx])
 			var dres := _damage_cell_idx(idx, amount)
 			var code := dres.x
 			var hp_rm := dres.y
@@ -119,9 +123,13 @@ func apply_damage_circle_local(
 				changed_any = true
 			if code == 2:
 				destroyed_count += 1
+				if old_type >= 0 and old_type < TYPE_MONEY.size():
+					money_batch += int(TYPE_MONEY[old_type])
 
 	if destroyed_count > 0:
 		GameStatistics.add_blocks_destroyed(destroyed_count)
+	if money_batch > 0:
+		GameStatistics.add_money(money_batch)
 	if damage_batch > 0:
 		GameStatistics.add_block_damage(damage_batch, damage_source)
 
@@ -145,6 +153,7 @@ func apply_damage_cell(
 	var idx := cell.y * _grid_w + cell.x
 	if _cells[idx] == TYPE_EMPTY:
 		return false
+	var old_type := int(_cells[idx])
 	var dres := _damage_cell_idx(idx, amount)
 	var code := dres.x
 	var hp_rm := dres.y
@@ -154,6 +163,8 @@ func apply_damage_cell(
 		GameStatistics.add_block_damage(hp_rm, damage_source)
 	if code == 2:
 		GameStatistics.add_blocks_destroyed(1)
+		if old_type >= 0 and old_type < TYPE_MONEY.size():
+			GameStatistics.add_money(int(TYPE_MONEY[old_type]))
 	_try_mark_destroyed()
 	_leftmost_solid_dirty = true
 	_mask_dirty = true

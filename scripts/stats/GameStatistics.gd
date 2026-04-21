@@ -10,6 +10,8 @@ const CLICK_FIRE_RATE_MIN_MS := 25.0
 const CLICK_FIRE_RATE_STEP := 0.95
 
 var total_blocks_destroyed: int = 0
+## Currency earned from destroying blocks; spent on upgrades.
+var money: int = 0
 var furthest_depth_cells: int = 0
 ## Total HP removed from block cells (not the same as blocks destroyed).
 var damage_to_blocks_turret: int = 0
@@ -87,6 +89,23 @@ func add_blocks_destroyed(count: int) -> void:
 		return
 	total_blocks_destroyed += count
 	stats_changed.emit()
+
+
+func add_money(amount: int) -> void:
+	if amount <= 0:
+		return
+	money += amount
+	stats_changed.emit()
+
+
+func spend_money(amount: int) -> bool:
+	if amount <= 0:
+		return true
+	if amount > money:
+		return false
+	money -= amount
+	stats_changed.emit()
+	return true
 
 
 func update_depth_in_cells(instantaneous_depth: int) -> void:

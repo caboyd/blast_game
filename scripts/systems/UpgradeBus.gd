@@ -56,7 +56,7 @@ func get_cost(id: StringName) -> int:
 func can_afford(id: StringName) -> bool:
 	if not DEFS.has(id):
 		return false
-	return GameStatistics.total_blocks_destroyed >= get_cost(id)
+	return GameStatistics.money >= get_cost(id)
 
 
 func can_purchase(id: StringName) -> bool:
@@ -69,6 +69,9 @@ func try_purchase(id: StringName) -> bool:
 	if is_maxed(id):
 		return false
 	if not can_afford(id):
+		return false
+	var cost := get_cost(id)
+	if not GameStatistics.spend_money(cost):
 		return false
 	var new_level := get_level(id) + 1
 	_levels[id] = new_level

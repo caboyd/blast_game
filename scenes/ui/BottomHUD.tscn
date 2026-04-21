@@ -59,8 +59,8 @@ theme_override_styles/panel = ExtResource("4")
 custom_minimum_size = Vector2(0, 0)
 layout_mode = 2
 size_flags_vertical = 4
-horizontal_scroll_mode = 0
-vertical_scroll_mode = 1
+horizontal_scroll_mode = 1
+vertical_scroll_mode = 0
 
 [node name="StatsGrid" type="GridContainer" parent="Outer/Inner/MainVBox/StatsRow/StatsSection/StatsScroll"]
 layout_mode = 2
@@ -68,8 +68,8 @@ size_flags_vertical = 4
 theme_override_constants/h_separation = 6
 theme_override_constants/v_separation = 6
 script = ExtResource("5")
-columns_horizontal = 2
-force_single_column_when_portrait = true
+columns_horizontal = 32
+force_single_column_when_portrait = false
 
 [node name="StatsSpacerR" type="Control" parent="Outer/Inner/MainVBox/StatsRow"]
 layout_mode = 2

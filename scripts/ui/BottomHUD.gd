@@ -6,6 +6,7 @@ const UpgradeItemScene := preload("res://scenes/ui/UpgradeItem.tscn")
 const DEFAULT_STAT_CONFIG: Array[Dictionary] = [
 	{"id": &"blocks", "name": "blocks"},
 	{"id": &"depth", "name": "depth"},
+	{"id": &"money", "name": "money"},
 ]
 
 ## Per-source `upgrades` entries map to UpgradeBus.DEFS. Optional `max_level` in DEFS caps levels; omit for infinite.
@@ -56,7 +57,8 @@ const DEFAULT_UPGRADE_CONFIG: Array[Dictionary] = [
 ## If empty, DEFAULT_UPGRADE_CONFIG used. Each entry is either a locked stub (`id`, `name`, `disabled`: true) or a source card with `stats` and `upgrades` arrays.
 @export var upgrade_config: Array[Dictionary] = []
 
-@export var stats_columns_horizontal: int = 2:
+## High enough that stats stay on one row until the row exceeds the viewport (use horizontal scroll).
+@export var stats_columns_horizontal: int = 32:
 	set(v):
 		stats_columns_horizontal = maxi(1, v)
 		if stats_grid:
@@ -74,6 +76,9 @@ const DEFAULT_UPGRADE_CONFIG: Array[Dictionary] = [
 ## Horizontal inset from screen edges when expanded (anchor left/right 0..1).
 @export var expanded_margin_horizontal: float = 8.0
 
+## Moves the expand/collapse handle up by this many pixels when the HUD is expanded (same height, shifted).
+@export var expanded_handle_raise_px: float = 15.0
+
 @onready var outer: PanelContainer = $Outer
 @onready var handle_wrap: PanelContainer = $HandleWrap
 @onready var upgrades_section: PanelContainer = $Outer/Inner/MainVBox/UpgradesSection
@@ -86,9 +91,13 @@ var _is_expanded: bool = false
 var _hud_layout_ready: bool = false
 
 var _stat_items: Dictionary = {}  # StringName -> StatItem (instanced)
+var _handle_wrap_offset_top_base: float = 0.0
+var _handle_wrap_offset_bottom_base: float = 0.0
 
 
 func _ready() -> void:
+	_handle_wrap_offset_top_base = handle_wrap.offset_top
+	_handle_wrap_offset_bottom_base = handle_wrap.offset_bottom
 	collapse_handle.pressed.connect(_on_collapse_handle_pressed)
 	stats_grid.columns_horizontal = stats_columns_horizontal
 	upgrades_grid.columns_horizontal = upgrades_columns_horizontal
@@ -114,9 +123,13 @@ func _apply_expanded(open: bool) -> void:
 		_set_expanded_horizontal_layout()
 		offset_top = expanded_offset_top
 		collapse_handle.text = "▼"
+		handle_wrap.offset_top = _handle_wrap_offset_top_base - expanded_handle_raise_px
+		handle_wrap.offset_bottom = _handle_wrap_offset_bottom_base - expanded_handle_raise_px
 		call_deferred("_fit_stats_scroll_height")
 	else:
 		collapse_handle.text = "▲"
+		handle_wrap.offset_top = _handle_wrap_offset_top_base
+		handle_wrap.offset_bottom = _handle_wrap_offset_bottom_base
 		_fit_collapsed_height()
 
 
@@ -274,7 +287,7 @@ func _cost_display_for(uid: StringName) -> String:
 		if UpgradeBus.is_maxed(uid) and UpgradeBus.get_level(uid) > 0:
 			return "MAX"
 		return "—"
-	return "%d blk" % UpgradeBus.get_cost(uid)
+	return "%d $" % UpgradeBus.get_cost(uid)
 
 
 func _read_string_name(d: Dictionary, key: String) -> StringName:
@@ -343,6 +356,8 @@ func refresh() -> void:
 				item.set_value(str(GameStatistics.total_blocks_destroyed))
 			"depth":
 				item.set_value(str(GameStatistics.furthest_depth_cells))
+			"money":
+				item.set_value(str(GameStatistics.money))
 			_:
 				item.set_value("—")
 	_refresh_upgrades()
