@@ -28,13 +28,14 @@ func _ready() -> void:
 	var beam_idx := _beam.get_index()
 	add_child(_spotter)
 	move_child(_spotter, beam_idx)
-	_beam.width = base_beam_width
+
 	_beam.default_color = beam_color
 	_beam.joint_mode = Line2D.LINE_JOINT_ROUND
 	_beam.begin_cap_mode = Line2D.LINE_CAP_ROUND
 	_beam.end_cap_mode = Line2D.LINE_CAP_ROUND
 	UpgradeBus.upgrade_purchased.connect(_on_upgrade_purchased)
 	damage = GameStatistics.laser_turret_damage
+	_beam.width = base_beam_width + beam_width_scaling_factor * damage
 
 
 func _on_upgrade_purchased(id: StringName, _new_level: int) -> void:
