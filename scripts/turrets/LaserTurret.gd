@@ -28,7 +28,6 @@ func _ready() -> void:
 	var beam_idx := _beam.get_index()
 	add_child(_spotter)
 	move_child(_spotter, beam_idx)
-
 	_beam.default_color = beam_color
 	_beam.joint_mode = Line2D.LINE_JOINT_ROUND
 	_beam.begin_cap_mode = Line2D.LINE_CAP_ROUND
@@ -88,7 +87,7 @@ func _process(delta: float) -> void:
 			break
 		if not dt.is_cell_solid(cell):
 			break
-		dt.apply_damage_cell(cell, damage)
+		dt.apply_damage_cell(cell, damage, GameStatistics.DAMAGE_SOURCE_LASER_TURRET)
 		if not dt.is_cell_solid(cell):
 			break
 

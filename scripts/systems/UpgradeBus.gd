@@ -6,9 +6,12 @@ extends Node
 signal upgrade_purchased(id: StringName, new_level: int)
 
 const DEFS: Dictionary = {
-	&"laser_count": {"base_cost": 120, "multiplier": 2.0, "max_level": 5},
+	&"laser_count": {"base_cost": 120, "multiplier": 2.0, "max_level": 6},
 	&"laser_fire_rate": {"base_cost": 100, "multiplier": 2.0, "max_level": 0},
 	&"melter": {"base_cost": 100, "multiplier": 2.0},
+	&"cannon_count": {"base_cost": 120, "multiplier": 2.0, "max_level": 5},
+	&"cannon_fire_rate": {"base_cost": 100, "multiplier": 2.0, "max_level": 0},
+	&"cannon_shell": {"base_cost": 100, "multiplier": 2.0},
 	&"click_count": {"base_cost": 1, "multiplier": 1.0, "max_level": 0},
 	&"click_fire_rate": {"base_cost": 100, "multiplier": 2.0, "max_level": 59},
 	&"click_dmg": {"base_cost": 100, "multiplier": 2.0},

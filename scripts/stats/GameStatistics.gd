@@ -2,7 +2,8 @@ extends Node
 
 signal stats_changed
 
-const DAMAGE_SOURCE_TURRET := &"turret"
+const DAMAGE_SOURCE_LASER_TURRET := &"laser_turret"
+const DAMAGE_SOURCE_CANNON_TURRET := &"cannon_turret"
 const DAMAGE_SOURCE_CLICK := &"click"
 
 const CLICK_FIRE_RATE_START_MS := 500.0
@@ -14,10 +15,13 @@ var total_blocks_destroyed: int = 0
 var money: int = 0
 var furthest_depth_cells: int = 0
 ## Total HP removed from block cells (not the same as blocks destroyed).
-var damage_to_blocks_turret: int = 0
+var damage_to_blocks_laser_turret: int = 0
+var damage_to_blocks_cannon_turret: int = 0
 var damage_to_blocks_click: int = 0
 ## Per-shot laser turret damage (weapon stat); updated by LaserTurret.
 var laser_turret_damage: int = 1
+## Per-shot cannon projectile direct blast damage; updated by CannonTurret.
+var cannon_turret_damage: int = 5
 ## Per-click damage to the destructible grid; updated by upgrades.
 var click_damage: int = 1
 ## Click AoE radius in whole cells (circle in cell space).
@@ -34,6 +38,8 @@ func _ready() -> void:
 func _on_upgrade_purchased(id: StringName, _new_level: int) -> void:
 	if id == &"melter":
 		set_laser_turret_damage(laser_turret_damage + 1)
+	elif id == &"cannon_shell":
+		set_cannon_turret_damage(cannon_turret_damage + 1)
 	elif id == &"click_dmg":
 		set_click_damage(click_damage + 1)
 	elif id == &"click_radius":
@@ -47,6 +53,14 @@ func set_laser_turret_damage(amount: int) -> void:
 	if laser_turret_damage == v:
 		return
 	laser_turret_damage = v
+	stats_changed.emit()
+
+
+func set_cannon_turret_damage(amount: int) -> void:
+	var v := maxi(1, amount)
+	if cannon_turret_damage == v:
+		return
+	cannon_turret_damage = v
 	stats_changed.emit()
 
 
@@ -77,8 +91,10 @@ func set_click_fire_rate_ms(ms: float) -> void:
 func add_block_damage(amount: int, source: StringName) -> void:
 	if amount <= 0:
 		return
-	if source == DAMAGE_SOURCE_TURRET:
-		damage_to_blocks_turret += amount
+	if source == DAMAGE_SOURCE_LASER_TURRET:
+		damage_to_blocks_laser_turret += amount
+	elif source == DAMAGE_SOURCE_CANNON_TURRET:
+		damage_to_blocks_cannon_turret += amount
 	elif source == DAMAGE_SOURCE_CLICK:
 		damage_to_blocks_click += amount
 	stats_changed.emit()

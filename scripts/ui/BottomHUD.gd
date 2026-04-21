@@ -43,7 +43,21 @@ const DEFAULT_UPGRADE_CONFIG: Array[Dictionary] = [
 			{"id": &"click_radius", "label": "Radius", "target_stat": &"radius", "delta": 1},
 		],
 	},
-	{"id": &"stub_cryo", "name": "CRYO CHAMBER", "disabled": true},
+	{
+		"id": &"cannon_turret",
+		"name": "CANNON TURRET",
+		"stats": [
+			{"id": &"count", "label": "Count"},
+			{"id": &"damage", "label": "Damage"},
+			{"id": &"fire_rate", "label": "Fire/s"},
+			{"id": &"dmg_dealt", "label": "Dmg Dealt"},
+		],
+		"upgrades": [
+			{"id": &"cannon_count", "label": "Count", "target_stat": &"count", "delta": 1},
+			{"id": &"cannon_fire_rate", "label": "Fire rate", "target_stat": &"fire_rate", "delta": 0},
+			{"id": &"cannon_shell", "label": "Damage", "target_stat": &"damage", "delta": 1},
+		],
+	},
 	{"id": &"stub_fusion", "name": "FUSION CORE", "disabled": true},
 	{"id": &"stub_turret", "name": "AUTO TURRET", "disabled": true},
 	{"id": &"stub_shield", "name": "SHIELD GEN", "disabled": true},
@@ -241,6 +255,8 @@ func _source_instance_count(sid: StringName) -> int:
 		return 1
 	if sid == &"laser_turret":
 		return get_tree().get_nodes_in_group(&"laser_turrets").size()
+	if sid == &"cannon_turret":
+		return get_tree().get_nodes_in_group(&"cannon_turrets").size()
 	return 0
 
 
@@ -254,6 +270,16 @@ func _first_laser_fire_rate_hz() -> float:
 	return 10.0
 
 
+func _first_cannon_fire_rate_hz() -> float:
+	var nodes: Array[Node] = get_tree().get_nodes_in_group(&"cannon_turrets")
+	if nodes.is_empty():
+		return 1.0
+	var t: Node = nodes[0]
+	if t is CannonTurret:
+		return (t as CannonTurret).fire_rate_hz
+	return 1.0
+
+
 func _stat_value_for_source(sid: StringName, stat_id: StringName) -> int:
 	match String(stat_id):
 		"count":
@@ -261,6 +287,8 @@ func _stat_value_for_source(sid: StringName, stat_id: StringName) -> int:
 		"fire_rate":
 			if sid == &"laser_turret":
 				return int(round(_first_laser_fire_rate_hz()))
+			if sid == &"cannon_turret":
+				return int(round(_first_cannon_fire_rate_hz()))
 			if sid == &"click":
 				return int(round(1000.0 / maxf(GameStatistics.click_fire_rate_ms, 1.0)))
 			return 0
@@ -270,7 +298,13 @@ func _stat_value_for_source(sid: StringName, stat_id: StringName) -> int:
 				"damage":
 					return GameStatistics.laser_turret_damage
 				"dmg_dealt":
-					return GameStatistics.damage_to_blocks_turret
+					return GameStatistics.damage_to_blocks_laser_turret
+		"cannon_turret":
+			match String(stat_id):
+				"damage":
+					return GameStatistics.cannon_turret_damage
+				"dmg_dealt":
+					return GameStatistics.damage_to_blocks_cannon_turret
 		"click":
 			match String(stat_id):
 				"damage":

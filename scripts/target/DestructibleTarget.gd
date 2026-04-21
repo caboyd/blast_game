@@ -148,11 +148,31 @@ func apply_damage_circle_local(
 			_invalidate_mask_and_neighbor_seams()
 
 
+## True if any solid cell lies inside a circle (local space) of given radius. Cell-space disk test.
+func overlaps_solid_circle_local(local_pos: Vector2, radius_px: float) -> bool:
+	if _destroyed:
+		return false
+	var r_cells := int(ceil(radius_px / cell_size_px))
+	var center := _local_to_cell(local_pos)
+	var r2 := r_cells * r_cells
+	for dy in range(-r_cells, r_cells + 1):
+		for dx in range(-r_cells, r_cells + 1):
+			if dx * dx + dy * dy > r2:
+				continue
+			var cx := center.x + dx
+			var cy := center.y + dy
+			if cx < 0 or cy < 0 or cx >= _grid_w or cy >= _grid_h:
+				continue
+			if _cells[cy * _grid_w + cx] != TYPE_EMPTY:
+				return true
+	return false
+
+
 ## Returns true if the cell became empty (destroyed) this tick.
 func apply_damage_cell(
 	cell: Vector2i,
 	amount: int,
-	damage_source: StringName = GameStatistics.DAMAGE_SOURCE_TURRET
+	damage_source: StringName = GameStatistics.DAMAGE_SOURCE_LASER_TURRET
 ) -> bool:
 	if _destroyed:
 		return false

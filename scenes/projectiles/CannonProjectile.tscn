@@ -1,0 +1,12 @@
+[gd_scene format=3 uid="uid://tn1b7q53rab5"]
+
+[ext_resource type="Script" path="res://scripts/projectiles/CannonProjectile.gd" id="1"]
+
+[node name="CannonProjectile" type="Area2D"]
+script = ExtResource("1")
+monitoring = false
+monitorable = false
+
+[node name="Visual" type="Polygon2D" parent="."]
+color = Color(1, 0.7, 0.2, 1)
+polygon = PackedVector2Array(4, 0, 3.236, 2.351, 1.236, 3.804, -1.236, 3.804, -3.236, 2.351, -4, 0, -3.236, -2.351, -1.236, -3.804, 1.236, -3.804, 3.236, -2.351)
