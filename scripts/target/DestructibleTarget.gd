@@ -250,7 +250,7 @@ func _init_mask_visuals() -> void:
 
 	_visual.texture = _mask_texture
 	_visual.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	# Mask stays _grid_w x _grid_h; shader runs 8x8 marching-squares sub-cells per texel.
+	# Mask stays _grid_w x _grid_h; shader draws multi-material fill + analytic edge boundaries per texel.
 	_visual.scale = Vector2(cell_size_px, cell_size_px)
 
 	var sm := ShaderMaterial.new()
