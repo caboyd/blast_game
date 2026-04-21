@@ -22,6 +22,9 @@ var damage_to_blocks_click: int = 0
 var laser_turret_damage: int = 1
 ## Per-shot cannon projectile direct blast damage; updated by CannonTurret.
 var cannon_turret_damage: int = 5
+## Cannon shell explosion radius (px); increased by `cannon_blast` upgrade.
+var cannon_explosion_radius_px: float = 16.0
+const CANNON_BLAST_RADIUS_STEP_PX := 4.0
 ## Per-click damage to the destructible grid; updated by upgrades.
 var click_damage: int = 1
 ## Click AoE radius in whole cells (circle in cell space).
@@ -40,6 +43,8 @@ func _on_upgrade_purchased(id: StringName, _new_level: int) -> void:
 		set_laser_turret_damage(laser_turret_damage + 1)
 	elif id == &"cannon_shell":
 		set_cannon_turret_damage(cannon_turret_damage + 1)
+	elif id == &"cannon_blast":
+		set_cannon_explosion_radius_px(cannon_explosion_radius_px + CANNON_BLAST_RADIUS_STEP_PX)
 	elif id == &"click_dmg":
 		set_click_damage(click_damage + 1)
 	elif id == &"click_radius":
@@ -61,6 +66,14 @@ func set_cannon_turret_damage(amount: int) -> void:
 	if cannon_turret_damage == v:
 		return
 	cannon_turret_damage = v
+	stats_changed.emit()
+
+
+func set_cannon_explosion_radius_px(px: float) -> void:
+	var v := maxf(1.0, px)
+	if is_equal_approx(cannon_explosion_radius_px, v):
+		return
+	cannon_explosion_radius_px = v
 	stats_changed.emit()
 
 

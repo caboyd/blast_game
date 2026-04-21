@@ -1,6 +1,8 @@
 class_name CannonProjectile
 extends Projectile
 
+const _ExplosionFX := preload("res://scripts/projectiles/CannonExplosionFX.gd")
+
 @export var damage: int = 5
 @export var visual_radius_px: float = 4.0
 @export var collision_radius_px: float = 4.0
@@ -79,6 +81,9 @@ func _detonate() -> void:
 	if _conveyor != null:
 		_apply_blast(_conveyor.front_target as DestructibleTarget, hit_world)
 		_apply_blast(_conveyor.next_target as DestructibleTarget, hit_world)
+	var parent := get_parent() as Node2D
+	if parent != null:
+		_ExplosionFX.spawn(parent, hit_world, explosion_radius_px, visual_color)
 	queue_free()
 
 

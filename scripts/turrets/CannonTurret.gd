@@ -28,12 +28,15 @@ func _ready() -> void:
 	_spotter.line_width = spotter_line_width
 	UpgradeBus.upgrade_purchased.connect(_on_upgrade_purchased)
 	damage = GameStatistics.cannon_turret_damage
+	explosion_radius_px = GameStatistics.cannon_explosion_radius_px
 	add_child(_spotter)
 
 
 func _on_upgrade_purchased(id: StringName, _new_level: int) -> void:
 	if id == &"cannon_shell":
 		damage = GameStatistics.cannon_turret_damage
+	elif id == &"cannon_blast":
+		explosion_radius_px = GameStatistics.cannon_explosion_radius_px
 
 
 func _process(delta: float) -> void:

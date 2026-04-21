@@ -50,12 +50,14 @@ const DEFAULT_UPGRADE_CONFIG: Array[Dictionary] = [
 			{"id": &"count", "label": "Count"},
 			{"id": &"damage", "label": "Damage"},
 			{"id": &"fire_rate", "label": "Fire/s"},
+			{"id": &"blast", "label": "Blast (px)"},
 			{"id": &"dmg_dealt", "label": "Dmg Dealt"},
 		],
 		"upgrades": [
 			{"id": &"cannon_count", "label": "Count", "target_stat": &"count", "delta": 1},
 			{"id": &"cannon_fire_rate", "label": "Fire rate", "target_stat": &"fire_rate", "delta": 0},
 			{"id": &"cannon_shell", "label": "Damage", "target_stat": &"damage", "delta": 1},
+			{"id": &"cannon_blast", "label": "Blast r", "target_stat": &"blast", "delta": 4},
 		],
 	},
 	{"id": &"stub_fusion", "name": "FUSION CORE", "disabled": true},
@@ -303,6 +305,8 @@ func _stat_value_for_source(sid: StringName, stat_id: StringName) -> int:
 			match String(stat_id):
 				"damage":
 					return GameStatistics.cannon_turret_damage
+				"blast":
+					return int(round(GameStatistics.cannon_explosion_radius_px))
 				"dmg_dealt":
 					return GameStatistics.damage_to_blocks_cannon_turret
 		"click":
