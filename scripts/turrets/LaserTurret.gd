@@ -6,7 +6,8 @@ const TARGET_SPOTTER_SCENE := preload("res://scenes/target/TargetSpotter.tscn")
 @export var damage: int = 1
 @export var update_frequency_hz: float = 10.0
 @export var beam_color: Color = Color(1.0, 0.25, 0.25, 0.9)
-@export var beam_width: float = 2.5
+@export var base_beam_width: float = 1.5
+@export var beam_width_scaling_factor: float = 0.5
 @export var spotter_line_width: float = 0.0
 
 @onready var _beam: Line2D = $Beam
@@ -27,7 +28,7 @@ func _ready() -> void:
 	var beam_idx := _beam.get_index()
 	add_child(_spotter)
 	move_child(_spotter, beam_idx)
-	_beam.width = beam_width
+	_beam.width = base_beam_width
 	_beam.default_color = beam_color
 	_beam.joint_mode = Line2D.LINE_JOINT_ROUND
 	_beam.begin_cap_mode = Line2D.LINE_CAP_ROUND
@@ -39,6 +40,7 @@ func _ready() -> void:
 func _on_upgrade_purchased(id: StringName, _new_level: int) -> void:
 	if id == &"melter":
 		damage = GameStatistics.laser_turret_damage
+		_beam.width = base_beam_width + beam_width_scaling_factor * damage
 
 
 func _resolve_conveyor() -> TargetConveyor:
