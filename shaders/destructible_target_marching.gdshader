@@ -166,7 +166,7 @@ void fragment() {
 	}
 
 	vec2 p = UV * vec2(float(ts.x), float(ts.y));
-	p = min(max(p, vec2(0.0)), vec2(float(ts.x)) - vec2(1e-4));
+	p = min(max(p, vec2(0.0)), vec2(float(ts.x), float(ts.y)) - vec2(1e-4));
 
 	ivec2 cell = ivec2(floor(p));
 	vec2 f = fract(p);
@@ -212,9 +212,37 @@ void fragment() {
 		discard;
 	}
 
-	vec4 td = texelFetch(type_tex, cell, 0);
 	int tc1 = max(type_count - 1, 0);
 	float tid_hi = float(tc1);
+
+	vec4 td = texelFetch(type_tex, cell, 0);
+	ivec2 cc = cell;
+	// Empty/depleted center: color from nearest of 8 neighbors that still has hp.
+	if (td.g <= 0.01) {
+		float best_d2 = 1.0e9;
+		for (int dy = -1; dy <= 1; dy++) {
+			for (int dx = -1; dx <= 1; dx++) {
+				if (dx == 0 && dy == 0) {
+					continue;
+				}
+				ivec2 u = cell + ivec2(dx, dy);
+				if (u.x < 0 || u.y < 0 || u.x >= ts.x || u.y >= ts.y) {
+					continue;
+				}
+				vec4 tn = texelFetch(type_tex, u, 0);
+				if (tn.g <= 0.01) {
+					continue;
+				}
+				vec2 ctr = vec2(float(u.x) + 0.5, float(u.y) + 0.5);
+				float d2 = dot(p - ctr, p - ctr);
+				if (d2 < best_d2) {
+					best_d2 = d2;
+					td = tn;
+					cc = u;
+				}
+			}
+		}
+	}
 	int tid = int(clamp(round(td.r * 255.0), 0.0, tid_hi));
 	vec4 base_color = type_colors[tid];
 	float hp_ratio = clamp(td.g, 0.0, 1.0);
@@ -227,7 +255,7 @@ void fragment() {
 			continue;
 		}
 		ivec2 hc = ivec2(int(hcv.x + 0.5), int(hcv.y + 0.5));
-		if (cell == hc) {
+		if (cc == hc) {
 			COLOR = mix(COLOR, highlight_tint, highlight_mix);
 			break;
 		}
