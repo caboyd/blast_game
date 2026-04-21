@@ -30,9 +30,13 @@ const SHADER_TYPE_COLOR_MAX := 8
 @export var debug_destroy_on_key: bool = true
 @export var debug_destroy_key: Key = KEY_K
 @export var debug_damage_on_click: bool = true
-@export var debug_damage_radius_px: float = 150.0
 
 var _destroyed: bool = false
+var _mouse_held: bool = false
+## Seconds banked toward the next allowed click shot (shared by manual press + hold).
+var _click_fire_time_bank_s: float = 0.0
+var _click_pending_edge: bool = false
+var _pending_press_local: Vector2 = Vector2.ZERO
 
 var _grid_w: int = 0
 var _grid_h: int = 0
@@ -76,6 +80,8 @@ func reset_target() -> void:
 	_leftmost_solid_dirty = true
 	_mask_dirty = true
 	_row_leftmost_cache_dirty = true
+	_click_fire_time_bank_s = _click_interval_s()
+	_click_pending_edge = false
 
 
 func apply_damage_circle_local(
@@ -176,18 +182,43 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	if debug_damage_on_click and event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
-		if mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT:
-			var lp := to_local(mb.position)
-			apply_damage_circle_local(lp, debug_damage_radius_px)
+		if mb.button_index != MOUSE_BUTTON_LEFT:
+			return
+		if mb.pressed:
+			_mouse_held = true
+			_click_pending_edge = true
+			_pending_press_local = to_local(mb.position)
+		else:
+			_mouse_held = false
+			_click_pending_edge = false
 
 
 func _ready() -> void:
 	reset_target()
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	if debug_damage_on_click and not _destroyed:
+		_click_fire_time_bank_s += delta
+		var interval_s: float = _click_interval_s()
+		if _click_pending_edge and _click_fire_time_bank_s >= interval_s:
+			_click_fire_time_bank_s -= interval_s
+			_apply_click_damage_at_local(_pending_press_local)
+			_click_pending_edge = false
+		while _mouse_held and _click_fire_time_bank_s >= interval_s:
+			_click_fire_time_bank_s -= interval_s
+			_apply_click_damage_at_local(get_local_mouse_position())
 	_update_mask_texture_if_dirty()
 	_rebuild_row_leftmost_cache_if_dirty()
+
+
+func _click_interval_s() -> float:
+	return maxf(GameStatistics.click_fire_rate_ms, 1.0) / 1000.0
+
+
+func _apply_click_damage_at_local(lp: Vector2) -> void:
+	var r_px: float = float(GameStatistics.click_radius_cells) * cell_size_px
+	apply_damage_circle_local(lp, r_px, GameStatistics.click_damage)
 
 
 func _init_mask_visuals() -> void:

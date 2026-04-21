@@ -5,29 +5,58 @@ const UpgradeItemScene := preload("res://scenes/ui/UpgradeItem.tscn")
 
 const DEFAULT_STAT_CONFIG: Array[Dictionary] = [
 	{"id": &"blocks", "name": "blocks"},
-	{"id": &"turret_dmg", "name": "turret dmg"},
-	{"id": &"click_dmg", "name": "click dmg"},
 	{"id": &"depth", "name": "depth"},
 ]
 
+## Per-source `upgrades` entries map to UpgradeBus.DEFS. Optional `max_level` in DEFS caps levels; omit for infinite.
 const DEFAULT_UPGRADE_CONFIG: Array[Dictionary] = [
-	{"id": &"melter", "name": "MELTER", "cost": 1000, "disabled": false},
-	{"id": &"furnace", "name": "FURNACE", "cost": 1000, "disabled": false},
-	{"id": &"stub_cryo", "name": "CRYO CHAMBER", "cost": 0, "disabled": true},
-	{"id": &"stub_fusion", "name": "FUSION CORE", "cost": 0, "disabled": true},
-	{"id": &"stub_turret", "name": "AUTO TURRET", "cost": 0, "disabled": true},
-	{"id": &"stub_shield", "name": "SHIELD GEN", "cost": 0, "disabled": true},
-	{"id": &"stub_drone", "name": "REPAIR DRONE", "cost": 0, "disabled": true},
-	{"id": &"stub_aura", "name": "EMP AURA", "cost": 0, "disabled": true},
+	{
+		"id": &"laser_turret",
+		"name": "LASER TURRET",
+		"stats": [
+			{"id": &"count", "label": "Count"},
+			{"id": &"damage", "label": "Damage"},
+			{"id": &"fire_rate", "label": "Fire/s"},
+			{"id": &"dmg_dealt", "label": "Dmg Dealt"},
+		],
+		"upgrades": [
+			{"id": &"laser_count", "label": "Count", "target_stat": &"count", "delta": 1},
+			{"id": &"laser_fire_rate", "label": "Fire rate", "target_stat": &"fire_rate", "delta": 0},
+			{"id": &"melter", "label": "Damage", "target_stat": &"damage", "delta": 1},
+		],
+	},
+	{
+		"id": &"click",
+		"name": "CLICK",
+		"stats": [
+			{"id": &"count", "label": "Count"},
+			{"id": &"damage", "label": "Damage"},
+			{"id": &"fire_rate", "label": "Fire/s"},
+			{"id": &"radius", "label": "Radius"},
+			{"id": &"dmg_dealt", "label": "Dmg Dealt"},
+		],
+		"upgrades": [
+			{"id": &"click_count", "label": "Count", "target_stat": &"count", "delta": 0},
+			{"id": &"click_fire_rate", "label": "Fire rate", "target_stat": &"fire_rate", "delta": 0},
+			{"id": &"click_dmg", "label": "Damage", "target_stat": &"damage", "delta": 1},
+			{"id": &"click_radius", "label": "Radius", "target_stat": &"radius", "delta": 1},
+		],
+	},
+	{"id": &"stub_cryo", "name": "CRYO CHAMBER", "disabled": true},
+	{"id": &"stub_fusion", "name": "FUSION CORE", "disabled": true},
+	{"id": &"stub_turret", "name": "AUTO TURRET", "disabled": true},
+	{"id": &"stub_shield", "name": "SHIELD GEN", "disabled": true},
+	{"id": &"stub_drone", "name": "REPAIR DRONE", "disabled": true},
+	{"id": &"stub_aura", "name": "EMP AURA", "disabled": true},
 ]
 
 ## If empty, DEFAULT_STAT_CONFIG used. Keys: `id` (StringName), optional `name` (display label), optional `icon` (Texture2D).
 @export var stat_config: Array[Dictionary] = []
 
-## If empty, DEFAULT_UPGRADE_CONFIG used. Keys: `id`, `name`, `cost`, optional `icon`, optional `disabled` (stub / locked row).
+## If empty, DEFAULT_UPGRADE_CONFIG used. Each entry is either a locked stub (`id`, `name`, `disabled`: true) or a source card with `stats` and `upgrades` arrays.
 @export var upgrade_config: Array[Dictionary] = []
 
-@export var stats_columns_horizontal: int = 6:
+@export var stats_columns_horizontal: int = 2:
 	set(v):
 		stats_columns_horizontal = maxi(1, v)
 		if stats_grid:
@@ -68,6 +97,7 @@ func _ready() -> void:
 	_apply_expanded(false)
 	_hud_layout_ready = true
 	GameStatistics.stats_changed.connect(_on_stats_changed)
+	UpgradeBus.upgrade_purchased.connect(_on_upgrade_purchased)
 	refresh()
 	if not get_viewport().size_changed.is_connected(_on_viewport_size_changed_fit_stats):
 		get_viewport().size_changed.connect(_on_viewport_size_changed_fit_stats)
@@ -141,6 +171,10 @@ func _on_stats_changed() -> void:
 	refresh()
 
 
+func _on_upgrade_purchased(_id: StringName, _new_level: int) -> void:
+	_refresh_upgrades()
+
+
 func _build_stats() -> void:
 	for c in stats_grid.get_children():
 		c.queue_free()
@@ -167,14 +201,10 @@ func _build_upgrades() -> void:
 		c.queue_free()
 	var defs: Array[Dictionary] = upgrade_config if upgrade_config.size() > 0 else DEFAULT_UPGRADE_CONFIG
 	for d in defs:
-		var uid: StringName = _read_string_name(d, "id")
-		if String(uid).is_empty():
-			continue
-		var uname: String = str(d.get("name", uid))
-		var ucost: int = int(d.get("cost", 0))
-		var u_disabled: bool = bool(d.get("disabled", false))
 		var item = UpgradeItemScene.instantiate()
-		item.apply_config(uid, uname, ucost, _read_texture(d, "icon"), u_disabled)
+		item.apply_source_config(d, _read_texture(d, "icon"))
+		if not item.upgrade_disabled:
+			item.purchase_pressed.connect(_on_upgrade_item_purchase_pressed)
 		upgrades_grid.add_child(item)
 
 
@@ -183,6 +213,68 @@ func _schedule_layout_after_stat_change() -> void:
 		call_deferred("_fit_stats_scroll_height")
 	else:
 		_fit_collapsed_height()
+
+
+func _find_source_def(sid: StringName) -> Dictionary:
+	var defs: Array[Dictionary] = upgrade_config if upgrade_config.size() > 0 else DEFAULT_UPGRADE_CONFIG
+	for d in defs:
+		if _read_string_name(d, "id") == sid:
+			return d
+	return {}
+
+
+func _source_instance_count(sid: StringName) -> int:
+	if sid == &"click":
+		return 1
+	if sid == &"laser_turret":
+		return get_tree().get_nodes_in_group(&"laser_turrets").size()
+	return 0
+
+
+func _first_laser_fire_rate_hz() -> float:
+	var nodes: Array[Node] = get_tree().get_nodes_in_group(&"laser_turrets")
+	if nodes.is_empty():
+		return 10.0
+	var t: Node = nodes[0]
+	if t is LaserTurret:
+		return (t as LaserTurret).update_frequency_hz
+	return 10.0
+
+
+func _stat_value_for_source(sid: StringName, stat_id: StringName) -> int:
+	match String(stat_id):
+		"count":
+			return _source_instance_count(sid)
+		"fire_rate":
+			if sid == &"laser_turret":
+				return int(round(_first_laser_fire_rate_hz()))
+			if sid == &"click":
+				return int(round(1000.0 / maxf(GameStatistics.click_fire_rate_ms, 1.0)))
+			return 0
+	match String(sid):
+		"laser_turret":
+			match String(stat_id):
+				"damage":
+					return GameStatistics.laser_turret_damage
+				"dmg_dealt":
+					return GameStatistics.damage_to_blocks_turret
+		"click":
+			match String(stat_id):
+				"damage":
+					return GameStatistics.click_damage
+				"radius":
+					return GameStatistics.click_radius_cells
+				"dmg_dealt":
+					return GameStatistics.damage_to_blocks_click
+	return 0
+
+
+func _cost_display_for(uid: StringName) -> String:
+	if not UpgradeBus.can_upgrade(uid):
+		if UpgradeBus.is_maxed(uid) and UpgradeBus.get_level(uid) > 0:
+			return "MAX"
+		return "—"
+	return "%d blk" % UpgradeBus.get_cost(uid)
 
 
 func _read_string_name(d: Dictionary, key: String) -> StringName:
@@ -199,17 +291,58 @@ func _read_texture(d: Dictionary, key: String) -> Texture2D:
 	return t if t is Texture2D else null
 
 
+func _on_upgrade_item_purchase_pressed(upgrade_id: StringName) -> void:
+	UpgradeBus.try_purchase(upgrade_id)
+
+
+func _refresh_upgrades() -> void:
+	for c in upgrades_grid.get_children():
+		if not c is UpgradeItem:
+			continue
+		var it: UpgradeItem = c
+		if it.upgrade_disabled:
+			continue
+		var def: Dictionary = _find_source_def(it.source_id)
+		if def.is_empty():
+			continue
+		var stats_raw = def.get("stats", [])
+		if stats_raw is Array:
+			for st in stats_raw:
+				if st is Dictionary:
+					var stid: StringName = _read_string_name(st, "id")
+					if String(stid).is_empty():
+						continue
+					it.set_stat_value(stid, _stat_value_for_source(it.source_id, stid))
+		var ups_raw = def.get("upgrades", [])
+		if ups_raw is Array:
+			for u in ups_raw:
+				if u is Dictionary:
+					var uid: StringName = _read_string_name(u, "id")
+					if String(uid).is_empty():
+						continue
+					if UpgradeBus.get_max_level(uid) == 0:
+						continue
+					var ulbl: String = str(u.get("label", uid))
+					var purchaseable: bool = UpgradeBus.can_upgrade(uid)
+					var affordable: bool = UpgradeBus.can_afford(uid) if purchaseable else false
+					it.set_upgrade_state(
+						uid,
+						ulbl,
+						UpgradeBus.get_level(uid),
+						purchaseable,
+						affordable,
+						_cost_display_for(uid)
+					)
+
+
 func refresh() -> void:
 	for sid: StringName in _stat_items.keys():
 		var item = _stat_items[sid]
 		match String(sid):
 			"blocks":
 				item.set_value(str(GameStatistics.total_blocks_destroyed))
-			"turret_dmg":
-				item.set_value(str(GameStatistics.damage_to_blocks_turret))
-			"click_dmg":
-				item.set_value(str(GameStatistics.damage_to_blocks_click))
 			"depth":
 				item.set_value(str(GameStatistics.furthest_depth_cells))
 			_:
 				item.set_value("—")
+	_refresh_upgrades()

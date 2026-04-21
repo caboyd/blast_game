@@ -18,6 +18,7 @@ var _conveyor: TargetConveyor
 
 
 func _ready() -> void:
+	add_to_group(&"laser_turrets")
 	process_priority = 1
 	_conveyor = _resolve_conveyor()
 	_spotter = TARGET_SPOTTER_SCENE.instantiate() as TargetSpotter
@@ -31,6 +32,13 @@ func _ready() -> void:
 	_beam.joint_mode = Line2D.LINE_JOINT_ROUND
 	_beam.begin_cap_mode = Line2D.LINE_CAP_ROUND
 	_beam.end_cap_mode = Line2D.LINE_CAP_ROUND
+	UpgradeBus.upgrade_purchased.connect(_on_upgrade_purchased)
+	damage = GameStatistics.laser_turret_damage
+
+
+func _on_upgrade_purchased(id: StringName, _new_level: int) -> void:
+	if id == &"melter":
+		damage = GameStatistics.laser_turret_damage
 
 
 func _resolve_conveyor() -> TargetConveyor:
