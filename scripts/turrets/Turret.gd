@@ -1,6 +1,9 @@
 class_name Turret
 extends Node2D
 
+## When true, draw attack-range debug rings on enemies and turrets that define range (DebugOverlay).
+static var debug_show_attack_ranges: bool = false
+
 @onready var barrel: Node2D = %Barrel
 
 

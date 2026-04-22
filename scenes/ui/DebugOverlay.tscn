@@ -72,6 +72,6 @@ layout_mode = 2
 button_pressed = true
 text = "Show Debug Visuals"
 
-[node name="ShowEnemyRange" type="CheckButton" parent="Panel/VBox"]
+[node name="ShowAttackRanges" type="CheckButton" parent="Panel/VBox"]
 layout_mode = 2
-text = "Show Enemy Attack Range"
+text = "Show Attack Ranges"

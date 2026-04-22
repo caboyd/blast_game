@@ -22,7 +22,7 @@ const SHADER_TYPE_COLOR_MAX := 8
 ## Extra mask columns on left/right so marching shader sees real neighbor cells at seams (not clamped edge).
 const APRON_COLUMNS := 1
 
-@export var target_size_px: Vector2 = Vector2(640.0, 360.0)
+@export var target_size_px: Vector2 = Vector2(640.0, 540.0)
 @export var cell_size_px: float = 8.0
 @export var fill_solid_on_reset: bool = true
 
@@ -91,6 +91,7 @@ func reset_target() -> void:
 		_invalidate_mask_and_neighbor_seams()
 	_click_fire_time_bank_s = _click_interval_s()
 	_click_pending_edge = false
+	_sync_debug_bounds_outline()
 
 
 func apply_damage_circle_local(
@@ -236,6 +237,22 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _ready() -> void:
 	reset_target()
+
+
+## Matches DebugBounds Line2D to centered sprite footprint (_grid * cell_size_px).
+func _sync_debug_bounds_outline() -> void:
+	var line := get_node_or_null("DebugBounds") as Line2D
+	if line == null:
+		return
+	var hw := float(_grid_w) * cell_size_px * 0.5
+	var hh := float(_grid_h) * cell_size_px * 0.5
+	line.points = PackedVector2Array([
+		Vector2(-hw, -hh),
+		Vector2(hw, -hh),
+		Vector2(hw, hh),
+		Vector2(-hw, hh),
+		Vector2(-hw, -hh),
+	])
 
 
 func _process(delta: float) -> void:

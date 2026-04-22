@@ -5,13 +5,14 @@ const MAX_CLICK_DAMAGE := 1_000_000_000
 var _prev_click_damage: int = -1
 var _syncing_radius: bool = false
 
-@onready var _conveyor: TargetConveyor = get_node("../../World2D/TargetConveyor") as TargetConveyor
+@onready var _conveyor: TargetConveyor = get_node("%TargetConveyor") as TargetConveyor
 @onready var _radius_spin: SpinBox = $Panel/VBox/RadiusRow/RadiusSpin
 @onready var _max_damage_btn: CheckButton = $Panel/VBox/MaxDamage
 @onready var _gold_spin: SpinBox = $Panel/VBox/GoldRow/GoldSpin
 @onready var _gold_give: Button = $Panel/VBox/GoldRow/GoldGive
 @onready var _debug_visuals: CheckButton = $Panel/VBox/DebugVisuals
-@onready var _show_enemy_range: CheckButton = $Panel/VBox/ShowEnemyRange
+@onready var _show_attack_ranges: CheckButton = $Panel/VBox/ShowAttackRanges
+@onready var _viewport_info: Label = get_node("../../GameplayBlock/AspectRatioContainer/ViewportFrame/ViewportInfo") as Label
 
 
 func _ready() -> void:
@@ -19,12 +20,12 @@ func _ready() -> void:
 	_max_damage_btn.toggled.connect(_on_max_damage_toggled)
 	_gold_give.pressed.connect(_on_gold_give_pressed)
 	_debug_visuals.toggled.connect(_on_debug_visuals_toggled)
-	_show_enemy_range.toggled.connect(_on_show_enemy_range_toggled)
+	_show_attack_ranges.toggled.connect(_on_show_attack_ranges_toggled)
 	visibility_changed.connect(_on_visibility_changed)
 	if _conveyor != null and not _conveyor.active_target_changed.is_connected(_on_active_target_changed):
 		_conveyor.active_target_changed.connect(_on_active_target_changed)
 	_apply_debug_visuals(_debug_visuals.button_pressed)
-	Enemy.show_enemy_range = _show_enemy_range.button_pressed
+	_apply_attack_range_debug(_show_attack_ranges.button_pressed)
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -74,6 +75,8 @@ func _on_active_target_changed(_new_target: Node2D) -> void:
 
 
 func _apply_debug_visuals(on: bool) -> void:
+	if _viewport_info != null:
+		_viewport_info.visible = on
 	if _conveyor == null:
 		return
 	for t in [_conveyor.front_target, _conveyor.next_target]:
@@ -84,8 +87,15 @@ func _apply_debug_visuals(on: bool) -> void:
 			bounds.visible = on
 
 
-func _on_show_enemy_range_toggled(pressed: bool) -> void:
-	Enemy.show_enemy_range = pressed
+func _on_show_attack_ranges_toggled(pressed: bool) -> void:
+	_apply_attack_range_debug(pressed)
+
+
+func _apply_attack_range_debug(on: bool) -> void:
+	Turret.debug_show_attack_ranges = on
 	for n in get_tree().get_nodes_in_group(&"enemies"):
 		if n is Enemy:
 			(n as Enemy).queue_redraw()
+	for n in get_tree().get_nodes_in_group(&"cannon_turrets"):
+		if n is CannonTurret:
+			(n as CannonTurret).queue_redraw()

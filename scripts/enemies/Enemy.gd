@@ -1,9 +1,6 @@
 class_name Enemy
 extends Node2D
 
-## Debug overlay: draw attack range ring when true (set from DebugOverlay).
-static var show_enemy_range: bool = false
-
 const ENEMY_PROJECTILE_SCENE := preload("res://scenes/enemies/EnemyProjectile.tscn")
 
 @export var max_health: int = 20
@@ -24,7 +21,7 @@ func _ready() -> void:
 	add_to_group(&"enemies")
 	health = max_health
 	_build_visual()
-	if show_enemy_range:
+	if Turret.debug_show_attack_ranges:
 		queue_redraw()
 
 
@@ -91,6 +88,6 @@ func apply_damage(amount: int) -> void:
 
 
 func _draw() -> void:
-	if not show_enemy_range:
+	if not Turret.debug_show_attack_ranges:
 		return
 	draw_arc(Vector2.ZERO, attack_range_px, 0.0, TAU, 64, Color(1.0, 0.3, 0.3, 0.55), 1.5, true)

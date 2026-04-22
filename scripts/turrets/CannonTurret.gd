@@ -22,6 +22,8 @@ func _ready() -> void:
 	UpgradeBus.upgrade_purchased.connect(_on_upgrade_purchased)
 	damage = GameStatistics.cannon_turret_damage
 	explosion_radius_px = GameStatistics.cannon_explosion_radius_px
+	if Turret.debug_show_attack_ranges:
+		queue_redraw()
 
 
 func _on_upgrade_purchased(id: StringName, _new_level: int) -> void:
@@ -45,6 +47,14 @@ func _pick_target() -> Enemy:
 			best_d2 = d2
 			best = e
 	return best
+
+
+func _draw() -> void:
+	if not Turret.debug_show_attack_ranges:
+		return
+	if barrel == null:
+		return
+	draw_arc(barrel.position, attack_range_px, 0.0, TAU, 64, Color(0.3, 0.75, 1.0, 0.55), 1.5, true)
 
 
 func _process(delta: float) -> void:
