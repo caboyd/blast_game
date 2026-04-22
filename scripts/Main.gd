@@ -15,8 +15,8 @@ const CANNON_TURRET_SCENE := preload("res://scenes/turrets/CannonTurret.tscn")
 @onready var _ship: Ship = %Ship
 @onready var _viewport_info: Label = %ViewportInfo
 @onready var _game_camera: Camera2D = %GameCamera2D
-@onready var _game_subviewport: SubViewport = %GameSubViewport
 @onready var _subviewport_container: SubViewportContainer = $GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer
+@onready var _bottom_hud: BottomHUD = get_node_or_null("UI/BottomHUD") as BottomHUD
 
 
 func _ready() -> void:
@@ -34,6 +34,15 @@ func _ready() -> void:
 		UpgradeBus.upgrade_purchased.connect(_on_upgrade_purchased)
 	if _subviewport_container != null and not _subviewport_container.resized.is_connected(_on_subviewport_container_resized):
 		_subviewport_container.resized.connect(_on_subviewport_container_resized)
+	if _bottom_hud != null:
+		if not _bottom_hud.resized.is_connected(_on_bottom_hud_layout_changed):
+			_bottom_hud.resized.connect(_on_bottom_hud_layout_changed)
+		if not _bottom_hud.item_rect_changed.is_connected(_on_bottom_hud_layout_changed):
+			_bottom_hud.item_rect_changed.connect(_on_bottom_hud_layout_changed)
+	if not resized.is_connected(_on_main_resized_for_viewport):
+		resized.connect(_on_main_resized_for_viewport)
+	if not get_viewport().size_changed.is_connected(_on_main_resized_for_viewport):
+		get_viewport().size_changed.connect(_on_main_resized_for_viewport)
 	call_deferred("_apply_game_viewport_layout")
 
 
@@ -41,10 +50,24 @@ func _on_subviewport_container_resized() -> void:
 	_apply_game_viewport_layout()
 
 
+func _on_bottom_hud_layout_changed() -> void:
+	call_deferred("_apply_game_viewport_layout")
+
+
+func _on_main_resized_for_viewport() -> void:
+	call_deferred("_apply_game_viewport_layout")
+
+
+func _hud_bottom_reserve_px() -> float:
+	if _bottom_hud != null:
+		return float(_bottom_hud.get_occlusion_bottom_reserve_px())
+	return float(HUD_RESERVE_PX)
+
+
 func _apply_game_viewport_layout() -> void:
 	var block := get_node_or_null("GameplayBlock") as Control
 	if block != null:
-		block.offset_bottom = -float(HUD_RESERVE_PX)
+		block.offset_bottom = -_hud_bottom_reserve_px()
 	var ar := get_node_or_null("GameplayBlock/AspectRatioContainer") as AspectRatioContainer
 	if ar != null:
 		ar.ratio = float(GAME_VIEWPORT_SIZE.x) / float(GAME_VIEWPORT_SIZE.y)
@@ -59,8 +82,7 @@ func _apply_game_viewport_layout() -> void:
 	else:
 		w = int(GAME_VIEWPORT_SIZE.x)
 		h = int(GAME_VIEWPORT_SIZE.y)
-	if _game_subviewport != null:
-		_game_subviewport.size = Vector2i(w, h)
+	# SubViewport size driven by SubViewportContainer when stretch is true — do not assign here.
 	if _game_camera != null and GAMEPLAY_REFERENCE.x > 0 and GAMEPLAY_REFERENCE.y > 0:
 		# Center the reference playfield in the subviewport: screen center in world, zero offset in screen space.
 		_game_camera.position = 0.5 * Vector2(GAMEPLAY_REFERENCE)

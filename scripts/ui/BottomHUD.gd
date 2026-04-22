@@ -1,4 +1,5 @@
 extends Control
+class_name BottomHUD
 
 const StatItemScene := preload("res://scenes/ui/StatItem.tscn")
 const UpgradeItemScene := preload("res://scenes/ui/UpgradeItem.tscn")
@@ -197,6 +198,18 @@ func _set_expanded_horizontal_layout() -> void:
 	offset_left = expanded_margin_horizontal
 	offset_right = -expanded_margin_horizontal
 	grow_horizontal = Control.GROW_DIRECTION_BOTH
+
+
+## Pixels from bottom of viewport to topmost visible HUD pixel (includes handle above panel).
+func get_occlusion_bottom_reserve_px() -> int:
+	var r: Rect2 = get_global_rect()
+	for c in get_children():
+		if c is Control and (c as Control).visible:
+			r = r.merge((c as Control).get_global_rect())
+	var vis: Rect2 = get_viewport().get_visible_rect()
+	var top_y: float = r.position.y
+	var reserve: float = vis.end.y - top_y
+	return maxi(ceili(reserve), 1)
 
 
 func _hook_ship_health() -> void:
