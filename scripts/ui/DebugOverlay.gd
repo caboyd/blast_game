@@ -11,6 +11,7 @@ var _syncing_radius: bool = false
 @onready var _gold_spin: SpinBox = $Panel/VBox/GoldRow/GoldSpin
 @onready var _gold_give: Button = $Panel/VBox/GoldRow/GoldGive
 @onready var _debug_visuals: CheckButton = $Panel/VBox/DebugVisuals
+@onready var _show_enemy_range: CheckButton = $Panel/VBox/ShowEnemyRange
 
 
 func _ready() -> void:
@@ -18,10 +19,12 @@ func _ready() -> void:
 	_max_damage_btn.toggled.connect(_on_max_damage_toggled)
 	_gold_give.pressed.connect(_on_gold_give_pressed)
 	_debug_visuals.toggled.connect(_on_debug_visuals_toggled)
+	_show_enemy_range.toggled.connect(_on_show_enemy_range_toggled)
 	visibility_changed.connect(_on_visibility_changed)
 	if _conveyor != null and not _conveyor.active_target_changed.is_connected(_on_active_target_changed):
 		_conveyor.active_target_changed.connect(_on_active_target_changed)
 	_apply_debug_visuals(_debug_visuals.button_pressed)
+	Enemy.show_enemy_range = _show_enemy_range.button_pressed
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -79,3 +82,10 @@ func _apply_debug_visuals(on: bool) -> void:
 		var bounds: Node = t.get_node_or_null("DebugBounds")
 		if bounds != null:
 			bounds.visible = on
+
+
+func _on_show_enemy_range_toggled(pressed: bool) -> void:
+	Enemy.show_enemy_range = pressed
+	for n in get_tree().get_nodes_in_group(&"enemies"):
+		if n is Enemy:
+			(n as Enemy).queue_redraw()

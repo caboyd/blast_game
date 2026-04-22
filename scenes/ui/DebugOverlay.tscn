@@ -18,7 +18,7 @@ layout_mode = 0
 offset_left = 8.0
 offset_top = 8.0
 offset_right = 300.0
-offset_bottom = 240.0
+offset_bottom = 280.0
 mouse_filter = 0
 
 [node name="VBox" type="VBoxContainer" parent="Panel"]
@@ -71,3 +71,7 @@ text = "Give"
 layout_mode = 2
 button_pressed = true
 text = "Show Debug Visuals"
+
+[node name="ShowEnemyRange" type="CheckButton" parent="Panel/VBox"]
+layout_mode = 2
+text = "Show Enemy Attack Range"

@@ -2,34 +2,26 @@ class_name CannonTurret
 extends Turret
 
 const CANNON_PROJECTILE_SCENE := preload("res://scenes/projectiles/CannonProjectile.tscn")
-const TARGET_SPOTTER_SCENE := preload("res://scenes/target/TargetSpotter.tscn")
 
 @export var fire_rate_hz: float = 1.0
-## Projectile muzzle velocity (px/s). Straight line, direction from spotter aim.
+@export var attack_range_px: float = 520.0
+## Projectile muzzle velocity (px/s). Straight line, direction toward enemy.
 @export var projectile_speed: float = 600.0
 @export var projectile_lifetime_s: float = 3.0
 @export var damage: int = 5
 @export var visual_radius_px: float = 4.0
 @export var collision_radius_px: float = 4.0
 @export var explosion_radius_px: float = 16.0
-@export var spotter_line_width: float = 0.0
 
-var _spotter: TargetSpotter
-var _conveyor: TargetConveyor
 var _fire_accum: float = 0.0
 
 
 func _ready() -> void:
 	add_to_group(&"cannon_turrets")
 	process_priority = 1
-	_conveyor = _resolve_conveyor()
-	_spotter = TARGET_SPOTTER_SCENE.instantiate() as TargetSpotter
-	_spotter.name = "TargetSpotter"
-	_spotter.line_width = spotter_line_width
 	UpgradeBus.upgrade_purchased.connect(_on_upgrade_purchased)
 	damage = GameStatistics.cannon_turret_damage
 	explosion_radius_px = GameStatistics.cannon_explosion_radius_px
-	add_child(_spotter)
 
 
 func _on_upgrade_purchased(id: StringName, _new_level: int) -> void:
@@ -39,17 +31,25 @@ func _on_upgrade_purchased(id: StringName, _new_level: int) -> void:
 		explosion_radius_px = GameStatistics.cannon_explosion_radius_px
 
 
+func _pick_target() -> Enemy:
+	var best: Enemy = null
+	var best_d2: float = INF
+	var origin := barrel.global_position
+	var r2 := attack_range_px * attack_range_px
+	for n in get_tree().get_nodes_in_group(&"enemies"):
+		if not n is Enemy:
+			continue
+		var e := n as Enemy
+		var d2 := origin.distance_squared_to(e.global_position)
+		if d2 <= r2 and d2 < best_d2:
+			best_d2 = d2
+			best = e
+	return best
+
+
 func _process(delta: float) -> void:
-	if _conveyor == null:
-		_conveyor = _resolve_conveyor()
-	if _conveyor == null:
-		return
-	var dt := _conveyor.get_active_target() as DestructibleTarget
-	if dt == null or dt.is_destroyed():
-		_fire_accum = 0.0
-		return
-	var cell := _spotter.get_tracked_cell()
-	if cell.x < 0 or not dt.is_cell_solid(cell):
+	var enemy := _pick_target()
+	if enemy == null:
 		_fire_accum = 0.0
 		return
 
@@ -57,13 +57,14 @@ func _process(delta: float) -> void:
 	var interval := 1.0 / maxf(fire_rate_hz, 0.0001)
 	while _fire_accum >= interval:
 		_fire_accum -= interval
-		_fire_one(dt, cell)
+		if not is_instance_valid(enemy) or not enemy.is_inside_tree():
+			break
+		_fire_one(enemy)
 
 
-func _fire_one(dt: DestructibleTarget, cell: Vector2i) -> void:
+func _fire_one(enemy: Enemy) -> void:
 	var muzzle := barrel.global_position
-	var target_world := dt.to_global(dt.cell_center_local(cell))
-	var dir := target_world - muzzle
+	var dir := enemy.global_position - muzzle
 	if dir.length_squared() <= 0.0001:
 		dir = Vector2.RIGHT
 	dir = dir.normalized()
@@ -83,24 +84,13 @@ func _fire_one(dt: DestructibleTarget, cell: Vector2i) -> void:
 	)
 
 
-## Prefer dedicated ProjectileManager on the World2D layer; fall back to own parent.
+## Prefer dedicated ProjectileManager under World2D; walk up from turret mount.
 func _projectile_parent() -> Node:
-	var p := get_parent()
-	if p == null:
-		return self
-	var world := p.get_parent()
-	if world != null:
-		var pm := world.get_node_or_null("ProjectileManager")
+	var n: Node = self
+	while n != null:
+		var pm := n.get_node_or_null("ProjectileManager")
 		if pm != null:
 			return pm
-	return p
-
-
-func _resolve_conveyor() -> TargetConveyor:
+		n = n.get_parent()
 	var p := get_parent()
-	if p == null:
-		return null
-	var world := p.get_parent() as Node2D
-	if world == null:
-		return null
-	return world.get_node_or_null("TargetConveyor") as TargetConveyor
+	return p if p != null else self

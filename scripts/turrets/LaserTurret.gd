@@ -43,16 +43,6 @@ func _on_upgrade_purchased(id: StringName, _new_level: int) -> void:
 		_beam.width = base_beam_width + beam_width_scaling_factor * damage
 
 
-func _resolve_conveyor() -> TargetConveyor:
-	var p := get_parent()
-	if p == null:
-		return null
-	var world := p.get_parent() as Node2D
-	if world == null:
-		return null
-	return world.get_node_or_null("TargetConveyor") as TargetConveyor
-
-
 func _process(delta: float) -> void:
 	if _conveyor == null:
 		_conveyor = _resolve_conveyor()
