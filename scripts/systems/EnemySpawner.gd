@@ -40,11 +40,22 @@ func _spawn_enemy() -> void:
 	_enemy_manager.add_child(enemy)
 	var vr := get_viewport().get_visible_rect()
 	var conveyor := get_parent().get_node_or_null("TargetConveyor") as TargetConveyor
-	var mid_y: float = 360.0
+	var mid_y: float
 	if conveyor != null:
 		mid_y = conveyor.global_position.y
+	else:
+		var c := get_viewport().get_camera_2d()
+		if c != null:
+			mid_y = c.get_screen_center_position().y
+		else:
+			mid_y = vr.size.y * 0.5
 	var y0 := mid_y - 180.0
 	var y1 := mid_y - 80.0
 	var y := randf_range(y0, y1)
-	var x := vr.position.x + vr.size.x + spawn_offscreen_px
-	enemy.global_position = Vector2(x, y)
+	var right_world_x: float
+	var cam := get_viewport().get_camera_2d()
+	if cam != null and cam.zoom.x > 0.0:
+		right_world_x = cam.get_screen_center_position().x + vr.size.x * 0.5 / cam.zoom.x
+	else:
+		right_world_x = vr.position.x + vr.size.x
+	enemy.global_position = Vector2(right_world_x + spawn_offscreen_px, y)

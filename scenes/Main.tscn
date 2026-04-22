@@ -8,30 +8,112 @@
 [ext_resource type="PackedScene" path="res://scenes/ships/Ship.tscn" id="6"]
 [ext_resource type="Script" path="res://scripts/systems/EnemySpawner.gd" id="7"]
 
-[node name="Main" type="Node" unique_id=1286468107]
+[node name="Main" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 script = ExtResource("1")
 
-[node name="GameRoot" type="Node" parent="." unique_id=1239194635]
+[node name="GameplayBlock" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_bottom = -200.0
+grow_horizontal = 2
+grow_vertical = 2
 
-[node name="World2D" type="Node2D" parent="GameRoot" unique_id=607401636]
+[node name="AspectRatioContainer" type="AspectRatioContainer" parent="GameplayBlock"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+alignment_horizontal = 1
+alignment_vertical = 1
+ratio = 2.4615385
+stretch_mode = 2
 
-[node name="Ship" parent="GameRoot/World2D" unique_id=209001001 instance=ExtResource("6")]
+[node name="ViewportFrame" type="Control" parent="GameplayBlock/AspectRatioContainer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 0.0
+offset_bottom = 0.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="SubViewportContainer" type="SubViewportContainer" parent="GameplayBlock/AspectRatioContainer/ViewportFrame"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+stretch = true
+mouse_filter = 2
+
+[node name="GameSubViewport" type="SubViewport" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer"]
+unique_name_in_owner = true
+size = Vector2i(1280, 520)
+
+[node name="GameCamera2D" type="Camera2D" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport"]
+unique_name_in_owner = true
+position = Vector2(640, 260)
+
+[node name="World2D" type="Node2D" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport"]
+
+[node name="Ship" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport/World2D" instance=ExtResource("6")]
 unique_name_in_owner = true
 
-[node name="TargetConveyor" parent="GameRoot/World2D" unique_id=1687813941 instance=ExtResource("2")]
+[node name="TargetConveyor" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport/World2D" instance=ExtResource("2")]
 unique_name_in_owner = true
 
-[node name="TargetSpotterManager" parent="GameRoot/World2D" unique_id=342580906 instance=ExtResource("3")]
+[node name="TargetSpotterManager" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport/World2D" instance=ExtResource("3")]
 
-[node name="ProjectileManager" type="Node2D" parent="GameRoot/World2D" unique_id=363159726]
+[node name="ProjectileManager" type="Node2D" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport/World2D"]
 
-[node name="EnemyManager" type="Node2D" parent="GameRoot/World2D" unique_id=209001002]
+[node name="EnemyManager" type="Node2D" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport/World2D"]
 
-[node name="EnemySpawner" type="Node" parent="GameRoot/World2D" unique_id=209001003]
+[node name="EnemySpawner" type="Node" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport/World2D"]
 script = ExtResource("7")
 
-[node name="UI" type="CanvasLayer" parent="GameRoot" unique_id=1734507539]
+[node name="Border" type="ReferenceRect" parent="GameplayBlock/AspectRatioContainer/ViewportFrame"]
+editor_only = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+border_color = Color(0.45, 0.78, 1, 0.95)
+border_width = 2.0
+mouse_filter = 2
 
-[node name="BottomHUD" parent="GameRoot/UI" unique_id=1377675909 instance=ExtResource("4")]
+[node name="ViewportInfo" type="Label" parent="GameplayBlock/AspectRatioContainer/ViewportFrame"]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 6.0
+offset_top = 4.0
+offset_right = 400.0
+offset_bottom = 28.0
+theme_override_colors/font_color = Color(0.85, 0.95, 1, 0.9)
+theme_override_colors/font_outline_color = Color(0.05, 0.05, 0.12, 0.9)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 14
+text = "—"
+mouse_filter = 2
 
-[node name="DebugOverlay" parent="GameRoot/UI" unique_id=1890123456 instance=ExtResource("5")]
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="BottomHUD" parent="UI" instance=ExtResource("4")]
+
+[node name="DebugOverlay" parent="UI" instance=ExtResource("5")]

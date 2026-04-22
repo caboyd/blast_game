@@ -103,8 +103,13 @@ func _update_follow() -> void:
 	_enforce_stack_spacing()
 
 	# Keep the leftmost remaining edge of the FRONT target exactly at screen midpoint.
-	var vr := get_viewport().get_visible_rect()
-	var screen_mid_x := (vr.position.x + vr.size.x * 0.5)
+	var screen_mid_x: float
+	var cam := get_viewport().get_camera_2d()
+	if cam != null:
+		screen_mid_x = cam.get_screen_center_position().x
+	else:
+		var vr := get_viewport().get_visible_rect()
+		screen_mid_x = vr.position.x + vr.size.x * 0.5
 
 	var leftmost_local_x := dt.get_leftmost_solid_local_x()
 	# left edge world = conveyor.global_x + front_local_x + leftmost_local_x
