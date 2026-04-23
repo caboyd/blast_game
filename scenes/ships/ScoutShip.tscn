@@ -1,0 +1,54 @@
+[gd_scene format=3 uid="uid://bbp2jdvwthab5"]
+
+[ext_resource type="Script" uid="uid://2hbk7lm3ca7y" path="res://scripts/ships/Ship.gd" id="1"]
+[ext_resource type="PackedScene" uid="uid://cp5lilyaouk7c" path="res://scenes/ships/slots/TurretSlotRingSmall.tscn" id="2"]
+[ext_resource type="PackedScene" uid="uid://cp5lilyaouk1c" path="res://scenes/ships/slots/TurretSlotRingMedium.tscn" id="3"]
+
+[node name="Ship" type="Node2D" unique_id=2045412359]
+unique_name_in_owner = true
+script = ExtResource("1")
+use_baked_scene_hull = true
+
+[node name="Hull" type="Polygon2D" parent="." unique_id=947568418]
+color = Color(0.32, 0.38, 0.45, 1)
+polygon = PackedVector2Array(-80, 0, -66, -54, 20, -62, 92, 0, 20, 62, -66, 54)
+
+[node name="HitArea" type="Area2D" parent="." unique_id=756040406]
+collision_layer = 2
+collision_mask = 4
+monitorable = false
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="HitArea" unique_id=1038095775]
+polygon = PackedVector2Array(-80, 0, -66, -54, 20, -62, 92, 0, 20, 62, -66, 54)
+
+[node name="Slots" type="Node2D" parent="." unique_id=1223242148]
+
+[node name="Slot_small_0" type="Marker2D" parent="Slots" unique_id=329252273]
+position = Vector2(60, 0)
+
+[node name="TurretSlotRingSmall" parent="Slots/Slot_small_0" unique_id=1558742825 instance=ExtResource("2")]
+
+[node name="Slot_small_1" type="Marker2D" parent="Slots" unique_id=725878044]
+position = Vector2(29, -26)
+
+[node name="TurretSlotRingSmall" parent="Slots/Slot_small_1" unique_id=249199185 instance=ExtResource("2")]
+
+[node name="Slot_small_2" type="Marker2D" parent="Slots" unique_id=1830976209]
+position = Vector2(0, -45)
+
+[node name="TurretSlotRingSmall" parent="Slots/Slot_small_2" unique_id=2028084003 instance=ExtResource("2")]
+
+[node name="Slot_small_3" type="Marker2D" parent="Slots" unique_id=535938193]
+position = Vector2(29, 26)
+
+[node name="TurretSlotRingSmall" parent="Slots/Slot_small_3" unique_id=1623452754 instance=ExtResource("2")]
+
+[node name="Slot_small_4" type="Marker2D" parent="Slots" unique_id=1384500797]
+position = Vector2(0, 45)
+
+[node name="TurretSlotRingSmall" parent="Slots/Slot_small_4" unique_id=1552857207 instance=ExtResource("2")]
+
+[node name="Slot_medium_5" type="Marker2D" parent="Slots" unique_id=940139141]
+position = Vector2(-16, 0)
+
+[node name="TurretSlotRingMedium" parent="Slots/Slot_medium_5" unique_id=190635658 instance=ExtResource("3")]

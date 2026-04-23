@@ -15,25 +15,25 @@ static func _make_scout() -> ShipType:
 	st.id = &"scout"
 	st.display_name = "Scout"
 	st.max_health = 100
-	# Trapezoid-ish hull, ~120 wide, faces +X
+	# Hex hull, faces +X; fits V turret layout + center medium
 	st.hull_polygon = PackedVector2Array(
 		[
-			Vector2(-58, -22),
-			Vector2(32, -28),
-			Vector2(52, -12),
-			Vector2(52, 12),
-			Vector2(32, 28),
-			Vector2(-58, 22),
+			Vector2(-80, 0),
+			Vector2(-66, -54),
+			Vector2(20, -62),
+			Vector2(92, 0),
+			Vector2(20, 62),
+			Vector2(-66, 54),
 		]
 	)
 	st.hull_color = Color(0.32, 0.38, 0.45, 1.0)
-	# Four small mountable on right flank; medium/large stubs (blocked for now)
+	# Five small in V toward +X; one medium at centroid (mount when game uses medium slots)
 	st.slots = [
-		{"size": &"small", "position": Vector2(44, -30), "stub": false},
-		{"size": &"small", "position": Vector2(48, -10), "stub": false},
-		{"size": &"small", "position": Vector2(48, 10), "stub": false},
-		{"size": &"small", "position": Vector2(44, 30), "stub": false},
-		{"size": &"medium", "position": Vector2(-8, -38), "stub": true},
-		{"size": &"large", "position": Vector2(-8, 38), "stub": true},
+		{"size": &"small", "position": Vector2(54, 0), "stub": false},
+		{"size": &"small", "position": Vector2(38, -26), "stub": false},
+		{"size": &"small", "position": Vector2(22, -42), "stub": false},
+		{"size": &"small", "position": Vector2(38, 26), "stub": false},
+		{"size": &"small", "position": Vector2(22, 42), "stub": false},
+		{"size": &"medium", "position": Vector2(2, 0), "stub": false},
 	]
 	return st

@@ -4,9 +4,13 @@ extends Node2D
 signal health_changed(current: int, max_health: int)
 signal destroyed
 
-const SLOT_RING_RADIUS: float = 10.0
+const TURRET_SLOT_RING_SMALL := preload("res://scenes/ships/slots/TurretSlotRingSmall.tscn")
+const TURRET_SLOT_RING_MEDIUM := preload("res://scenes/ships/slots/TurretSlotRingMedium.tscn")
+const TURRET_SLOT_RING_LARGE := preload("res://scenes/ships/slots/TurretSlotRingLarge.tscn")
 
 @export var ship_type_id: StringName = &"scout"
+## If true, expect Hull / HitArea / Slots authored in scene; skip runtime rebuild (see ScoutShip.tscn).
+@export var use_baked_scene_hull: bool = false
 @export var position_x: float = 110.0
 
 var _ship_type: ShipType
@@ -23,14 +27,66 @@ var health: int = 100
 func _ready() -> void:
 	add_to_group(&"player_ship")
 	# Build before UI/UpgradeBus reads slot counts (Main may re-apply if `ship_type_id` differs).
-	apply_type_from_id()
+	if use_baked_scene_hull:
+		_hydrate_from_baked_scene()
+	else:
+		apply_type_from_id()
 
 
 ## Rebuild hull, hit area, and slots from `ship_type_id`.
 func apply_type_from_id() -> void:
-	_apply_ship_type(ShipTypes.get_ship_type(ship_type_id))
+	var st := ShipTypes.get_ship_type(ship_type_id)
+	if use_baked_scene_hull:
+		_ship_type = st
+		max_health = st.max_health
+		health = max_health
+		health_changed.emit(health, max_health)
+		return
+	_apply_ship_type(st)
 	health = max_health
 	health_changed.emit(health, max_health)
+
+
+func _hydrate_from_baked_scene() -> void:
+	_hull = get_node_or_null("Hull") as Polygon2D
+	_hit_area = get_node_or_null("HitArea") as Area2D
+	_slots_root = get_node_or_null("Slots") as Node2D
+	if _hull == null or _hit_area == null or _slots_root == null:
+		push_error("Ship: baked hull missing Hull, HitArea, or Slots; falling back to procedural ship.")
+		use_baked_scene_hull = false
+		apply_type_from_id()
+		return
+	_collision_poly = _hit_area.get_node_or_null("CollisionPolygon2D") as CollisionPolygon2D
+	if _collision_poly == null:
+		push_error("Ship: HitArea needs CollisionPolygon2D child.")
+		use_baked_scene_hull = false
+		apply_type_from_id()
+		return
+	if not _hit_area.area_entered.is_connected(_on_hit_area_area_entered):
+		_hit_area.area_entered.connect(_on_hit_area_area_entered)
+	_slot_markers.clear()
+	for c in _slots_root.get_children():
+		if c is Marker2D:
+			var mk := c as Marker2D
+			_ensure_slot_marker_meta(mk)
+			_slot_markers.append(mk)
+			_sync_turret_slot_ring_style(mk)
+	var st := ShipTypes.get_ship_type(ship_type_id)
+	_ship_type = st
+	max_health = st.max_health
+	health = max_health
+	health_changed.emit(health, max_health)
+
+
+func _ensure_slot_marker_meta(m: Marker2D) -> void:
+	if not m.has_meta(&"slot_size"):
+		var parts := String(m.name).split("_")
+		if parts.size() >= 3 and parts[0] == "Slot":
+			m.set_meta(&"slot_size", StringName(parts[1]))
+		else:
+			m.set_meta(&"slot_size", &"small")
+	if not m.has_meta(&"stub"):
+		m.set_meta(&"stub", false)
 
 
 func _apply_ship_type(st: ShipType) -> void:
@@ -77,19 +133,34 @@ func _apply_ship_type(st: ShipType) -> void:
 		_slots_root.add_child(m)
 		_slot_markers.append(m)
 
-		var ring := Polygon2D.new()
-		ring.color = Color(1, 1, 1, 0.12) if not stub else Color(0.5, 0.5, 0.5, 0.08)
-		ring.polygon = _circle_polygon(SLOT_RING_RADIUS, 16)
-		m.add_child(ring)
+		_attach_turret_slot_ring(m, sz, stub)
 		i += 1
 
 
-func _circle_polygon(radius: float, segments: int) -> PackedVector2Array:
-	var pts := PackedVector2Array()
-	for j in segments:
-		var a := TAU * float(j) / float(segments)
-		pts.append(Vector2(cos(a), sin(a)) * radius)
-	return pts
+func _turret_slot_ring_scene(slot_size: StringName) -> PackedScene:
+	match slot_size:
+		&"small":
+			return TURRET_SLOT_RING_SMALL
+		&"medium":
+			return TURRET_SLOT_RING_MEDIUM
+		&"large":
+			return TURRET_SLOT_RING_LARGE
+		_:
+			return TURRET_SLOT_RING_SMALL
+
+
+func _attach_turret_slot_ring(marker: Marker2D, slot_size: StringName, stub: bool) -> void:
+	var ring_root := _turret_slot_ring_scene(slot_size).instantiate() as Node2D
+	marker.add_child(ring_root)
+	if ring_root is TurretSlotRing:
+		(ring_root as TurretSlotRing).apply_stub_style(stub)
+
+
+func _sync_turret_slot_ring_style(marker: Marker2D) -> void:
+	var stub := bool(marker.get_meta(&"stub", false))
+	for c in marker.get_children():
+		if c is TurretSlotRing:
+			(c as TurretSlotRing).apply_stub_style(stub)
 
 
 func get_small_slot_count() -> int:

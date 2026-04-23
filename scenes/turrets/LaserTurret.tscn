@@ -7,11 +7,11 @@ script = ExtResource("1")
 
 [node name="Visual" type="Polygon2D" parent="." unique_id=2080836928]
 color = Color(0.25, 0.55, 1, 1)
-polygon = PackedVector2Array(-14, -14, 14, -14, 14, 14, -14, 14)
+polygon = PackedVector2Array(-12, -12, 12, -12, 12, 12, -12, 12)
 
 [node name="Barrel" type="Node2D" parent="." unique_id=643175018]
 unique_name_in_owner = true
-position = Vector2(15, 0)
+position = Vector2(12, 0)
 
 [node name="Beam" type="Line2D" parent="." unique_id=1358359728]
 points = PackedVector2Array(903, 240)
