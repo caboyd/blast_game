@@ -15,11 +15,12 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 [application]
 
 config/name="Blast"
-run/main_scene="res://scenes/Main.tscn"
+run/main_scene="res://scenes/prep/Prep.tscn"
 config/features=PackedStringArray("4.6")
 
 [autoload]
 
+GameSession="*res://scripts/systems/GameSession.gd"
 UpgradeBus="*res://scripts/systems/UpgradeBus.gd"
 GameStatistics="*res://scripts/stats/GameStatistics.gd"
 

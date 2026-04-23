@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://bqhuyhfryq34g"]
 
-[ext_resource type="Script" uid="uid://conweb5pvayjf" path="res://scripts/Main.gd" id="1"]
+[ext_resource type="Script" uid="uid://conweb5pvayjf" path="res://scripts/planets/Planet1.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/target/TargetConveyor.tscn" id="2"]
 [ext_resource type="PackedScene" uid="uid://dtrx184slrt33" path="res://scenes/target/TargetSpotterManager.tscn" id="3"]
 [ext_resource type="PackedScene" uid="uid://s27h7pw54ab5" path="res://scenes/ui/BottomHUD.tscn" id="4"]
@@ -8,7 +8,7 @@
 [ext_resource type="PackedScene" uid="uid://bbp2jdvwthab5" path="res://scenes/ships/ScoutShip.tscn" id="6"]
 [ext_resource type="Script" uid="uid://cblvs64rtwiii" path="res://scripts/systems/EnemySpawner.gd" id="7"]
 
-[node name="Main" type="Control" unique_id=1075927346]
+[node name="Planet1" type="Control" unique_id=1075927346]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0

@@ -9,7 +9,8 @@ const GAMEPLAY_REFERENCE: Vector2i = Vector2i(1280, 520)
 
 const LASER_TURRET_SCENE := preload("res://scenes/turrets/LaserTurret.tscn")
 const CANNON_TURRET_SCENE := preload("res://scenes/turrets/CannonTurret.tscn")
-@export var ship_type_id: StringName = &"scout"
+
+@export var planet_id: StringName = &"planet1"
 
 @onready var target_conveyor: TargetConveyor = %TargetConveyor
 @onready var _ship: Ship = %Ship
@@ -21,9 +22,11 @@ const CANNON_TURRET_SCENE := preload("res://scenes/turrets/CannonTurret.tscn")
 
 func _ready() -> void:
 	_apply_game_viewport_layout()
-	if _ship and _ship.ship_type_id != ship_type_id:
-		_ship.ship_type_id = ship_type_id
-		_ship.apply_type_from_id()
+	if _ship:
+		var desired: StringName = GameSession.selected_ship_id
+		if _ship.ship_type_id != desired:
+			_ship.ship_type_id = desired
+			_ship.apply_type_from_id()
 	target_conveyor.ensure_targets_spawned()
 	_sync_ship_position()
 	if not target_conveyor.active_target_changed.is_connected(_on_active_target_changed):
