@@ -18,7 +18,7 @@ layout_mode = 0
 offset_left = 8.0
 offset_top = 8.0
 offset_right = 300.0
-offset_bottom = 280.0
+offset_bottom = 310.0
 mouse_filter = 0
 
 [node name="VBox" type="VBoxContainer" parent="Panel"]
@@ -47,6 +47,10 @@ value = 2.0
 [node name="MaxDamage" type="CheckButton" parent="Panel/VBox"]
 layout_mode = 2
 text = "Click Damage: MAX"
+
+[node name="Suicide" type="Button" parent="Panel/VBox"]
+layout_mode = 2
+text = "Suicide (kill player)"
 
 [node name="GoldRow" type="HBoxContainer" parent="Panel/VBox"]
 layout_mode = 2

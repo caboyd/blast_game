@@ -44,6 +44,18 @@ theme_override_font_sizes/font_size = 28
 text = "Preparation"
 horizontal_alignment = 1
 
+[node name="CareerBlocksLabel" type="Label" parent="Margin/RootVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Blocks destroyed (all time): 0"
+horizontal_alignment = 1
+
+[node name="MoneyLabel" type="Label" parent="Margin/RootVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Money: 0"
+horizontal_alignment = 1
+
 [node name="Row" type="HBoxContainer" parent="Margin/RootVBox"]
 layout_mode = 2
 size_flags_vertical = 3

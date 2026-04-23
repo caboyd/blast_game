@@ -418,7 +418,7 @@ func refresh() -> void:
 		var item = _stat_items[sid]
 		match String(sid):
 			"blocks":
-				item.set_value(str(GameStatistics.total_blocks_destroyed))
+				item.set_value(str(GameStatistics.get_blocks_destroyed_this_run()))
 			"depth":
 				item.set_value(str(GameStatistics.furthest_depth_cells))
 			"money":

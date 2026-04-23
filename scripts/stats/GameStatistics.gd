@@ -11,6 +11,8 @@ const CLICK_FIRE_RATE_MIN_MS := 25.0
 const CLICK_FIRE_RATE_STEP := 0.95
 
 var total_blocks_destroyed: int = 0
+## Baseline for `get_blocks_destroyed_this_run()`; set when a mission starts or after a run is committed to career.
+var _blocks_destroyed_run_baseline: int = 0
 ## Currency earned from destroying blocks; spent on upgrades.
 var money: int = 0
 var furthest_depth_cells: int = 0
@@ -113,6 +115,15 @@ func add_block_damage(amount: int, source: StringName) -> void:
 	stats_changed.emit()
 
 
+func set_blocks_run_baseline() -> void:
+	_blocks_destroyed_run_baseline = total_blocks_destroyed
+	stats_changed.emit()
+
+
+func get_blocks_destroyed_this_run() -> int:
+	return total_blocks_destroyed - _blocks_destroyed_run_baseline
+
+
 func add_blocks_destroyed(count: int) -> void:
 	if count <= 0:
 		return
@@ -125,6 +136,7 @@ func add_money(amount: int) -> void:
 		return
 	money += amount
 	stats_changed.emit()
+	GameSession.save_career()
 
 
 func spend_money(amount: int) -> bool:
@@ -134,6 +146,7 @@ func spend_money(amount: int) -> bool:
 		return false
 	money -= amount
 	stats_changed.emit()
+	GameSession.save_career()
 	return true
 
 

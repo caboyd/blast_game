@@ -10,6 +10,7 @@ var _syncing_radius: bool = false
 @onready var _max_damage_btn: CheckButton = $Panel/VBox/MaxDamage
 @onready var _gold_spin: SpinBox = $Panel/VBox/GoldRow/GoldSpin
 @onready var _gold_give: Button = $Panel/VBox/GoldRow/GoldGive
+@onready var _suicide: Button = $Panel/VBox/Suicide
 @onready var _debug_visuals: CheckButton = $Panel/VBox/DebugVisuals
 @onready var _show_attack_ranges: CheckButton = $Panel/VBox/ShowAttackRanges
 @onready var _viewport_info: Label = get_node("../../GameplayBlock/AspectRatioContainer/ViewportFrame/ViewportInfo") as Label
@@ -19,6 +20,8 @@ func _ready() -> void:
 	_radius_spin.value_changed.connect(_on_radius_changed)
 	_max_damage_btn.toggled.connect(_on_max_damage_toggled)
 	_gold_give.pressed.connect(_on_gold_give_pressed)
+	if _suicide:
+		_suicide.pressed.connect(_on_suicide_pressed)
 	_debug_visuals.toggled.connect(_on_debug_visuals_toggled)
 	_show_attack_ranges.toggled.connect(_on_show_attack_ranges_toggled)
 	visibility_changed.connect(_on_visibility_changed)
@@ -64,6 +67,13 @@ func _on_max_damage_toggled(pressed: bool) -> void:
 
 func _on_gold_give_pressed() -> void:
 	GameStatistics.add_money(int(_gold_spin.value))
+
+
+func _on_suicide_pressed() -> void:
+	var ship := get_tree().get_first_node_in_group(&"player_ship") as Ship
+	if ship == null:
+		return
+	ship.apply_damage(ship.max_health)
 
 
 func _on_debug_visuals_toggled(pressed: bool) -> void:

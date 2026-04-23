@@ -23,6 +23,8 @@ const CANNON_TURRET_SCENE := preload("res://scenes/turrets/CannonTurret.tscn")
 func _ready() -> void:
 	_apply_game_viewport_layout()
 	if _ship:
+		if not _ship.destroyed.is_connected(_on_player_ship_destroyed):
+			_ship.destroyed.connect(_on_player_ship_destroyed)
 		var desired: StringName = GameSession.selected_ship_id
 		if _ship.ship_type_id != desired:
 			_ship.ship_type_id = desired
@@ -47,6 +49,10 @@ func _ready() -> void:
 	if not get_viewport().size_changed.is_connected(_on_main_resized_for_viewport):
 		get_viewport().size_changed.connect(_on_main_resized_for_viewport)
 	call_deferred("_apply_game_viewport_layout")
+
+
+func _on_player_ship_destroyed() -> void:
+	GameSession.on_ship_destroyed()
 
 
 func _on_subviewport_container_resized() -> void:
