@@ -76,4 +76,4 @@ func on_ship_destroyed() -> void:
 	_career_write_pending = false
 	_write_career_to_disk()
 	GameStatistics.set_blocks_run_baseline()
-	return_to_prep()
+	call_deferred("return_to_prep")
