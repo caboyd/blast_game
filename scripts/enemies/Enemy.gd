@@ -1,6 +1,8 @@
 class_name Enemy
 extends Node2D
 
+signal health_changed(current: int, max_health: int)
+
 const ENEMY_PROJECTILE_SCENE := preload("res://scenes/enemies/EnemyProjectile.tscn")
 
 @export var max_health: int = 20
@@ -20,6 +22,7 @@ var _visual: Polygon2D
 func _ready() -> void:
 	add_to_group(&"enemies")
 	health = max_health
+	health_changed.emit(health, max_health)
 	_build_visual()
 	if Turret.debug_show_attack_ranges:
 		queue_redraw()
@@ -83,6 +86,7 @@ func apply_damage(amount: int) -> void:
 	if amount <= 0:
 		return
 	health -= amount
+	health_changed.emit(health, max_health)
 	if health <= 0:
 		queue_free()
 

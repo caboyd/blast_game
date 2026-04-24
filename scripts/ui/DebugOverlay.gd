@@ -1,5 +1,7 @@
 extends Control
 
+const _HPBar := preload("res://scripts/ui/HPBar.gd")
+
 const MAX_CLICK_DAMAGE := 1_000_000_000
 
 var _prev_click_damage: int = -1
@@ -13,6 +15,7 @@ var _syncing_radius: bool = false
 @onready var _suicide: Button = $Panel/VBox/Suicide
 @onready var _debug_visuals: CheckButton = $Panel/VBox/DebugVisuals
 @onready var _show_attack_ranges: CheckButton = $Panel/VBox/ShowAttackRanges
+@onready var _show_hp_bars: CheckButton = $Panel/VBox/ShowHpBars
 @onready var _viewport_info: Label = get_node("../../GameplayBlock/AspectRatioContainer/ViewportFrame/ViewportInfo") as Label
 
 
@@ -24,11 +27,15 @@ func _ready() -> void:
 		_suicide.pressed.connect(_on_suicide_pressed)
 	_debug_visuals.toggled.connect(_on_debug_visuals_toggled)
 	_show_attack_ranges.toggled.connect(_on_show_attack_ranges_toggled)
+	if _show_hp_bars:
+		_show_hp_bars.toggled.connect(_on_show_hp_bars_toggled)
 	visibility_changed.connect(_on_visibility_changed)
 	if _conveyor != null and not _conveyor.active_target_changed.is_connected(_on_active_target_changed):
 		_conveyor.active_target_changed.connect(_on_active_target_changed)
 	_apply_debug_visuals(_debug_visuals.button_pressed)
 	_apply_attack_range_debug(_show_attack_ranges.button_pressed)
+	if _show_hp_bars:
+		_HPBar.set_force_show_all(_show_hp_bars.button_pressed)
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -99,6 +106,10 @@ func _apply_debug_visuals(on: bool) -> void:
 
 func _on_show_attack_ranges_toggled(pressed: bool) -> void:
 	_apply_attack_range_debug(pressed)
+
+
+func _on_show_hp_bars_toggled(pressed: bool) -> void:
+	_HPBar.set_force_show_all(pressed)
 
 
 func _apply_attack_range_debug(on: bool) -> void:

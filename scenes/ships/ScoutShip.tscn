@@ -1,8 +1,9 @@
-[gd_scene format=3 uid="uid://bbp2jdvwthab5"]
+[gd_scene load_steps=4 format=3 uid="uid://bbp2jdvwthab5"]
 
 [ext_resource type="Script" uid="uid://2hbk7lm3ca7y" path="res://scripts/ships/Ship.gd" id="1"]
 [ext_resource type="PackedScene" uid="uid://cp5lilyaouk7c" path="res://scenes/ships/slots/TurretSlotRingSmall.tscn" id="2"]
 [ext_resource type="PackedScene" uid="uid://cp5lilyaouk1c" path="res://scenes/ships/slots/TurretSlotRingMedium.tscn" id="3"]
+[ext_resource type="PackedScene" path="res://scenes/ui/HPBar.tscn" id="4_hpbar"]
 
 [node name="Ship" type="Node2D" unique_id=2045412359]
 unique_name_in_owner = true
@@ -52,3 +53,8 @@ position = Vector2(0, 45)
 position = Vector2(-16, 0)
 
 [node name="TurretSlotRingMedium" parent="Slots/Slot_medium_5" unique_id=190635658 instance=ExtResource("3")]
+
+[node name="HPBar" parent="." instance=ExtResource("4_hpbar")]
+enabled = false
+offset = Vector2(0, -80)
+size = Vector2(120, 8)
