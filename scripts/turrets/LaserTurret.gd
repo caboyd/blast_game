@@ -51,20 +51,26 @@ func _process(delta: float) -> void:
 		_tick_accum = 0.0
 		return
 
-	var dt := _conveyor.get_active_target() as DestructibleTarget
-	if dt == null or dt.is_destroyed():
+	var dt := _conveyor.get_active_target()
+	if dt == null or (dt.has_method(&"is_destroyed") and bool(dt.call(&"is_destroyed"))):
 		_clear_beam()
 		_tick_accum = 0.0
 		return
 
 	var cell := _spotter.get_tracked_cell()
-	if cell.x < 0 or not dt.is_cell_solid(cell):
+	if cell.x < 0 or not dt.has_method(&"is_cell_solid") or not bool(dt.call(&"is_cell_solid", cell)):
+		_clear_beam()
+		_tick_accum = 0.0
+		return
+
+	if not dt.has_method(&"cell_center_local"):
 		_clear_beam()
 		_tick_accum = 0.0
 		return
 
 	var start_local := barrel.position
-	var end_world := dt.to_global(dt.cell_center_local(cell))
+	var end_local := dt.call(&"cell_center_local", cell) as Vector2
+	var end_world := dt.to_global(end_local)
 	_beam.clear_points()
 	_beam.add_point(start_local)
 	_beam.add_point(to_local(end_world))
@@ -73,12 +79,13 @@ func _process(delta: float) -> void:
 	var interval := 1.0 / maxf(update_frequency_hz, 0.0001)
 	while _tick_accum >= interval:
 		_tick_accum -= interval
-		if not is_instance_valid(dt) or dt.is_destroyed():
+		if not is_instance_valid(dt) or (dt.has_method(&"is_destroyed") and bool(dt.call(&"is_destroyed"))):
 			break
-		if not dt.is_cell_solid(cell):
+		if not dt.has_method(&"is_cell_solid") or not bool(dt.call(&"is_cell_solid", cell)):
 			break
-		dt.apply_damage_cell(cell, damage, GameStatistics.DAMAGE_SOURCE_LASER_TURRET)
-		if not dt.is_cell_solid(cell):
+		if dt.has_method(&"apply_damage_cell"):
+			dt.call(&"apply_damage_cell", cell, damage, GameStatistics.DAMAGE_SOURCE_LASER_TURRET)
+		if not dt.has_method(&"is_cell_solid") or not bool(dt.call(&"is_cell_solid", cell)):
 			break
 
 

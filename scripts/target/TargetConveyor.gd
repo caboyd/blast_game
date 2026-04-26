@@ -33,10 +33,9 @@ func begin_swap_if_front_destroyed() -> void:
 	if front_target == null or next_target == null:
 		return
 
-	var dt := front_target as DestructibleTarget
-	if dt == null:
+	if not front_target.has_method(&"is_destroyed"):
 		return
-	if not dt.is_destroyed():
+	if not front_target.call(&"is_destroyed"):
 		return
 
 	_begin_slide_swap()
@@ -56,26 +55,27 @@ func _physics_process(_delta: float) -> void:
 
 
 func _stack_spacing_x() -> float:
-	var dt := front_target as DestructibleTarget
-	if dt == null:
+	if front_target == null:
 		return 0.0
-	return dt.target_size_px.x
+	var ts = front_target.get(&"target_size_px")
+	if ts is Vector2:
+		return (ts as Vector2).x
+	return 0.0
 
 
 func _update_game_statistics_depth() -> void:
 	if front_target == null or next_target == null:
 		return
-	var dt_f := front_target as DestructibleTarget
-	var dt_n := next_target as DestructibleTarget
-	if dt_f == null:
+	var dt_f := front_target
+	var dt_n := next_target
+	if not dt_f.has_method(&"get_grid_width_cells"):
 		return
-	var w: int = dt_f.get_grid_width_cells()
+	var w: int = int(dt_f.call(&"get_grid_width_cells"))
 	var base: int = _completed_front_targets * w
-	var local_front: int = dt_f.get_furthest_right_empty_cell_x()
+	var local_front: int = int(dt_f.call(&"get_furthest_right_empty_cell_x"))
 	var instant: int = base + maxi(0, local_front)
-	# Next slab starts one full grid width deeper; count it when it already has empty cells.
-	if dt_n != null:
-		var local_next: int = dt_n.get_furthest_right_empty_cell_x()
+	if dt_n != null and dt_n.has_method(&"get_furthest_right_empty_cell_x"):
+		var local_next: int = int(dt_n.call(&"get_furthest_right_empty_cell_x"))
 		if local_next >= 0:
 			var from_next: int = (_completed_front_targets + 1) * w + local_next
 			instant = maxi(instant, from_next)
@@ -88,21 +88,18 @@ func _enforce_stack_spacing() -> void:
 	var w := _stack_spacing_x()
 	if w <= 0.0:
 		return
-	# Next stays one full tile to the right of front; front local X never forced to 0 after spawn
-	# so promoted "second" target does not jump left on swap.
 	next_target.position = Vector2(front_target.position.x + w, 0.0)
 
 
 func _update_follow() -> void:
 	if front_target == null or next_target == null:
 		return
-	var dt := front_target as DestructibleTarget
-	if dt == null:
+	var dt := front_target
+	if not dt.has_method(&"get_leftmost_solid_local_x"):
 		return
 
 	_enforce_stack_spacing()
 
-	# Keep the leftmost remaining edge of the FRONT target exactly at screen midpoint.
 	var screen_mid_x: float
 	var cam := get_viewport().get_camera_2d()
 	if cam != null:
@@ -111,13 +108,9 @@ func _update_follow() -> void:
 		var vr := get_viewport().get_visible_rect()
 		screen_mid_x = vr.position.x + vr.size.x * 0.5
 
-	var leftmost_local_x := dt.get_leftmost_solid_local_x()
-	# left edge world = conveyor.global_x + front_local_x + leftmost_local_x
+	var leftmost_local_x: float = float(dt.call(&"get_leftmost_solid_local_x"))
 	var desired_x := screen_mid_x - (front_target.position.x + leftmost_local_x)
-
-	# Preserve existing vertical placement behavior.
 	var desired_y := active_target_position.y
-
 	var desired := Vector2(desired_x, desired_y)
 	if _follow_target_pos.is_finite() and desired.is_equal_approx(_follow_target_pos):
 		return
@@ -157,22 +150,22 @@ func _spawn_initial() -> void:
 
 
 func _wire_target(t: Node2D) -> void:
-	var dt := t as DestructibleTarget
-	if dt == null:
+	if t == null:
 		return
-	dt.fully_destroyed.connect(_on_front_fully_destroyed.bind(dt))
+	if t.has_signal(&"fully_destroyed"):
+		t.fully_destroyed.connect(_on_front_fully_destroyed.bind(t))
 
 
 func _wire_neighbors() -> void:
-	var f := front_target as DestructibleTarget
-	var n := next_target as DestructibleTarget
-	if f != null:
-		f.set_neighbors(null, n)
-	if n != null:
-		n.set_neighbors(f, null)
+	var f := front_target
+	var n := next_target
+	if f != null and f.has_method(&"set_neighbors"):
+		f.call(&"set_neighbors", null, n)
+	if n != null and n.has_method(&"set_neighbors"):
+		n.call(&"set_neighbors", f, null)
 
 
-func _on_front_fully_destroyed(dt: DestructibleTarget) -> void:
+func _on_front_fully_destroyed(dt: Node2D) -> void:
 	if dt != front_target:
 		return
 	_begin_slide_swap()
@@ -186,19 +179,18 @@ func _begin_slide_swap() -> void:
 	var old_front := front_target
 	var new_front := next_target
 
-	# Ping-pong buffer: recycle the old front as the new "next".
 	front_target = new_front
 	next_target = old_front
 
 	if is_instance_valid(next_target):
-		var dt := next_target as DestructibleTarget
-		if dt != null:
-			# Avoid any visible tweening on the recycled target as it jumps behind.
-			dt.set_target_visible(false)
-			dt.reset_target()
-			dt.call_deferred("set_target_visible", true)
+		var t := next_target
+		if t.has_method(&"set_target_visible"):
+			t.call(&"set_target_visible", false)
+		if t.has_method(&"reset_target"):
+			t.call(&"reset_target")
+		if t.has_method(&"set_target_visible"):
+			t.call_deferred(&"set_target_visible", true)
 
-	# New front keeps local position; recycled target slots in directly behind (to the right).
 	_enforce_stack_spacing()
 	_wire_neighbors()
 	_update_follow()

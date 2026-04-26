@@ -7,6 +7,9 @@ const _CAREER_SECTION := "career"
 const _CAREER_KEY_BLOCKS := "total_blocks_destroyed"
 const _CAREER_KEY_MONEY := "money"
 
+const _STAGE_REVEAL_MAGIC := 0x52455631
+const _MINING_CHUNK_BYTES := 40 * 40
+
 var selected_ship_id: StringName = &"scout"
 ## Reserved: slot index → turret type id; empty = no pre-mounted turrets from Prep.
 var mounted_turrets: Array[Dictionary] = []
@@ -69,6 +72,56 @@ func _write_career_to_disk() -> void:
 ## Call from Prep when starting a mission so HUD "blocks" counts this run only.
 func begin_run() -> void:
 	GameStatistics.set_blocks_run_baseline()
+	GameStatistics.reset_fuel_for_run()
+
+
+func _stage_reveal_path(stage_id: StringName) -> String:
+	var sid := String(stage_id).strip_edges()
+	sid = sid.replace("/", "_").replace("\\", "_")
+	return "user://stage_%s_reveal.dat" % sid
+
+
+## Returns Dictionary with Vector2i keys -> PackedByteArray reveal mask (40*40 bytes per chunk).
+func load_stage_reveal(stage_id: StringName) -> Dictionary:
+	var path := _stage_reveal_path(stage_id)
+	if not FileAccess.file_exists(path):
+		return {}
+	var f := FileAccess.open(path, FileAccess.READ)
+	if f == null:
+		push_error("GameSession.load_stage_reveal: cannot read %s" % path)
+		return {}
+	var magic := f.get_32()
+	if magic != _STAGE_REVEAL_MAGIC:
+		return {}
+	var count := f.get_32()
+	var out: Dictionary = {}
+	for _i in count:
+		var cx := f.get_32()
+		var cy := f.get_32()
+		var buf := f.get_buffer(_MINING_CHUNK_BYTES)
+		if buf.size() < _MINING_CHUNK_BYTES:
+			break
+		out[Vector2i(cx, cy)] = buf
+	return out
+
+
+func save_stage_reveal(stage_id: StringName, reveals: Dictionary) -> void:
+	var path := _stage_reveal_path(stage_id)
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	if f == null:
+		push_error("GameSession.save_stage_reveal: cannot write %s" % path)
+		return
+	f.store_32(_STAGE_REVEAL_MAGIC)
+	f.store_32(reveals.size())
+	for k in reveals:
+		var v2: Vector2i = k
+		var barr: PackedByteArray = reveals[k]
+		f.store_32(v2.x)
+		f.store_32(v2.y)
+		var b := barr.duplicate()
+		if b.size() < _MINING_CHUNK_BYTES:
+			b.resize(_MINING_CHUNK_BYTES)
+		f.store_buffer(b)
 
 
 func on_ship_destroyed() -> void:

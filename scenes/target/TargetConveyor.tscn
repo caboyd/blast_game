@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/target/TargetConveyor.gd" id="1"]
-[ext_resource type="PackedScene" path="res://scenes/target/DestructibleTarget.tscn" id="2"]
+[ext_resource type="PackedScene" path="res://scenes/target/MiningGrid.tscn" id="2"]
 
 [node name="TargetConveyor" type="Node2D"]
 script = ExtResource("1")

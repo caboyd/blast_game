@@ -7,7 +7,7 @@ const MAX_CLICK_DAMAGE := 1_000_000_000
 var _prev_click_damage: int = -1
 var _syncing_radius: bool = false
 
-@onready var _conveyor: TargetConveyor = get_node("%TargetConveyor") as TargetConveyor
+@onready var _conveyor: TargetConveyor = get_node_or_null("%TargetConveyor") as TargetConveyor
 @onready var _radius_spin: SpinBox = $Panel/VBox/RadiusRow/RadiusSpin
 @onready var _max_damage_btn: CheckButton = $Panel/VBox/MaxDamage
 @onready var _gold_spin: SpinBox = $Panel/VBox/GoldRow/GoldSpin

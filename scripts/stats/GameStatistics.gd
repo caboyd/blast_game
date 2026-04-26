@@ -1,6 +1,7 @@
 extends Node
 
 signal stats_changed
+signal fuel_changed(current: float, max_fuel: float)
 
 const DAMAGE_SOURCE_LASER_TURRET := &"laser_turret"
 const DAMAGE_SOURCE_CANNON_TURRET := &"cannon_turret"
@@ -33,6 +34,9 @@ var click_damage: int = 1
 var click_radius_cells: int = 2
 ## Minimum interval between click damage ticks while holding LMB (ms); reduced by click_fire_rate upgrade.
 var click_fire_rate_ms: float = CLICK_FIRE_RATE_START_MS
+
+var fuel: float = 100.0
+var fuel_max: float = 100.0
 
 
 func _ready() -> void:
@@ -154,4 +158,18 @@ func update_depth_in_cells(instantaneous_depth: int) -> void:
 	if instantaneous_depth <= furthest_depth_cells:
 		return
 	furthest_depth_cells = instantaneous_depth
+	stats_changed.emit()
+
+
+func reset_fuel_for_run() -> void:
+	fuel = fuel_max
+	fuel_changed.emit(fuel, fuel_max)
+	stats_changed.emit()
+
+
+func consume_fuel(amount: float) -> void:
+	if amount <= 0.0:
+		return
+	fuel = maxf(0.0, fuel - amount)
+	fuel_changed.emit(fuel, fuel_max)
 	stats_changed.emit()

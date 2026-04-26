@@ -7,7 +7,7 @@ extends Node2D
 var _line: Line2D
 var _conveyor: TargetConveyor
 var _tracked_cell: Vector2i = Vector2i(-1, -1)
-var _current_dt: DestructibleTarget
+var _current_dt: Node2D
 
 
 func _ready() -> void:
@@ -44,34 +44,38 @@ func _on_active_target_changed(new_target: Node2D) -> void:
 	_tracked_cell = Vector2i(-1, -1)
 	if new_target == null:
 		return
-	var dt := new_target as DestructibleTarget
-	if dt != null:
-		_current_dt = dt
+	_current_dt = new_target
 
 
 func _process(_delta: float) -> void:
 	if _conveyor == null:
 		return
-	var dt := _conveyor.get_active_target() as DestructibleTarget
+	var dt := _conveyor.get_active_target()
 	if dt == null:
 		_clear_visual()
 		return
 	if dt != _current_dt:
 		_on_active_target_changed(dt)
 
-	if dt.is_destroyed():
+	if not dt.has_method(&"is_destroyed") or bool(dt.call(&"is_destroyed")):
 		_clear_visual()
 		return
 
 	var from_local := dt.to_local(global_position)
-	if _tracked_cell.x < 0 or not dt.is_cell_solid(_tracked_cell):
-		_tracked_cell = dt.get_closest_row_leftmost_cell(from_local)
+	if _tracked_cell.x < 0 or not dt.has_method(&"is_cell_solid") or not bool(dt.call(&"is_cell_solid", _tracked_cell)):
+		if dt.has_method(&"get_closest_row_leftmost_cell"):
+			_tracked_cell = dt.call(&"get_closest_row_leftmost_cell", from_local) as Vector2i
+		else:
+			_tracked_cell = Vector2i(-1, -1)
 
 	if _tracked_cell.x < 0:
 		_clear_line_only()
 		return
 
-	var end_local := dt.cell_center_local(_tracked_cell)
+	if not dt.has_method(&"cell_center_local"):
+		_clear_line_only()
+		return
+	var end_local := dt.call(&"cell_center_local", _tracked_cell) as Vector2
 	_line.clear_points()
 	_line.add_point(Vector2.ZERO)
 	_line.add_point(to_local(dt.to_global(end_local)))

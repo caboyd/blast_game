@@ -5,7 +5,7 @@ extends Node2D
 @export var spotter_count: int = 0
 
 var _conveyor: TargetConveyor
-var _last_highlight_dt: DestructibleTarget
+var _last_highlight_dt: Node2D
 
 
 func _ready() -> void:
@@ -44,10 +44,11 @@ func _random_left_half_global() -> Vector2:
 func _sync_highlights() -> void:
 	if _conveyor == null:
 		return
-	var dt := _conveyor.get_active_target() as DestructibleTarget
-	if dt == null or dt.is_destroyed():
+	var dt := _conveyor.get_active_target()
+	if dt == null or (dt.has_method(&"is_destroyed") and bool(dt.call(&"is_destroyed"))):
 		if _last_highlight_dt != null and is_instance_valid(_last_highlight_dt):
-			_last_highlight_dt.clear_highlight()
+			if _last_highlight_dt.has_method(&"clear_highlight"):
+				_last_highlight_dt.call(&"clear_highlight")
 		_last_highlight_dt = null
 		return
 
@@ -62,7 +63,7 @@ func _sync_highlights() -> void:
 		var tc := s.get_tracked_cell()
 		if tc.x < 0:
 			continue
-		if not dt.is_cell_solid(tc):
+		if not dt.has_method(&"is_cell_solid") or not bool(dt.call(&"is_cell_solid", tc)):
 			continue
 		var key := Vector2i(tc.x, tc.y)
 		if seen.has(key):
@@ -70,4 +71,5 @@ func _sync_highlights() -> void:
 		seen[key] = true
 		cells.append(tc)
 
-	dt.set_highlight_cells(cells)
+	if dt.has_method(&"set_highlight_cells"):
+		dt.call(&"set_highlight_cells", cells)

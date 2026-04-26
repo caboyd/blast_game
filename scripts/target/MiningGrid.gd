@@ -1,0 +1,470 @@
+class_name MiningGrid
+extends Node2D
+
+const CHUNK_SIZE := 40
+const CELL_SIZE_PX := 8.0
+
+const TYPE_EMPTY := 0
+const TYPE_GREY := 1
+const TYPE_GOLD := 2
+const TYPE_COUNT := 3
+
+static var TYPE_MAX_HP: PackedInt32Array = PackedInt32Array([0, 1, 5])
+static var TYPE_MONEY: PackedInt32Array = PackedInt32Array([0, 1, 15])
+static var TYPE_COLOR: PackedColorArray = PackedColorArray([
+	Color(0.0, 0.0, 0.0, 0.0),
+	Color(0.55, 0.55, 0.58, 1.0),
+	Color(1.0, 0.82, 0.2, 1.0),
+])
+
+const SHADER_TYPE_COLOR_MAX := 8
+const APRON_COLUMNS := 0
+
+## Landmarks in absolute world cell coordinates (post-generation stamp).
+const STATIC_CELLS: Array[Dictionary] = [
+	{"cell": Vector2i(0, -10), "type": TYPE_GOLD, "hp": 5},
+]
+
+@export var stage_id: StringName = &"planet1"
+@export var stage_seed: int = 0
+@export var view_margin_cells: int = 2
+@export var reveal_save_debounce_s: float = 1.0
+
+var _chunks: Dictionary = {} # Vector2i -> { cells, hp, revealed PackedByteArray }
+
+var _view_origin_cell: Vector2i = Vector2i.ZERO
+var _view_size_cells: Vector2i = Vector2i.ZERO
+
+var _mask_image: Image
+var _type_image: Image
+var _reveal_image: Image
+var _mask_texture: ImageTexture
+var _type_texture: ImageTexture
+var _reveal_texture: ImageTexture
+var _visual_dirty: bool = true
+
+var _reveal_dirty_chunks: Dictionary = {} # Vector2i -> true
+var _reveal_save_accum: float = 0.0
+
+@onready var _world_visual: Sprite2D = $WorldVisual
+@onready var _fog_visual: Sprite2D = $FogVisual
+
+
+func _ready() -> void:
+	_init_visuals()
+	_load_persisted_reveals()
+	set_process(true)
+
+
+func _exit_tree() -> void:
+	if not _reveal_dirty_chunks.is_empty():
+		_reveal_save_accum = reveal_save_debounce_s
+		_flush_reveal_save()
+
+
+func _process(delta: float) -> void:
+	if _reveal_dirty_chunks.is_empty():
+		return
+	_reveal_save_accum += delta
+	if _reveal_save_accum >= reveal_save_debounce_s:
+		_reveal_save_accum = 0.0
+		_flush_reveal_save()
+
+
+func _stage_seed_effective() -> int:
+	if stage_seed != 0:
+		return stage_seed
+	return hash(stage_id)
+
+
+func _chunk_rng_seed(chunk: Vector2i) -> int:
+	return hash(Vector3i(_stage_seed_effective(), chunk.x, chunk.y))
+
+
+func _floor_div(a: int, b: int) -> int:
+	return int(floor(float(a) / float(b)))
+
+
+func _cell_to_chunk_coord(cell: Vector2i) -> Vector2i:
+	return Vector2i(_floor_div(cell.x, CHUNK_SIZE), _floor_div(cell.y, CHUNK_SIZE))
+
+
+func _cell_to_local_in_chunk(cell: Vector2i, chunk: Vector2i) -> int:
+	var lx: int = cell.x - chunk.x * CHUNK_SIZE
+	var ly: int = cell.y - chunk.y * CHUNK_SIZE
+	return ly * CHUNK_SIZE + lx
+
+
+func _ensure_chunk(chunk: Vector2i) -> void:
+	if _chunks.has(chunk):
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.seed = _chunk_rng_seed(chunk)
+
+	var n: int = CHUNK_SIZE * CHUNK_SIZE
+	var cells := PackedByteArray()
+	cells.resize(n)
+	var hp := PackedByteArray()
+	hp.resize(n)
+	var revealed := PackedByteArray()
+	revealed.resize(n)
+
+	for i in n:
+		cells[i] = TYPE_GREY
+		hp[i] = clampi(int(TYPE_MAX_HP[TYPE_GREY]), 0, 255)
+
+	_chunks[chunk] = {"cells": cells, "hp": hp, "revealed": revealed}
+	_apply_static_overrides_for_chunk(chunk)
+
+
+func _apply_static_overrides_for_chunk(chunk: Vector2i) -> void:
+	var data: Dictionary = _chunks[chunk]
+	var cells: PackedByteArray = data["cells"]
+	var hparr: PackedByteArray = data["hp"]
+
+	for o in STATIC_CELLS:
+		var wc: Vector2i = o["cell"]
+		if _cell_to_chunk_coord(wc) != chunk:
+			continue
+		var idx: int = _cell_to_local_in_chunk(wc, chunk)
+		var tid: int = int(o["type"])
+		var h: int = int(o["hp"])
+		cells[idx] = tid
+		hparr[idx] = clampi(h, 0, 255)
+
+
+func _load_persisted_reveals() -> void:
+	var loaded: Dictionary = GameSession.load_stage_reveal(stage_id)
+	for k in loaded:
+		var chunk: Vector2i = k
+		_ensure_chunk(chunk)
+		var barr: PackedByteArray = loaded[k]
+		var data: Dictionary = _chunks[chunk]
+		var rev: PackedByteArray = data["revealed"]
+		var lim: int = mini(rev.size(), barr.size())
+		for i in lim:
+			rev[i] = barr[i]
+	_visual_dirty = true
+
+
+func _flush_reveal_save() -> void:
+	if _reveal_dirty_chunks.is_empty():
+		return
+	var merged: Dictionary = GameSession.load_stage_reveal(stage_id)
+	for k in _reveal_dirty_chunks:
+		var chunk: Vector2i = k
+		if not _chunks.has(chunk):
+			continue
+		merged[chunk] = _chunks[chunk]["revealed"].duplicate()
+	GameSession.save_stage_reveal(stage_id, merged)
+	_reveal_dirty_chunks.clear()
+
+
+func world_pos_to_cell(world: Vector2) -> Vector2i:
+	return Vector2i(int(floor(world.x / CELL_SIZE_PX)), int(floor(world.y / CELL_SIZE_PX)))
+
+
+func cell_top_left_world(cell: Vector2i) -> Vector2:
+	return Vector2(float(cell.x) * CELL_SIZE_PX, float(cell.y) * CELL_SIZE_PX)
+
+
+func is_solid_world(world: Vector2) -> bool:
+	var c := world_pos_to_cell(world)
+	return _is_cell_solid(c)
+
+
+func _is_cell_solid(cell: Vector2i) -> bool:
+	var ch := _cell_to_chunk_coord(cell)
+	if not _chunks.has(ch):
+		return false
+	var data: Dictionary = _chunks[ch]
+	var idx: int = _cell_to_local_in_chunk(cell, ch)
+	return int(data["cells"][idx]) != TYPE_EMPTY
+
+
+func mine_at_world(world_pos: Vector2, damage: int, mine_radius_px: float) -> int:
+	if damage <= 0:
+		return 0
+	var center := world_pos_to_cell(world_pos)
+	var r_cells: int = int(ceil(mine_radius_px / CELL_SIZE_PX))
+	var r2: int = r_cells * r_cells
+	var hp_removed_total: int = 0
+
+	for dy in range(-r_cells, r_cells + 1):
+		for dx in range(-r_cells, r_cells + 1):
+			if dx * dx + dy * dy > r2:
+				continue
+			var c := Vector2i(center.x + dx, center.y + dy)
+			hp_removed_total += _damage_cell_abs(c, damage)
+
+	if hp_removed_total > 0:
+		_visual_dirty = true
+	return hp_removed_total
+
+
+## Mines only the single grid cell that contains `world_pos` (one world point → one cell).
+func mine_cell_at_world_point(world_pos: Vector2, damage: int) -> int:
+	if damage <= 0:
+		return 0
+	var hp_removed: int = _damage_cell_abs(world_pos_to_cell(world_pos), damage)
+	if hp_removed > 0:
+		_visual_dirty = true
+	return hp_removed
+
+
+## Mines only grid cells whose world-space cell square overlaps the hull polygon (convex quad is fine).
+func mine_cells_under_hull_world(world_hull: PackedVector2Array, damage: int) -> int:
+	if damage <= 0 or world_hull.size() < 3:
+		return 0
+	var wb := Rect2(world_hull[0], Vector2.ZERO)
+	for i in range(1, world_hull.size()):
+		wb = wb.expand(world_hull[i])
+	var c_tl := world_pos_to_cell(wb.position)
+	var c_br := world_pos_to_cell(wb.end - Vector2(0.001, 0.001))
+	var min_cx: int = mini(c_tl.x, c_br.x)
+	var min_cy: int = mini(c_tl.y, c_br.y)
+	var max_cx: int = maxi(c_tl.x, c_br.x)
+	var max_cy: int = maxi(c_tl.y, c_br.y)
+	var hp_removed_total: int = 0
+	for cy in range(min_cy, max_cy + 1):
+		for cx in range(min_cx, max_cx + 1):
+			if _cell_world_rect_overlaps_hull(cx, cy, world_hull):
+				hp_removed_total += _damage_cell_abs(Vector2i(cx, cy), damage)
+	if hp_removed_total > 0:
+		_visual_dirty = true
+	return hp_removed_total
+
+
+func _cell_world_rect_polygon(cx: int, cy: int) -> PackedVector2Array:
+	var x0: float = float(cx) * CELL_SIZE_PX
+	var y0: float = float(cy) * CELL_SIZE_PX
+	var x1: float = x0 + CELL_SIZE_PX
+	var y1: float = y0 + CELL_SIZE_PX
+	return PackedVector2Array([
+		Vector2(x0, y0), Vector2(x1, y0), Vector2(x1, y1), Vector2(x0, y1)
+	])
+
+
+func _cell_world_rect_overlaps_hull(cx: int, cy: int, hull_world: PackedVector2Array) -> bool:
+	var cell_poly: PackedVector2Array = _cell_world_rect_polygon(cx, cy)
+	var inter: Array = Geometry2D.intersect_polygons(cell_poly, hull_world)
+	if not inter.is_empty():
+		return true
+	var x0: float = float(cx) * CELL_SIZE_PX
+	var y0: float = float(cy) * CELL_SIZE_PX
+	var x1: float = x0 + CELL_SIZE_PX
+	var y1: float = y0 + CELL_SIZE_PX
+	var ctr := Vector2((x0 + x1) * 0.5, (y0 + y1) * 0.5)
+	if Geometry2D.is_point_in_polygon(ctr, hull_world):
+		return true
+	for j in cell_poly.size():
+		if Geometry2D.is_point_in_polygon(cell_poly[j], hull_world):
+			return true
+	for hv in hull_world:
+		var ic := world_pos_to_cell(hv)
+		if ic.x == cx and ic.y == cy:
+			return true
+	return false
+
+
+func _damage_cell_abs(cell: Vector2i, amount: int) -> int:
+	var ch := _cell_to_chunk_coord(cell)
+	_ensure_chunk(ch)
+	var data: Dictionary = _chunks[ch]
+	var cells: PackedByteArray = data["cells"]
+	var hparr: PackedByteArray = data["hp"]
+	var idx: int = _cell_to_local_in_chunk(cell, ch)
+	var t: int = int(cells[idx])
+	if t == TYPE_EMPTY or amount <= 0:
+		return 0
+	var hp_before: int = int(hparr[idx])
+	var new_hp: int = hp_before - amount
+	if new_hp <= 0:
+		cells[idx] = TYPE_EMPTY
+		hparr[idx] = 0
+		GameStatistics.add_blocks_destroyed(1)
+		if t >= 0 and t < TYPE_MONEY.size():
+			GameStatistics.add_money(int(TYPE_MONEY[t]))
+		return hp_before
+	var nh: int = clampi(new_hp, 0, 255)
+	hparr[idx] = nh
+	return hp_before - nh
+
+
+func update_vision(center_world: Vector2, radius_cells: int) -> void:
+	var cc := world_pos_to_cell(center_world)
+	var r2: int = radius_cells * radius_cells
+	var any_new: bool = false
+	for dy in range(-radius_cells, radius_cells + 1):
+		for dx in range(-radius_cells, radius_cells + 1):
+			if dx * dx + dy * dy > r2:
+				continue
+			var c := Vector2i(cc.x + dx, cc.y + dy)
+			var ch := _cell_to_chunk_coord(c)
+			_ensure_chunk(ch)
+			var data: Dictionary = _chunks[ch]
+			var rev: PackedByteArray = data["revealed"]
+			var idx: int = _cell_to_local_in_chunk(c, ch)
+			if int(rev[idx]) == 0:
+				rev[idx] = 1
+				_reveal_dirty_chunks[ch] = true
+				any_new = true
+	if any_new:
+		_visual_dirty = true
+
+
+## Visible world rectangle in pixels (SubViewport / camera space).
+func set_camera_view_world_rect(rect: Rect2) -> void:
+	# Size in cells must depend only on rect dimensions (constant for a given window + zoom).
+	# If we resized whenever the top-left *cell* moved with the camera, we would recreate
+	# ImageTextures every frame and break RenderingDevice shader versions.
+	var w_cells: int = int(ceili(rect.size.x / CELL_SIZE_PX)) + 2 * view_margin_cells
+	var h_cells: int = int(ceili(rect.size.y / CELL_SIZE_PX)) + 2 * view_margin_cells
+	var new_size := Vector2i(w_cells, h_cells)
+
+	var tl_cell := world_pos_to_cell(rect.position)
+	var new_origin := Vector2i(tl_cell.x - view_margin_cells, tl_cell.y - view_margin_cells)
+
+	var size_changed: bool = new_size != _view_size_cells
+	var origin_changed: bool = new_origin != _view_origin_cell
+
+	_view_origin_cell = new_origin
+
+	if size_changed:
+		_view_size_cells = new_size
+		_resize_view_textures(new_size.x, new_size.y)
+		_visual_dirty = true
+
+	if origin_changed or size_changed:
+		_update_visual_positions()
+		_visual_dirty = true
+
+	if _visual_dirty:
+		_rebuild_view_textures()
+
+
+func _resize_view_textures(w: int, h: int) -> void:
+	if w < 1 or h < 1:
+		return
+	_mask_image = Image.create(w, h, false, Image.FORMAT_L8)
+	_type_image = Image.create(w, h, false, Image.FORMAT_RG8)
+	_reveal_image = Image.create(w, h, false, Image.FORMAT_L8)
+	# `ImageTexture.update(image)` requires image size to match the texture; view size changes
+	# after the first frame, so always recreate when dimensions change.
+	_mask_texture = ImageTexture.create_from_image(_mask_image)
+	_type_texture = ImageTexture.create_from_image(_type_image)
+	_reveal_texture = ImageTexture.create_from_image(_reveal_image)
+
+	if _world_visual:
+		_world_visual.texture = _mask_texture
+		_world_visual.region_enabled = false
+		_world_visual.scale = Vector2(CELL_SIZE_PX, CELL_SIZE_PX)
+		_world_visual.centered = false
+
+	if _fog_visual:
+		_fog_visual.texture = _reveal_texture
+		_fog_visual.scale = Vector2(CELL_SIZE_PX, CELL_SIZE_PX)
+		_fog_visual.centered = false
+
+	_sync_shader_texture_params()
+
+
+func _update_visual_positions() -> void:
+	var tl := cell_top_left_world(_view_origin_cell)
+	if _world_visual:
+		_world_visual.position = tl
+	if _fog_visual:
+		_fog_visual.position = tl
+
+
+func _sync_shader_texture_params() -> void:
+	if _world_visual != null and _world_visual.material is ShaderMaterial:
+		var sm: ShaderMaterial = _world_visual.material as ShaderMaterial
+		sm.set_shader_parameter("mask_tex", _mask_texture)
+		sm.set_shader_parameter("type_tex", _type_texture)
+	if _fog_visual != null and _fog_visual.material is ShaderMaterial:
+		(_fog_visual.material as ShaderMaterial).set_shader_parameter("reveal_tex", _reveal_texture)
+
+
+func _init_visuals() -> void:
+	if _world_visual == null:
+		push_error("MiningGrid needs WorldVisual Sprite2D child.")
+		return
+	_resize_view_textures(32, 32)
+	var sm := ShaderMaterial.new()
+	var sh: Shader = load("res://shaders/destructible_target_marching.gdshader")
+	if sh:
+		sm.shader = sh
+		sm.set_shader_parameter("mask_tex", _mask_texture)
+		sm.set_shader_parameter("type_tex", _type_texture)
+		_push_shader_type_colors(sm)
+	_world_visual.material = sm
+	_world_visual.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_update_visual_positions()
+
+	if _fog_visual:
+		var fsm := ShaderMaterial.new()
+		var fsh: Shader = load("res://shaders/fog_of_war.gdshader")
+		if fsh:
+			fsm.shader = fsh
+			fsm.set_shader_parameter("reveal_tex", _reveal_texture)
+		_fog_visual.material = fsm
+		_fog_visual.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		_update_visual_positions()
+
+
+func _push_shader_type_colors(sm: ShaderMaterial) -> void:
+	var n: int = mini(TYPE_COUNT, SHADER_TYPE_COLOR_MAX)
+	sm.set_shader_parameter("type_count", n)
+	var pc := PackedColorArray()
+	pc.resize(SHADER_TYPE_COLOR_MAX)
+	for i in range(SHADER_TYPE_COLOR_MAX):
+		pc[i] = TYPE_COLOR[i] if i < TYPE_COUNT else Color(0, 0, 0, 0)
+	sm.set_shader_parameter("type_colors", pc)
+
+
+func _rebuild_view_textures() -> void:
+	if _mask_image == null or _view_size_cells.x < 1:
+		return
+	var ox: int = _view_origin_cell.x
+	var oy: int = _view_origin_cell.y
+	var w: int = _view_size_cells.x
+	var h: int = _view_size_cells.y
+
+	for iy in h:
+		for ix in w:
+			var wc := Vector2i(ox + ix, oy + iy)
+			var ch := _cell_to_chunk_coord(wc)
+			_ensure_chunk(ch)
+			var data: Dictionary = _chunks[ch]
+			var cells: PackedByteArray = data["cells"]
+			var hparr: PackedByteArray = data["hp"]
+			var rev: PackedByteArray = data["revealed"]
+			var idx: int = _cell_to_local_in_chunk(wc, ch)
+			var t: int = int(cells[idx])
+			var revealed: bool = int(rev[idx]) != 0
+
+			if not revealed:
+				_mask_image.set_pixel(ix, iy, Color(0, 0, 0, 1))
+				_type_image.set_pixel(ix, iy, Color(0, 0, 0, 1))
+				_reveal_image.set_pixel(ix, iy, Color(0, 0, 0, 1))
+				continue
+
+			_reveal_image.set_pixel(ix, iy, Color(1, 1, 1, 1))
+
+			if t == TYPE_EMPTY:
+				_mask_image.set_pixel(ix, iy, Color(0, 0, 0, 1))
+				_type_image.set_pixel(ix, iy, Color(0, 0, 0, 1))
+			else:
+				_mask_image.set_pixel(ix, iy, Color(1, 1, 1, 1))
+				var max_hp: int = maxi(1, int(TYPE_MAX_HP[t]))
+				var hp: int = clampi(int(hparr[idx]), 0, max_hp)
+				var hp_ratio: float = float(hp) / float(max_hp)
+				var type_r: float = clampf(float(t) / 255.0, 0.0, 1.0)
+				_type_image.set_pixel(ix, iy, Color(type_r, hp_ratio, 0, 1))
+
+	_mask_texture.update(_mask_image)
+	_type_texture.update(_type_image)
+	_reveal_texture.update(_reveal_image)
+
+	_visual_dirty = false

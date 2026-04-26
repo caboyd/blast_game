@@ -1,14 +1,12 @@
-[gd_scene format=3 uid="uid://bqhuyhfryq34g"]
+[gd_scene load_steps=7 format=3 uid="uid://bqhuyhfryq34g"]
 
-[ext_resource type="Script" uid="uid://conweb5pvayjf" path="res://scripts/planets/Planet1.gd" id="1"]
-[ext_resource type="PackedScene" path="res://scenes/target/TargetConveyor.tscn" id="2"]
-[ext_resource type="PackedScene" uid="uid://dtrx184slrt33" path="res://scenes/target/TargetSpotterManager.tscn" id="3"]
-[ext_resource type="PackedScene" uid="uid://s27h7pw54ab5" path="res://scenes/ui/BottomHUD.tscn" id="4"]
+[ext_resource type="Script" path="res://scripts/planets/Planet1.gd" id="1"]
+[ext_resource type="PackedScene" uid="uid://mininggrid01" path="res://scenes/target/MiningGrid.tscn" id="2"]
+[ext_resource type="PackedScene" uid="uid://miningvessel01" path="res://scenes/ships/MiningVessel.tscn" id="3"]
+[ext_resource type="PackedScene" path="res://scenes/ui/BottomHUD.tscn" id="4"]
 [ext_resource type="PackedScene" path="res://scenes/ui/DebugOverlay.tscn" id="5"]
-[ext_resource type="PackedScene" uid="uid://bbp2jdvwthab5" path="res://scenes/ships/ScoutShip.tscn" id="6"]
-[ext_resource type="Script" uid="uid://cblvs64rtwiii" path="res://scripts/systems/EnemySpawner.gd" id="7"]
 
-[node name="Planet1" type="Control" unique_id=1075927346]
+[node name="Planet1" type="Control"]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -17,7 +15,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1")
 
-[node name="GameplayBlock" type="Control" parent="." unique_id=784919821]
+[node name="GameplayBlock" type="Control" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -26,7 +24,7 @@ offset_bottom = -200.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="AspectRatioContainer" type="AspectRatioContainer" parent="GameplayBlock" unique_id=1819297229]
+[node name="AspectRatioContainer" type="AspectRatioContainer" parent="GameplayBlock"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -35,11 +33,11 @@ grow_horizontal = 2
 grow_vertical = 2
 ratio = 2.4615386
 
-[node name="ViewportFrame" type="Control" parent="GameplayBlock/AspectRatioContainer" unique_id=1535184046]
+[node name="ViewportFrame" type="Control" parent="GameplayBlock/AspectRatioContainer"]
 layout_mode = 2
 mouse_filter = 2
 
-[node name="SubViewportContainer" type="SubViewportContainer" parent="GameplayBlock/AspectRatioContainer/ViewportFrame" unique_id=1740313277]
+[node name="SubViewportContainer" type="SubViewportContainer" parent="GameplayBlock/AspectRatioContainer/ViewportFrame"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -48,34 +46,28 @@ grow_horizontal = 2
 grow_vertical = 2
 stretch = true
 
-[node name="GameSubViewport" type="SubViewport" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer" unique_id=1293668817]
+[node name="GameSubViewport" type="SubViewport" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer"]
 unique_name_in_owner = true
 handle_input_locally = true
 msaa_2d = 3
 size = Vector2i(1280, 520)
 render_target_update_mode = 4
 
-[node name="GameCamera2D" type="Camera2D" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport" unique_id=589239018]
+[node name="GameCamera2D" type="Camera2D" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport"]
 unique_name_in_owner = true
-position = Vector2(640, 260)
+position = Vector2(0, 0)
+enabled = true
 
-[node name="World2D" type="Node2D" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport" unique_id=469859937]
+[node name="World2D" type="Node2D" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport"]
 
-[node name="TargetConveyor" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport/World2D" unique_id=1327211672 instance=ExtResource("2")]
+[node name="MiningGrid" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport/World2D" instance=ExtResource("2")]
 unique_name_in_owner = true
 
-[node name="Ship" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport/World2D" unique_id=1505257354 instance=ExtResource("6")]
+[node name="MiningVessel" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport/World2D" instance=ExtResource("3")]
+unique_name_in_owner = true
+position = Vector2(0, 0)
 
-[node name="TargetSpotterManager" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport/World2D" unique_id=712810754 instance=ExtResource("3")]
-
-[node name="ProjectileManager" type="Node2D" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport/World2D" unique_id=1460988594]
-
-[node name="EnemyManager" type="Node2D" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport/World2D" unique_id=1107769081]
-
-[node name="EnemySpawner" type="Node" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport/World2D" unique_id=341965424]
-script = ExtResource("7")
-
-[node name="Border" type="ReferenceRect" parent="GameplayBlock/AspectRatioContainer/ViewportFrame" unique_id=1486867454]
+[node name="Border" type="ReferenceRect" parent="GameplayBlock/AspectRatioContainer/ViewportFrame"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -87,7 +79,7 @@ border_color = Color(0.45, 0.78, 1, 0.95)
 border_width = 2.0
 editor_only = false
 
-[node name="ViewportInfo" type="Label" parent="GameplayBlock/AspectRatioContainer/ViewportFrame" unique_id=576202899]
+[node name="ViewportInfo" type="Label" parent="GameplayBlock/AspectRatioContainer/ViewportFrame"]
 unique_name_in_owner = true
 layout_mode = 0
 offset_left = 6.0
@@ -100,8 +92,8 @@ theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 14
 text = "—"
 
-[node name="UI" type="CanvasLayer" parent="." unique_id=1737551686]
+[node name="UI" type="CanvasLayer" parent="."]
 
-[node name="BottomHUD" parent="UI" unique_id=408634494 instance=ExtResource("4")]
+[node name="BottomHUD" parent="UI" instance=ExtResource("4")]
 
-[node name="DebugOverlay" parent="UI" unique_id=756460268 instance=ExtResource("5")]
+[node name="DebugOverlay" parent="UI" instance=ExtResource("5")]

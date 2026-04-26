@@ -17,8 +17,12 @@ func _resolve_conveyor() -> TargetConveyor:
 	return null
 
 
-## Uses DestructibleTarget row-leftmost cache; `from_local` in target space (e.g. `dt.to_local(global_position)`).
-func pick_closest_row_leftmost_cell(dt: DestructibleTarget, from_local: Vector2) -> Vector2i:
-	if dt == null or dt.is_destroyed():
+## Uses destructible slab row-leftmost cache when available; `from_local` in target space.
+func pick_closest_row_leftmost_cell(dt: Node2D, from_local: Vector2) -> Vector2i:
+	if dt == null:
 		return Vector2i(-1, -1)
-	return dt.get_closest_row_leftmost_cell(from_local)
+	if dt.has_method(&"is_destroyed") and bool(dt.call(&"is_destroyed")):
+		return Vector2i(-1, -1)
+	if not dt.has_method(&"get_closest_row_leftmost_cell"):
+		return Vector2i(-1, -1)
+	return dt.call(&"get_closest_row_leftmost_cell", from_local) as Vector2i
