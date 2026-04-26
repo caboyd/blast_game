@@ -1,7 +1,7 @@
 [gd_scene load_steps=2 format=3 uid="uid://e7prep0scene01a"]
 
 [ext_resource type="Script" uid="uid://dy8m3p7vxk01q" path="res://scripts/prep/Prep.gd" id="1"]
-[ext_resource type="PackedScene" uid="uid://bbp2jdvwthab5" path="res://scenes/ships/ScoutShip.tscn" id="2"]
+[ext_resource type="PackedScene" uid="uid://c3ujct1udqxw7" path="res://scenes/ships/MiningVessel.tscn" id="2"]
 
 [node name="Prep" type="Control"]
 layout_mode = 3
@@ -66,9 +66,9 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 8
 
-[node name="ScoutLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol"]
+[node name="ShipLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol"]
 layout_mode = 2
-text = "Scout"
+text = "Mining Vessel"
 horizontal_alignment = 1
 
 [node name="SubViewportContainer" type="SubViewportContainer" parent="Margin/RootVBox/Row/PreviewCol"]
@@ -89,8 +89,9 @@ current = true
 [node name="World" type="Node2D" parent="Margin/RootVBox/Row/PreviewCol/SubViewportContainer/SubViewport"]
 position = Vector2(0, 0)
 
-[node name="ScoutShip" parent="Margin/RootVBox/Row/PreviewCol/SubViewportContainer/SubViewport/World" instance=ExtResource("2")]
+[node name="MiningVessel" parent="Margin/RootVBox/Row/PreviewCol/SubViewportContainer/SubViewport/World" instance=ExtResource("2")]
 position = Vector2(240, 200)
+scale = Vector2(8, 8)
 
 [node name="ShopPanel" type="Panel" parent="Margin/RootVBox/Row"]
 custom_minimum_size = Vector2(280, 0)
@@ -117,3 +118,12 @@ horizontal_alignment = 1
 custom_minimum_size = Vector2(0, 48)
 layout_mode = 2
 text = "Start Mission"
+
+[node name="DebugRow" type="HBoxContainer" parent="Margin/RootVBox"]
+layout_mode = 2
+alignment = 2
+
+[node name="DebugResetProgress" type="Button" parent="Margin/RootVBox/DebugRow"]
+custom_minimum_size = Vector2(220, 32)
+layout_mode = 2
+text = "DEBUG: Reset All Progress"

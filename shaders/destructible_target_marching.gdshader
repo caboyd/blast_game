@@ -107,9 +107,18 @@ void fragment() {
 		discard;
 	}
 
-	float hp_ratio = best_hp_sum / max(best_w, 1e-5);
+	float hp_ratio = clamp(best_hp_sum / max(best_w, 1e-5), 0.0, 1.0);
+	float damage_taken = 1.0 - hp_ratio;
 	vec4 base = type_colors[best_id];
-	vec3 rgb = base.rgb * mix(0.45, 1.0, clamp(hp_ratio, 0.0, 1.0));
+	vec3 rgb;
+	// Grey (id 1): lower HP = darker; damage also desaturates toward luminance (no red tint).
+	if (best_id == 1) {
+		rgb = base.rgb * mix(0.3, 1.0, hp_ratio);
+		float lum = dot(rgb, vec3(0.2126, 0.7152, 0.0722));
+		rgb = mix(rgb, vec3(lum), damage_taken * 0.72);
+	} else {
+		rgb = base.rgb * mix(0.45, 1.0, hp_ratio);
+	}
 
 	// Outline at contour between differing materials, or along outer boundary.
 	// Inner contour: best vs other-material second.

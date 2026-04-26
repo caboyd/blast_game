@@ -3,13 +3,21 @@ extends Control
 @onready var _start: Button = $Margin/RootVBox/StartMission
 @onready var _career_label: Label = $Margin/RootVBox/CareerBlocksLabel
 @onready var _money_label: Label = $Margin/RootVBox/MoneyLabel
+@onready var _debug_reset: Button = $Margin/RootVBox/DebugRow/DebugResetProgress
 
 
 func _ready() -> void:
 	if _start:
 		_start.pressed.connect(_on_start_mission_pressed)
+	if _debug_reset:
+		_debug_reset.pressed.connect(_on_debug_reset_pressed)
 	if not GameStatistics.stats_changed.is_connected(_on_stats_changed):
 		GameStatistics.stats_changed.connect(_on_stats_changed)
+	_refresh_career_label()
+
+
+func _on_debug_reset_pressed() -> void:
+	GameSession.reset_all_progress()
 	_refresh_career_label()
 
 

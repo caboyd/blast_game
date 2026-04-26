@@ -8,7 +8,7 @@ const DEFAULT_STAT_CONFIG: Array[Dictionary] = [
 	{"id": &"blocks", "name": "blocks"},
 	{"id": &"depth", "name": "depth"},
 	{"id": &"money", "name": "money"},
-	{"id": &"ship_hp", "name": "ship HP"},
+	{"id": &"ship_hp", "name": "fuel"},
 ]
 
 ## Per-source `upgrades` entries map to UpgradeBus.DEFS. Optional `max_level` in DEFS caps levels; omit for infinite.
@@ -111,7 +111,6 @@ var _hud_layout_ready: bool = false
 var _stat_items: Dictionary = {}  # StringName -> StatItem (instanced)
 var _handle_wrap_offset_top_base: float = 0.0
 var _handle_wrap_offset_bottom_base: float = 0.0
-var _ship: Ship
 
 
 func _ready() -> void:
@@ -125,11 +124,12 @@ func _ready() -> void:
 	_apply_expanded(false)
 	_hud_layout_ready = true
 	GameStatistics.stats_changed.connect(_on_stats_changed)
+	if not GameStatistics.fuel_changed.is_connected(_on_fuel_changed):
+		GameStatistics.fuel_changed.connect(_on_fuel_changed)
 	UpgradeBus.upgrade_purchased.connect(_on_upgrade_purchased)
 	refresh()
 	if not get_viewport().size_changed.is_connected(_on_viewport_size_changed_fit_stats):
 		get_viewport().size_changed.connect(_on_viewport_size_changed_fit_stats)
-	call_deferred("_hook_ship_health")
 
 
 func _on_collapse_handle_pressed() -> void:
@@ -212,14 +212,7 @@ func get_occlusion_bottom_reserve_px() -> int:
 	return maxi(ceili(reserve), 1)
 
 
-func _hook_ship_health() -> void:
-	_ship = get_tree().get_first_node_in_group(&"player_ship") as Ship
-	if _ship != null and not _ship.health_changed.is_connected(_on_ship_health_changed):
-		_ship.health_changed.connect(_on_ship_health_changed)
-	refresh()
-
-
-func _on_ship_health_changed(_current: int, _max: int) -> void:
+func _on_fuel_changed(_current: float, _max: float) -> void:
 	refresh()
 
 
@@ -424,10 +417,9 @@ func refresh() -> void:
 			"money":
 				item.set_value(str(GameStatistics.money))
 			"ship_hp":
-				if _ship != null:
-					item.set_value("%d / %d" % [_ship.health, _ship.max_health])
-				else:
-					item.set_value("—")
+				item.set_value(
+					"%.0f / %.0f" % [GameStatistics.fuel, GameStatistics.fuel_max]
+				)
 			_:
 				item.set_value("—")
 	_refresh_upgrades()

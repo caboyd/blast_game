@@ -124,6 +124,45 @@ func save_stage_reveal(stage_id: StringName, reveals: Dictionary) -> void:
 		f.store_buffer(b)
 
 
+## Debug: wipe career save, money, upgrades, derived combat stats, and stage reveal files.
+func reset_all_progress() -> void:
+	career_blocks_destroyed = 0
+	GameStatistics.money = 0
+	GameStatistics.total_blocks_destroyed = 0
+	GameStatistics._blocks_destroyed_run_baseline = 0
+	GameStatistics.furthest_depth_cells = 0
+	GameStatistics.damage_to_blocks_laser_turret = 0
+	GameStatistics.damage_to_blocks_cannon_turret = 0
+	GameStatistics.damage_to_blocks_click = 0
+	GameStatistics.laser_turret_damage = 1
+	GameStatistics.cannon_turret_damage = 5
+	GameStatistics.cannon_explosion_radius_px = 16.0
+	GameStatistics.click_damage = 1
+	GameStatistics.click_radius_cells = 2
+	GameStatistics.click_fire_rate_ms = GameStatistics.CLICK_FIRE_RATE_START_MS
+	GameStatistics.fuel_max = 100.0
+	GameStatistics.fuel = GameStatistics.fuel_max
+	UpgradeBus._levels.clear()
+	_career_write_pending = false
+	_write_career_to_disk()
+	_delete_all_stage_reveal_files()
+	GameStatistics.fuel_changed.emit(GameStatistics.fuel, GameStatistics.fuel_max)
+	GameStatistics.stats_changed.emit()
+
+
+func _delete_all_stage_reveal_files() -> void:
+	var dir := DirAccess.open("user://")
+	if dir == null:
+		return
+	dir.list_dir_begin()
+	var fname := dir.get_next()
+	while fname != "":
+		if not dir.current_is_dir() and fname.begins_with("stage_") and fname.ends_with("_reveal.dat"):
+			DirAccess.remove_absolute("user://" + fname)
+		fname = dir.get_next()
+	dir.list_dir_end()
+
+
 func on_ship_destroyed() -> void:
 	career_blocks_destroyed += GameStatistics.get_blocks_destroyed_this_run()
 	_career_write_pending = false

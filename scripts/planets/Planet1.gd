@@ -26,6 +26,7 @@ func _ready() -> void:
 		_mining_grid.stage_id = planet_id
 	if _vessel and _mining_grid:
 		_vessel.grid = _mining_grid
+		_vessel.carve_hull_terrain_on_spawn()
 	if _vessel and not _vessel.out_of_fuel.is_connected(_on_vessel_out_of_fuel):
 		_vessel.out_of_fuel.connect(_on_vessel_out_of_fuel)
 	if _subviewport_container != null and not _subviewport_container.resized.is_connected(_on_subviewport_container_resized):

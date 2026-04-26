@@ -9,7 +9,7 @@ const TYPE_GREY := 1
 const TYPE_GOLD := 2
 const TYPE_COUNT := 3
 
-static var TYPE_MAX_HP: PackedInt32Array = PackedInt32Array([0, 1, 5])
+static var TYPE_MAX_HP: PackedInt32Array = PackedInt32Array([0, 5, 5])
 static var TYPE_MONEY: PackedInt32Array = PackedInt32Array([0, 1, 15])
 static var TYPE_COLOR: PackedColorArray = PackedColorArray([
 	Color(0.0, 0.0, 0.0, 0.0),
@@ -29,6 +29,8 @@ const STATIC_CELLS: Array[Dictionary] = [
 @export var stage_seed: int = 0
 @export var view_margin_cells: int = 2
 @export var reveal_save_debounce_s: float = 1.0
+## Probability per cell of being gold during chunk generation. Sparse by default.
+@export_range(0.0, 1.0, 0.0001) var gold_density: float = 0.012
 
 var _chunks: Dictionary = {} # Vector2i -> { cells, hp, revealed PackedByteArray }
 
@@ -109,9 +111,15 @@ func _ensure_chunk(chunk: Vector2i) -> void:
 	var revealed := PackedByteArray()
 	revealed.resize(n)
 
+	var grey_hp: int = clampi(int(TYPE_MAX_HP[TYPE_GREY]), 0, 255)
+	var gold_hp: int = clampi(int(TYPE_MAX_HP[TYPE_GOLD]), 0, 255)
 	for i in n:
-		cells[i] = TYPE_GREY
-		hp[i] = clampi(int(TYPE_MAX_HP[TYPE_GREY]), 0, 255)
+		if rng.randf() < gold_density:
+			cells[i] = TYPE_GOLD
+			hp[i] = gold_hp
+		else:
+			cells[i] = TYPE_GREY
+			hp[i] = grey_hp
 
 	_chunks[chunk] = {"cells": cells, "hp": hp, "revealed": revealed}
 	_apply_static_overrides_for_chunk(chunk)
@@ -289,6 +297,97 @@ func _damage_cell_abs(cell: Vector2i, amount: int) -> int:
 	var nh: int = clampi(new_hp, 0, 255)
 	hparr[idx] = nh
 	return hp_before - nh
+
+
+## Clears solid in every cell whose world AABB touches `center_world` + `radius_world` circle. No money / destroy stats.
+func clear_solid_in_circle_world(center_world: Vector2, radius_world: float) -> void:
+	if radius_world <= 0.0:
+		return
+	var cs: float = CELL_SIZE_PX
+	var r: float = radius_world
+	var cx0: int = int(floor((center_world.x - r) / cs))
+	var cx1: int = int(floor((center_world.x + r) / cs))
+	var cy0: int = int(floor((center_world.y - r) / cs))
+	var cy1: int = int(floor((center_world.y + r) / cs))
+	var any: bool = false
+	for cy in range(cy0, cy1 + 1):
+		for cx in range(cx0, cx1 + 1):
+			if not _circle_overlaps_cell_aabb_world(center_world, r, cx, cy):
+				continue
+			if _set_cell_type_empty_silent(Vector2i(cx, cy)):
+				any = true
+	if any:
+		_visual_dirty = true
+
+
+## True if any solid cell’s world AABB intersects the circle (Chunks are ensured so overlap isn’t missed.)
+func has_solid_overlapping_circle_world(center_world: Vector2, radius_world: float) -> bool:
+	if radius_world <= 0.0:
+		return false
+	var cs: float = CELL_SIZE_PX
+	var r: float = radius_world
+	var cx0: int = int(floor((center_world.x - r) / cs))
+	var cx1: int = int(floor((center_world.x + r) / cs))
+	var cy0: int = int(floor((center_world.y - r) / cs))
+	var cy1: int = int(floor((center_world.y + r) / cs))
+	for cy in range(cy0, cy1 + 1):
+		for cx in range(cx0, cx1 + 1):
+			if not _circle_overlaps_cell_aabb_world(center_world, r, cx, cy):
+				continue
+			var c := Vector2i(cx, cy)
+			_ensure_chunk(_cell_to_chunk_coord(c))
+			if _is_cell_solid(c):
+				return true
+	return false
+
+
+## Applies `damage` to every solid cell whose AABB hits the world circle. Returns total HP removed.
+func mine_solid_in_circle_world(center_world: Vector2, radius_world: float, damage: int) -> int:
+	if damage <= 0 or radius_world <= 0.0:
+		return 0
+	var cs: float = CELL_SIZE_PX
+	var r: float = radius_world
+	var cx0: int = int(floor((center_world.x - r) / cs))
+	var cx1: int = int(floor((center_world.x + r) / cs))
+	var cy0: int = int(floor((center_world.y - r) / cs))
+	var cy1: int = int(floor((center_world.y + r) / cs))
+	var hp_total: int = 0
+	for cy in range(cy0, cy1 + 1):
+		for cx in range(cx0, cx1 + 1):
+			if not _circle_overlaps_cell_aabb_world(center_world, r, cx, cy):
+				continue
+			hp_total += _damage_cell_abs(Vector2i(cx, cy), damage)
+	if hp_total > 0:
+		_visual_dirty = true
+	return hp_total
+
+
+func _circle_overlaps_cell_aabb_world(center: Vector2, radius: float, cell_x: int, cell_y: int) -> bool:
+	var cs: float = CELL_SIZE_PX
+	var L: float = float(cell_x) * cs
+	var T: float = float(cell_y) * cs
+	var R: float = L + cs
+	var B: float = T + cs
+	var px: float = clampf(center.x, L, R)
+	var py: float = clampf(center.y, T, B)
+	var dx: float = center.x - px
+	var dy: float = center.y - py
+	return dx * dx + dy * dy <= radius * radius
+
+
+## Returns true if a cell was solid and got cleared.
+func _set_cell_type_empty_silent(cell: Vector2i) -> bool:
+	var ch := _cell_to_chunk_coord(cell)
+	_ensure_chunk(ch)
+	var data: Dictionary = _chunks[ch]
+	var cells: PackedByteArray = data["cells"]
+	var hparr: PackedByteArray = data["hp"]
+	var idx: int = _cell_to_local_in_chunk(cell, ch)
+	if int(cells[idx]) == TYPE_EMPTY:
+		return false
+	cells[idx] = TYPE_EMPTY
+	hparr[idx] = 0
+	return true
 
 
 func update_vision(center_world: Vector2, radius_cells: int) -> void:
