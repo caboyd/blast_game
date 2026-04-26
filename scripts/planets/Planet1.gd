@@ -44,7 +44,7 @@ func _ready() -> void:
 
 
 func _on_vessel_out_of_fuel() -> void:
-	GameSession.on_ship_destroyed()
+	GameSession.end_current_run_to_prep()
 
 
 func _on_subviewport_container_resized() -> void:

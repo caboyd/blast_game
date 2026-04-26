@@ -163,9 +163,14 @@ func _delete_all_stage_reveal_files() -> void:
 	dir.list_dir_end()
 
 
-func on_ship_destroyed() -> void:
+## Commit this run’s block count to career and load Prep (fuel out, manual exit from debug, etc.).
+func end_current_run_to_prep() -> void:
 	career_blocks_destroyed += GameStatistics.get_blocks_destroyed_this_run()
 	_career_write_pending = false
 	_write_career_to_disk()
 	GameStatistics.set_blocks_run_baseline()
 	call_deferred("return_to_prep")
+
+
+func on_ship_destroyed() -> void:
+	end_current_run_to_prep()

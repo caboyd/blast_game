@@ -38,6 +38,9 @@ var click_fire_rate_ms: float = CLICK_FIRE_RATE_START_MS
 var fuel: float = 100.0
 var fuel_max: float = 100.0
 
+## Master switch for world gizmos (mining vessel hull/drill debug, conveyor bounds, viewport label). Toggled from `DebugOverlay` on planet; default off so Prep (no overlay) is clean.
+var debug_world_visuals: bool = false
+
 
 func _ready() -> void:
 	if not UpgradeBus.upgrade_purchased.is_connected(_on_upgrade_purchased):

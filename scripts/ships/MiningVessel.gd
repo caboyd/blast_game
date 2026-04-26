@@ -19,14 +19,16 @@ var _drill_shape: CollisionShape2D
 var hull_radius_px: float = 8.0
 ## World-radius of `Drill` circle shape (debug draw / keeps export compat if read elsewhere).
 var mine_radius_px: float = 2.0
-## Show a debug overlay (hull, mining point, mined cell outline).
-@export var debug_collision_visual: bool = true
+## Wider than real hull: solid cells in this band are drawn red as “blocked / attempting entry.”
+## Real collision never lets the hull disk overlap those tiles, so a tiny pad is needed to see them.
+@export var hull_debug_blocked_pad_px: float = 0.15
 
 var grid: MiningGrid
 var _fuel_out_emitted: bool = false
 var _mine_accum_time: float = 0.0
 ## Fractional damage carried over between mining ticks (shared pool for the whole drill area).
 var _mine_pending_damage: float = 0.0
+var _debug_layer: Node2D
 
 
 func _ready() -> void:
@@ -40,6 +42,14 @@ func _ready() -> void:
 		mine_radius_px = _circle_max_world_radius(_drill_shape, 2.0)
 	else:
 		push_warning("MiningVessel: no drill CollisionShape2D; using mine_radius_px=%s" % mine_radius_px)
+	_debug_layer = _MiningDebugLayer.new()
+	_debug_layer._vessel = self
+	_debug_layer.name = "DebugDraw"
+	_debug_layer.z_as_relative = true
+	# Above Hull/Drill art (e.g. Drill may use z_index 1 on that subtree).
+	_debug_layer.z_index = 10
+	add_child(_debug_layer)
+	_debug_layer.add_to_group(&"mining_vessel")
 
 
 ## Same circle as movement (`hull_radius_px` at `global_position`). Call once after `grid` is set (stage start).
@@ -67,41 +77,61 @@ func _physics_process(delta: float) -> void:
 		_fuel_out_emitted = true
 		out_of_fuel.emit()
 
-	if debug_collision_visual:
-		queue_redraw()
+	if GameStatistics.debug_world_visuals and _debug_layer:
+		_debug_layer.queue_redraw()
 
 
-func _draw() -> void:
-	if not debug_collision_visual or grid == null:
+func _draw_mining_debug(ci: CanvasItem) -> void:
+	if not GameStatistics.debug_world_visuals or grid == null:
 		return
 	# Local space: +X is forward; drill center from scene collider.
 	var front_local: Vector2 = (
-		to_local(_drill_shape.global_position)
+		ci.to_local(_drill_shape.global_position)
 		if _drill_shape
 		else (Vector2.RIGHT * mine_radius_px)
 	)
-	var color_hull: Color = Color(0.35, 0.75, 1.0, 0.85)
-	var color_point: Color = Color(1.0, 0.4, 0.4, 0.95)
-	var color_cell_solid: Color = Color(1.0, 0.25, 0.25, 0.9)
-	var color_cell_empty: Color = Color(0.4, 1.0, 0.5, 0.7)
+	# Hull collider footprint (matches `hull_radius_px`).
+	var color_hull_full: Color = Color(0.2, 0.88, 0.42, 0.42)
+	# Grid: empty cells under hull (light green outline). Solid = blocked (red).
+	var color_hull_empty: Color = Color(0.25, 0.95, 0.4, 0.88)
+	var color_hull_blocked: Color = Color(0.95, 0.2, 0.22, 0.9)
+	var color_mine_dot: Color = Color(1.0, 0.12, 0.12, 0.95)
+	var color_drill_bearing: Color = Color(1.0, 0.35, 0.35, 0.85)
 
-	# Hull (movement blocker), centered on the vessel.
-	draw_arc(Vector2.ZERO, hull_radius_px, 0.0, TAU, 48, color_hull, 1.0, true)
+	var cs: float = MiningGrid.CELL_SIZE_PX
+	var hull_c_world: Vector2 = global_position
+	var rh: float = hull_radius_px
+	var rh_blocked: float = rh + maxf(0.0, hull_debug_blocked_pad_px)
 
-	# Mining point — debug disc matches `CircleShape2D` radius in local space.
-	var d_circ: CircleShape2D = _drill_shape.shape as CircleShape2D if _drill_shape else null
-	if d_circ:
-		var drill_edge_w: Vector2 = _drill_shape.global_transform * Vector2(d_circ.radius, 0.0) - _drill_shape.global_position
-		var r_loc: float = (to_local(_drill_shape.global_position + drill_edge_w) - front_local).length()
-		draw_circle(front_local, maxf(r_loc, 0.4), color_point)
-	else:
-		draw_circle(front_local, 1.2, color_point)
-	draw_line(Vector2.ZERO, front_local, color_point, 1.0)
+	# Hull reference (true collider, green disk).
+	ci.draw_circle(Vector2.ZERO, hull_radius_px, color_hull_full)
 
-	# Outline each grid cell the drill circle overlaps (world AABB test).
+	# Inner = actual hull. Outer = inner + pad: collision stops before the hull ever overlaps
+	# most blocking tiles, so red uses the outer circle to mark solids we are pressed against.
+	var out_r: float = maxf(rh, rh_blocked)
+	var hcx0: int = int(floor((hull_c_world.x - out_r) / cs))
+	var hcx1: int = int(floor((hull_c_world.x + out_r) / cs))
+	var hcy0: int = int(floor((hull_c_world.y - out_r) / cs))
+	var hcy1: int = int(floor((hull_c_world.y + out_r) / cs))
+	for cy in range(hcy0, hcy1 + 1):
+		for cx in range(hcx0, hcx1 + 1):
+			if not _circle_overlaps_cell_rect(hull_c_world, rh_blocked, cx, cy):
+				continue
+			var ctr: Vector2 = Vector2((float(cx) + 0.5) * cs, (float(cy) + 0.5) * cs)
+			var is_solid: bool = grid.is_solid_world(ctr)
+			if is_solid:
+				_draw_cell_rect_world_outline(
+					ci, Vector2(float(cx) * cs, float(cy) * cs), cs, color_hull_blocked, 0.5
+				)
+			elif _circle_overlaps_cell_rect(hull_c_world, rh, cx, cy):
+				_draw_cell_rect_world_outline(
+					ci, Vector2(float(cx) * cs, float(cy) * cs), cs, color_hull_empty, 0.5
+				)
+
+	# Drill: small red dots on solid cells in the mining footprint.
 	var drill_c: Vector2 = _drill_center_world()
 	var r: float = mine_radius_px
-	var cs: float = MiningGrid.CELL_SIZE_PX
+	var dot_r: float = maxf(0.6, cs * 0.1)
 	var cx0: int = int(floor((drill_c.x - r) / cs))
 	var cx1: int = int(floor((drill_c.x + r) / cs))
 	var cy0: int = int(floor((drill_c.y - r) / cs))
@@ -110,23 +140,37 @@ func _draw() -> void:
 		for cx in range(cx0, cx1 + 1):
 			if not _circle_overlaps_cell_rect(drill_c, r, cx, cy):
 				continue
-			var ctr := Vector2((float(cx) + 0.5) * cs, (float(cy) + 0.5) * cs)
-			var cell: Vector2i = Vector2i(cx, cy)
-			var tl_world: Vector2 = Vector2(float(cell.x) * cs, float(cell.y) * cs)
-			var tl_local: Vector2 = to_local(tl_world)
-			var x_axis: Vector2 = to_local(tl_world + Vector2(cs, 0.0)) - tl_local
-			var y_axis: Vector2 = to_local(tl_world + Vector2(0.0, cs)) - tl_local
-			var corners: PackedVector2Array = PackedVector2Array([
-				tl_local,
-				tl_local + x_axis,
-				tl_local + x_axis + y_axis,
-				tl_local + y_axis,
-				tl_local,
-			])
-			var solid: bool = grid.is_solid_world(ctr)
-			var occupied_color: Color = color_cell_solid if solid else color_cell_empty
-			for i in range(corners.size() - 1):
-				draw_line(corners[i], corners[i + 1], occupied_color, 0.5)
+			var ctr2: Vector2 = Vector2((float(cx) + 0.5) * cs, (float(cy) + 0.5) * cs)
+			if not grid.is_solid_world(ctr2):
+				continue
+			ci.draw_circle(ci.to_local(ctr2), dot_r, color_mine_dot)
+
+	var d_circ: CircleShape2D = _drill_shape.shape as CircleShape2D if _drill_shape else null
+	if d_circ:
+		var drill_edge_w: Vector2 = (
+			_drill_shape.global_transform * Vector2(d_circ.radius, 0.0) - _drill_shape.global_position
+		)
+		var r_loc: float = (ci.to_local(_drill_shape.global_position + drill_edge_w) - front_local).length()
+		ci.draw_circle(front_local, maxf(r_loc, 0.4), color_drill_bearing)
+	else:
+		ci.draw_circle(front_local, 1.2, color_drill_bearing)
+	ci.draw_line(Vector2.ZERO, front_local, color_drill_bearing, 1.0)
+
+
+func _draw_cell_rect_world_outline(
+	ci: CanvasItem, tl_world: Vector2, cell_size: float, color: Color, width: float
+) -> void:
+	var tl: Vector2 = ci.to_local(tl_world)
+	var ax: Vector2 = ci.to_local(tl_world + Vector2(cell_size, 0.0)) - tl
+	var ay: Vector2 = ci.to_local(tl_world + Vector2(0.0, cell_size)) - tl
+	var c0: Vector2 = tl
+	var c1: Vector2 = tl + ax
+	var c2: Vector2 = tl + ax + ay
+	var c3: Vector2 = tl + ay
+	ci.draw_line(c0, c1, color, width)
+	ci.draw_line(c1, c2, color, width)
+	ci.draw_line(c2, c3, color, width)
+	ci.draw_line(c3, c0, color, width)
 
 
 ## Max world-space distance from the shape's pivot (covers non-uniform scale on the `CollisionShape2D` chain).
@@ -258,3 +302,11 @@ func _tick_mining(delta: float) -> void:
 		var hp_rm: int = grid.mine_solid_in_circle_world(drill_c, mine_radius_px, whole)
 		if hp_rm > 0:
 			GameStatistics.consume_fuel(float(hp_rm))
+
+
+class _MiningDebugLayer extends Node2D:
+	var _vessel: MiningVessel
+
+	func _draw() -> void:
+		if _vessel:
+			_vessel._draw_mining_debug(self)

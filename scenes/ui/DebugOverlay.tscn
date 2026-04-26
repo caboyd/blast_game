@@ -18,7 +18,7 @@ layout_mode = 0
 offset_left = 8.0
 offset_top = 8.0
 offset_right = 300.0
-offset_bottom = 350.0
+offset_bottom = 220.0
 mouse_filter = 0
 
 [node name="VBox" type="VBoxContainer" parent="Panel"]
@@ -28,29 +28,6 @@ theme_override_constants/separation = 6
 [node name="Title" type="Label" parent="Panel/VBox"]
 layout_mode = 2
 text = "DEBUG [F3]"
-
-[node name="RadiusRow" type="HBoxContainer" parent="Panel/VBox"]
-layout_mode = 2
-
-[node name="RadiusLabel" type="Label" parent="Panel/VBox/RadiusRow"]
-layout_mode = 2
-text = "Click Radius"
-
-[node name="RadiusSpin" type="SpinBox" parent="Panel/VBox/RadiusRow"]
-layout_mode = 2
-size_flags_horizontal = 3
-min_value = 1.0
-max_value = 64.0
-step = 1.0
-value = 2.0
-
-[node name="MaxDamage" type="CheckButton" parent="Panel/VBox"]
-layout_mode = 2
-text = "Click Damage: MAX"
-
-[node name="Suicide" type="Button" parent="Panel/VBox"]
-layout_mode = 2
-text = "Suicide (kill player)"
 
 [node name="GoldRow" type="HBoxContainer" parent="Panel/VBox"]
 layout_mode = 2
@@ -71,15 +48,11 @@ value = 1000000.0
 layout_mode = 2
 text = "Give"
 
+[node name="ReturnToPrep" type="Button" parent="Panel/VBox"]
+layout_mode = 2
+text = "Return to Prep"
+
 [node name="DebugVisuals" type="CheckButton" parent="Panel/VBox"]
 layout_mode = 2
 button_pressed = true
 text = "Show Debug Visuals"
-
-[node name="ShowAttackRanges" type="CheckButton" parent="Panel/VBox"]
-layout_mode = 2
-text = "Show Attack Ranges"
-
-[node name="ShowHpBars" type="CheckButton" parent="Panel/VBox"]
-layout_mode = 2
-text = "Show HP Bars (force all)"
