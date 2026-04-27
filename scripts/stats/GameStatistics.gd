@@ -35,8 +35,13 @@ var click_radius_cells: int = 2
 ## Minimum interval between click damage ticks while holding LMB (ms); reduced by click_fire_rate upgrade.
 var click_fire_rate_ms: float = CLICK_FIRE_RATE_START_MS
 
+const FUEL_TANK_BONUS := 10.0
+## Max fuel with zero `fuel_tank` upgrades. Keep in sync with `begin_run` / career reset expectations.
+const BASE_FUEL_MAX := 100.0
+const MINE_UPGRADE_DMG_PER_LEVEL := 0.15
+
 var fuel: float = 100.0
-var fuel_max: float = 100.0
+var fuel_max: float = BASE_FUEL_MAX
 
 ## Master switch for world gizmos (mining vessel hull/drill debug, conveyor bounds, viewport label). Toggled from `DebugOverlay` on planet; default off so Prep (no overlay) is clean.
 var debug_world_visuals: bool = false
@@ -48,7 +53,11 @@ func _ready() -> void:
 
 
 func _on_upgrade_purchased(id: StringName, _new_level: int) -> void:
-	if id == &"melter":
+	if id == &"fuel_tank":
+		_refit_fuel_tank_add_capacity_preserve_fill()
+	elif id == &"mining_power":
+		stats_changed.emit()
+	elif id == &"melter":
 		set_laser_turret_damage(laser_turret_damage + 1)
 	elif id == &"cannon_shell":
 		set_cannon_turret_damage(cannon_turret_damage + 1)
@@ -146,14 +155,15 @@ func add_money(amount: int) -> void:
 	GameSession.save_career()
 
 
-func spend_money(amount: int) -> bool:
+func spend_money(amount: int, persist_career: bool = true) -> bool:
 	if amount <= 0:
 		return true
 	if amount > money:
 		return false
 	money -= amount
 	stats_changed.emit()
-	GameSession.save_career()
+	if persist_career:
+		GameSession.save_career()
 	return true
 
 
@@ -166,6 +176,30 @@ func update_depth_in_cells(instantaneous_depth: int) -> void:
 
 func reset_fuel_for_run() -> void:
 	fuel = fuel_max
+	fuel_changed.emit(fuel, fuel_max)
+	stats_changed.emit()
+
+
+## After career load: full fuel at upgraded max.
+func apply_fuel_max_from_career_load() -> void:
+	var new_m: float = effective_fuel_max()
+	fuel_max = new_m
+	fuel = new_m
+	fuel_changed.emit(fuel, fuel_max)
+	stats_changed.emit()
+
+
+func effective_fuel_max() -> float:
+	return BASE_FUEL_MAX + float(UpgradeBus.get_level(&"fuel_tank")) * FUEL_TANK_BONUS
+
+
+func _refit_fuel_tank_add_capacity_preserve_fill() -> void:
+	var old_m: float = fuel_max
+	var new_m: float = effective_fuel_max()
+	if is_equal_approx(old_m, new_m):
+		return
+	fuel_max = new_m
+	fuel = minf(fuel + (new_m - old_m), new_m)
 	fuel_changed.emit(fuel, fuel_max)
 	stats_changed.emit()
 

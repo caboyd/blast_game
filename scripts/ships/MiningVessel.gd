@@ -24,6 +24,8 @@ var mine_radius_px: float = 2.0
 @export var hull_debug_blocked_pad_px: float = 0.15
 
 var grid: MiningGrid
+## Scene default before `mining_power` career upgrades; effective damage adds `GameStatistics` bonus per level.
+var _base_mine_damage_per_tick: float = 1.0
 var _fuel_out_emitted: bool = false
 var _mine_accum_time: float = 0.0
 ## Fractional damage carried over between mining ticks (shared pool for the whole drill area).
@@ -32,6 +34,7 @@ var _debug_layer: Node2D
 
 
 func _ready() -> void:
+	_base_mine_damage_per_tick = mine_damage_per_tick
 	_hull_shape = _find_hull_collider()
 	_drill_shape = _find_drill_collider()
 	if _hull_shape:
@@ -50,6 +53,10 @@ func _ready() -> void:
 	_debug_layer.z_index = 10
 	add_child(_debug_layer)
 	_debug_layer.add_to_group(&"mining_vessel")
+
+
+func get_effective_mine_damage_per_tick() -> float:
+	return _base_mine_damage_per_tick + float(UpgradeBus.get_level(&"mining_power")) * GameStatistics.MINE_UPGRADE_DMG_PER_LEVEL
 
 
 ## Same circle as movement (`hull_radius_px` at `global_position`). Call once after `grid` is set (stage start).
@@ -188,6 +195,23 @@ func _circle_max_world_radius(collision: CollisionShape2D, fallback: float) -> f
 	return world_r
 
 
+## World-space drill radius from the live collider (shape + `global_transform` includes this node’s scale).
+func get_drill_world_radius_px() -> float:
+	if _drill_shape == null:
+		return mine_radius_px
+	return _circle_max_world_radius(_drill_shape, mine_radius_px)
+
+
+## Radius in the same **game** space as `MiningGrid` (cell = `CELL_SIZE_PX` px), i.e. with this
+## vessel’s `scale` factored out. Use for prep UI when the instance is zoom-scaled; avoids huge `world_r`.
+func get_drill_game_radius_px() -> float:
+	var w: float = get_drill_world_radius_px()
+	var s: float = maxf(absf(scale.x), absf(scale.y))
+	if s > 0.0:
+		w /= s
+	return w
+
+
 ## World offset from this node's origin to the drill (mining sample point).
 func _front_offset() -> Vector2:
 	if _drill_shape:
@@ -293,7 +317,7 @@ func _tick_mining(delta: float) -> void:
 	_mine_accum_time += delta
 	while _mine_accum_time >= mine_interval_s:
 		_mine_accum_time -= mine_interval_s
-		_mine_pending_damage += mine_damage_per_tick
+		_mine_pending_damage += get_effective_mine_damage_per_tick()
 		var whole: int = int(floor(_mine_pending_damage))
 		if whole <= 0:
 			continue

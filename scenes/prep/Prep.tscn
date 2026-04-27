@@ -1,9 +1,20 @@
-[gd_scene load_steps=2 format=3 uid="uid://e7prep0scene01a"]
+[gd_scene format=3 uid="uid://dr7td61b7wsqq"]
 
 [ext_resource type="Script" uid="uid://dy8m3p7vxk01q" path="res://scripts/prep/Prep.gd" id="1"]
 [ext_resource type="PackedScene" uid="uid://c3ujct1udqxw7" path="res://scenes/ships/MiningVessel.tscn" id="2"]
 
-[node name="Prep" type="Control"]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_shop_money_yellow"]
+content_margin_left = 10.0
+content_margin_top = 3.0
+content_margin_right = 10.0
+content_margin_bottom = 3.0
+bg_color = Color(0.97, 0.88, 0.2, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[node name="Prep" type="Control" unique_id=1986349207]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -12,7 +23,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1")
 
-[node name="Background" type="ColorRect" parent="."]
+[node name="Background" type="ColorRect" parent="." unique_id=1398068514]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -22,7 +33,7 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(0.05, 0.07, 0.1, 1)
 
-[node name="Margin" type="MarginContainer" parent="."]
+[node name="Margin" type="MarginContainer" parent="." unique_id=196243730]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -34,96 +45,367 @@ theme_override_constants/margin_top = 24
 theme_override_constants/margin_right = 32
 theme_override_constants/margin_bottom = 24
 
-[node name="RootVBox" type="VBoxContainer" parent="Margin"]
+[node name="RootVBox" type="VBoxContainer" parent="Margin" unique_id=1661894592]
 layout_mode = 2
 theme_override_constants/separation = 20
 
-[node name="Title" type="Label" parent="Margin/RootVBox"]
+[node name="Title" type="Label" parent="Margin/RootVBox" unique_id=1895783301]
 layout_mode = 2
 theme_override_font_sizes/font_size = 28
 text = "Preparation"
 horizontal_alignment = 1
 
-[node name="CareerBlocksLabel" type="Label" parent="Margin/RootVBox"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 16
-text = "Blocks destroyed (all time): 0"
-horizontal_alignment = 1
-
-[node name="MoneyLabel" type="Label" parent="Margin/RootVBox"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 16
-text = "Money: 0"
-horizontal_alignment = 1
-
-[node name="Row" type="HBoxContainer" parent="Margin/RootVBox"]
+[node name="Row" type="HBoxContainer" parent="Margin/RootVBox" unique_id=1648572210]
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/separation = 24
 
-[node name="PreviewCol" type="VBoxContainer" parent="Margin/RootVBox/Row"]
+[node name="PreviewCol" type="HBoxContainer" parent="Margin/RootVBox/Row" unique_id=1849036633]
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 20
+
+[node name="StatsPanel" type="PanelContainer" parent="Margin/RootVBox/Row/PreviewCol" unique_id=693100440]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.6
+
+[node name="StatsMargin" type="MarginContainer" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel" unique_id=1100000668]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 12
+
+[node name="StatsOuter" type="VBoxContainer" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin" unique_id=308527311]
+layout_mode = 2
+size_flags_vertical = 3
 theme_override_constants/separation = 8
 
-[node name="ShipLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol"]
+[node name="StatsTitle" type="Label" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter" unique_id=574224669]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Stats"
+horizontal_alignment = 1
+
+[node name="StatsTabs" type="TabContainer" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter" unique_id=554083702]
+layout_mode = 2
+size_flags_vertical = 3
+current_tab = 0
+
+[node name="Ship" type="MarginContainer" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs" unique_id=501965394]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/margin_left = 4
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 4
+theme_override_constants/margin_bottom = 4
+metadata/_tab_index = 0
+
+[node name="ShipVBox" type="VBoxContainer" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship" unique_id=463639130]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ShipFuelLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox" unique_id=570433817]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Fuel: 100 / 100"
+autowrap_mode = 3
+
+[node name="MiningRadiusLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox" unique_id=127091633]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Mining Radius: 1.00"
+autowrap_mode = 3
+
+[node name="MoveSpeedLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox" unique_id=1484864996]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Move Speed: 8"
+autowrap_mode = 3
+
+[node name="MiningPowerLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox" unique_id=1560011577]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Mining Power: 1.0"
+autowrap_mode = 3
+
+[node name="MiningIntervalLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox" unique_id=54666752]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Mining Interval: 0.2"
+autowrap_mode = 3
+
+[node name="MiningPowerPerSecLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox" unique_id=1959943120]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Mining Power / s: 5.0"
+autowrap_mode = 3
+
+[node name="Progress" type="MarginContainer" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs" unique_id=359199658]
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/margin_left = 4
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 4
+theme_override_constants/margin_bottom = 4
+metadata/_tab_index = 1
+
+[node name="ProgressVBox" type="VBoxContainer" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Progress" unique_id=70559101]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CareerBlocksLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Progress/ProgressVBox" unique_id=417420215]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Blocks destroyed (all time): 0"
+autowrap_mode = 3
+
+[node name="MoneyLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Progress/ProgressVBox" unique_id=176120160]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Money: 0"
+autowrap_mode = 3
+
+[node name="DepthLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Progress/ProgressVBox" unique_id=1968221354]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Furthest depth: 0 cells"
+autowrap_mode = 3
+
+[node name="VesselColumn" type="VBoxContainer" parent="Margin/RootVBox/Row/PreviewCol" unique_id=1578879453]
+custom_minimum_size = Vector2(360, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.4
+theme_override_constants/separation = 4
+
+[node name="VesselTabs" type="TabContainer" parent="Margin/RootVBox/Row/PreviewCol/VesselColumn" unique_id=1437096350]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 16
+current_tab = 1
+
+[node name="Preview" type="VBoxContainer" parent="Margin/RootVBox/Row/PreviewCol/VesselColumn/VesselTabs" unique_id=2006811125]
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+metadata/_tab_index = 0
+
+[node name="ShipLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/VesselColumn/VesselTabs/Preview" unique_id=1890885564]
 layout_mode = 2
 text = "Mining Vessel"
 horizontal_alignment = 1
 
-[node name="SubViewportContainer" type="SubViewportContainer" parent="Margin/RootVBox/Row/PreviewCol"]
-custom_minimum_size = Vector2(640, 400)
+[node name="SubViewportContainer" type="SubViewportContainer" parent="Margin/RootVBox/Row/PreviewCol/VesselColumn/VesselTabs/Preview" unique_id=1498962718]
+custom_minimum_size = Vector2(400, 360)
 layout_mode = 2
 size_flags_vertical = 3
 stretch = true
 
-[node name="SubViewport" type="SubViewport" parent="Margin/RootVBox/Row/PreviewCol/SubViewportContainer"]
+[node name="SubViewport" type="SubViewport" parent="Margin/RootVBox/Row/PreviewCol/VesselColumn/VesselTabs/Preview/SubViewportContainer" unique_id=71169305]
 handle_input_locally = false
-size = Vector2i(640, 400)
-render_target_update_mode = 4
+size = Vector2i(400, 360)
+render_target_update_mode = 0
 
-[node name="Camera2D" type="Camera2D" parent="Margin/RootVBox/Row/PreviewCol/SubViewportContainer/SubViewport"]
-position = Vector2(240, 200)
-current = true
+[node name="Camera2D" type="Camera2D" parent="Margin/RootVBox/Row/PreviewCol/VesselColumn/VesselTabs/Preview/SubViewportContainer/SubViewport" unique_id=577357977]
+position = Vector2(200, 180)
 
-[node name="World" type="Node2D" parent="Margin/RootVBox/Row/PreviewCol/SubViewportContainer/SubViewport"]
-position = Vector2(0, 0)
+[node name="World" type="Node2D" parent="Margin/RootVBox/Row/PreviewCol/VesselColumn/VesselTabs/Preview/SubViewportContainer/SubViewport" unique_id=362404321]
 
-[node name="MiningVessel" parent="Margin/RootVBox/Row/PreviewCol/SubViewportContainer/SubViewport/World" instance=ExtResource("2")]
-position = Vector2(240, 200)
+[node name="MiningVessel" parent="Margin/RootVBox/Row/PreviewCol/VesselColumn/VesselTabs/Preview/SubViewportContainer/SubViewport/World" unique_id=16454101 instance=ExtResource("2")]
+position = Vector2(200, 180)
 scale = Vector2(8, 8)
 
-[node name="ShopPanel" type="Panel" parent="Margin/RootVBox/Row"]
+[node name="Stage" type="MarginContainer" parent="Margin/RootVBox/Row/PreviewCol/VesselColumn/VesselTabs" unique_id=2107525904]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/margin_left = 4
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 4
+theme_override_constants/margin_bottom = 4
+metadata/_tab_index = 1
+
+[node name="StageScroll" type="ScrollContainer" parent="Margin/RootVBox/Row/PreviewCol/VesselColumn/VesselTabs/Stage" unique_id=262005053]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="StageVBox" type="VBoxContainer" parent="Margin/RootVBox/Row/PreviewCol/VesselColumn/VesselTabs/Stage/StageScroll" unique_id=783277851]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="StageSummaryLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/VesselColumn/VesselTabs/Stage/StageScroll/StageVBox" unique_id=738306154]
+layout_mode = 2
+text = "Stage: planet1"
+autowrap_mode = 3
+
+[node name="BlockTypesLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/VesselColumn/VesselTabs/Stage/StageScroll/StageVBox" unique_id=609788534]
+layout_mode = 2
+text = "Planet with basic resources"
+autowrap_mode = 3
+
+[node name="StageTypeTree" type="Tree" parent="Margin/RootVBox/Row/PreviewCol/VesselColumn/VesselTabs/Stage/StageScroll/StageVBox" unique_id=318527422]
+custom_minimum_size = Vector2(0, 100)
+layout_mode = 2
+size_flags_vertical = 3
+columns = 3
+column_titles_visible = true
+allow_reselect = true
+allow_rmb_select = true
+hide_root = true
+scroll_horizontal_enabled = false
+
+[node name="ShopPanel" type="Panel" parent="Margin/RootVBox/Row" unique_id=953443657]
 custom_minimum_size = Vector2(280, 0)
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="ShopLabel" type="Label" parent="Margin/RootVBox/Row/ShopPanel"]
+[node name="ShopMargin" type="MarginContainer" parent="Margin/RootVBox/Row/ShopPanel" unique_id=233225173]
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -120.0
-offset_top = -12.0
-offset_right = 120.0
-offset_bottom = 12.0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = 6.0
+offset_bottom = 2.0
 grow_horizontal = 2
 grow_vertical = 2
-text = "Turret Shop (WIP)"
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 10
+
+[node name="ShopInner" type="VBoxContainer" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin" unique_id=737010130]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="ShopMoneyRow" type="CenterContainer" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner" unique_id=436528632]
+layout_mode = 2
+
+[node name="ShopMoneyPanel" type="PanelContainer" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/ShopMoneyRow" unique_id=827609053]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_shop_money_yellow")
+
+[node name="ShopMoneyLabel" type="Label" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/ShopMoneyRow/ShopMoneyPanel" unique_id=1806844309]
+layout_mode = 2
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_font_sizes/font_size = 16
+text = "Money: 0"
 horizontal_alignment = 1
 
-[node name="StartMission" type="Button" parent="Margin/RootVBox"]
+[node name="ShopLabel" type="Label" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner" unique_id=1468793434]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Upgrades"
+horizontal_alignment = 1
+
+[node name="MiningRow" type="VBoxContainer" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner" unique_id=1587319152]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="MiningInfo" type="Label" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/MiningRow" unique_id=353491673]
+layout_mode = 2
+text = "+0.15 Mining Power"
+
+[node name="MiningBuyRow" type="HBoxContainer" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/MiningRow" unique_id=1320572409]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="MiningTierStack" type="Control" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/MiningRow/MiningBuyRow" unique_id=125482731]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="MiningTierProgress" type="ProgressBar" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/MiningRow/MiningBuyRow/MiningTierStack" unique_id=96046111]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+max_value = 10.0
+show_percentage = false
+
+[node name="MiningTierLabel" type="Label" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/MiningRow/MiningBuyRow/MiningTierStack" unique_id=125482734]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 14
+text = "0 / 10"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="MiningBtn" type="Button" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/MiningRow/MiningBuyRow" unique_id=282932464]
+custom_minimum_size = Vector2(96, 32)
+layout_mode = 2
+text = "10 $"
+
+[node name="FuelRow" type="VBoxContainer" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner" unique_id=425057825]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="FuelInfo" type="Label" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/FuelRow" unique_id=15810254]
+layout_mode = 2
+text = "+10 Max Fuel"
+
+[node name="FuelBuyRow" type="HBoxContainer" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/FuelRow" unique_id=1097898374]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="FuelTierStack" type="Control" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/FuelRow/FuelBuyRow" unique_id=622102796]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="FuelTierProgress" type="ProgressBar" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/FuelRow/FuelBuyRow/FuelTierStack" unique_id=979838487]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+max_value = 10.0
+show_percentage = false
+
+[node name="FuelTierLabel" type="Label" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/FuelRow/FuelBuyRow/FuelTierStack" unique_id=622102799]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 14
+text = "0 / 10"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="FuelBtn" type="Button" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/FuelRow/FuelBuyRow" unique_id=82409858]
+custom_minimum_size = Vector2(96, 32)
+layout_mode = 2
+text = "10 $"
+
+[node name="StartMission" type="Button" parent="Margin/RootVBox" unique_id=368516084]
 custom_minimum_size = Vector2(0, 48)
 layout_mode = 2
 text = "Start Mission"
 
-[node name="DebugRow" type="HBoxContainer" parent="Margin/RootVBox"]
+[node name="DebugRow" type="HBoxContainer" parent="Margin/RootVBox" unique_id=321756292]
 layout_mode = 2
 alignment = 2
 
-[node name="DebugResetProgress" type="Button" parent="Margin/RootVBox/DebugRow"]
+[node name="DebugResetProgress" type="Button" parent="Margin/RootVBox/DebugRow" unique_id=541474577]
 custom_minimum_size = Vector2(220, 32)
 layout_mode = 2
 text = "DEBUG: Reset All Progress"

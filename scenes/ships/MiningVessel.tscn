@@ -6,7 +6,7 @@
 radius = 3.0000005
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_iwkxr"]
-radius = 3.636364
+radius = 3.0
 
 [node name="MiningVessel" type="Node2D" unique_id=665882411]
 script = ExtResource("1")

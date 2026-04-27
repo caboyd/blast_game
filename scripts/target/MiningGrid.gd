@@ -5,7 +5,7 @@ const CHUNK_SIZE := 40
 const CELL_SIZE_PX := 8.0
 
 const TYPE_EMPTY := 0
-const TYPE_GREY := 1
+const TYPE_STONE := 1
 const TYPE_GOLD := 2
 const TYPE_COUNT := 3
 
@@ -111,15 +111,15 @@ func _ensure_chunk(chunk: Vector2i) -> void:
 	var revealed := PackedByteArray()
 	revealed.resize(n)
 
-	var grey_hp: int = clampi(int(TYPE_MAX_HP[TYPE_GREY]), 0, 255)
+	var stone_hp: int = clampi(int(TYPE_MAX_HP[TYPE_STONE]), 0, 255)
 	var gold_hp: int = clampi(int(TYPE_MAX_HP[TYPE_GOLD]), 0, 255)
 	for i in n:
 		if rng.randf() < gold_density:
 			cells[i] = TYPE_GOLD
 			hp[i] = gold_hp
 		else:
-			cells[i] = TYPE_GREY
-			hp[i] = grey_hp
+			cells[i] = TYPE_STONE
+			hp[i] = stone_hp
 
 	_chunks[chunk] = {"cells": cells, "hp": hp, "revealed": revealed}
 	_apply_static_overrides_for_chunk(chunk)
@@ -153,6 +153,14 @@ func _load_persisted_reveals() -> void:
 		for i in lim:
 			rev[i] = barr[i]
 	_visual_dirty = true
+
+
+## Mineable block types for prep UI (per-stage list; uses TYPE_MAX_HP / TYPE_MONEY).
+static func get_stage_block_type_rows() -> Array[Dictionary]:
+	return [
+		{"type_id": TYPE_STONE, "label": "Stone"},
+		{"type_id": TYPE_GOLD, "label": "Gold"},
+	]
 
 
 func _flush_reveal_save() -> void:

@@ -45,6 +45,8 @@ func _load_career() -> void:
 		return
 	career_blocks_destroyed = int(c.get_value(_CAREER_SECTION, _CAREER_KEY_BLOCKS, 0))
 	GameStatistics.money = maxi(0, int(c.get_value(_CAREER_SECTION, _CAREER_KEY_MONEY, 0)))
+	UpgradeBus.read_from_career_config(c)
+	GameStatistics.apply_fuel_max_from_career_load()
 
 
 ## Persists career blocks + current money. Debounced to one write per frame when called from `GameStatistics` money changes.
@@ -64,6 +66,7 @@ func _write_career_to_disk() -> void:
 	var c := ConfigFile.new()
 	c.set_value(_CAREER_SECTION, _CAREER_KEY_BLOCKS, career_blocks_destroyed)
 	c.set_value(_CAREER_SECTION, _CAREER_KEY_MONEY, GameStatistics.money)
+	UpgradeBus.write_to_career_config(c)
 	var err := c.save(_CAREER_SAVE_PATH)
 	if err != OK:
 		push_error("GameSession._write_career_to_disk failed: %s" % error_string(err))
@@ -140,7 +143,7 @@ func reset_all_progress() -> void:
 	GameStatistics.click_damage = 1
 	GameStatistics.click_radius_cells = 2
 	GameStatistics.click_fire_rate_ms = GameStatistics.CLICK_FIRE_RATE_START_MS
-	GameStatistics.fuel_max = 100.0
+	GameStatistics.fuel_max = GameStatistics.BASE_FUEL_MAX
 	GameStatistics.fuel = GameStatistics.fuel_max
 	UpgradeBus._levels.clear()
 	_career_write_pending = false

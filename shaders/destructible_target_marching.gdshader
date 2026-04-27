@@ -111,7 +111,7 @@ void fragment() {
 	float damage_taken = 1.0 - hp_ratio;
 	vec4 base = type_colors[best_id];
 	vec3 rgb;
-	// Grey (id 1): lower HP = darker; damage also desaturates toward luminance (no red tint).
+	// Stone (id 1): lower HP = darker; damage also desaturates toward luminance (no red tint).
 	if (best_id == 1) {
 		rgb = base.rgb * mix(0.3, 1.0, hp_ratio);
 		float lum = dot(rgb, vec3(0.2126, 0.7152, 0.0722));

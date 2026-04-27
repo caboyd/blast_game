@@ -7,6 +7,8 @@ extends Node
 signal upgrade_purchased(id: StringName, new_level: int)
 
 const DEFS: Dictionary = {
+	&"mining_power": {"base_cost": 10, "multiplier": 1.1, "max_level": 10},
+	&"fuel_tank": {"base_cost": 10, "multiplier": 1.1, "max_level": 10},
 	&"laser_count": {"base_cost": 120, "multiplier": 2.0},
 	&"laser_fire_rate": {"base_cost": 100, "multiplier": 2.0, "max_level": 0},
 	&"melter": {"base_cost": 100, "multiplier": 2.0},
@@ -94,16 +96,33 @@ func can_purchase(id: StringName) -> bool:
 
 
 func try_purchase(id: StringName) -> bool:
-	if not DEFS.has(id):
-		return false
-	if is_maxed(id):
-		return false
-	if not can_afford(id):
+	if not can_purchase(id):
 		return false
 	var cost := get_cost(id)
-	if not GameStatistics.spend_money(cost):
+	if not GameStatistics.spend_money(cost, false):
 		return false
 	var new_level := get_level(id) + 1
 	_levels[id] = new_level
 	upgrade_purchased.emit(id, new_level)
+	GameSession.save_career()
 	return true
+
+
+const _CONFIG_SECTION := "upgrades"
+
+
+func read_from_career_config(c: ConfigFile) -> void:
+	_levels.clear()
+	if not c.has_section(_CONFIG_SECTION):
+		return
+	for id in DEFS:
+		var n: int = int(c.get_value(_CONFIG_SECTION, String(id), 0)) if c.has_section_key(
+			_CONFIG_SECTION, String(id)
+		) else 0
+		if n > 0:
+			_levels[id] = n
+
+
+func write_to_career_config(c: ConfigFile) -> void:
+	for id in DEFS:
+		c.set_value(_CONFIG_SECTION, String(id), get_level(id))
