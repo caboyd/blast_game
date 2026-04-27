@@ -3,9 +3,33 @@ extends Node
 const MiningVesselScene := preload("res://scenes/ships/MiningVessel.tscn")
 const BottomHUDScene := preload("res://scenes/ui/BottomHUD.tscn")
 const PrepScene := preload("res://scenes/prep/Prep.tscn")
+const ScoutVesselData := preload("res://data/vessels/scout.tres")
+const VesselUpgradeDataScript := preload("res://scripts/data/VesselUpgradeData.gd")
+const VesselUpgradeMathScript := preload("res://scripts/data/VesselUpgradeMath.gd")
 
 
 func _ready() -> void:
+	var scout: Resource = ScoutVesselData as Resource
+	_assert_true(scout != null, "scout vessel resource loads")
+	_assert_true(scout.get("id") == &"scout", "scout id")
+	_assert_approx(float(scout.get("move_speed_px_s")), 8.0, "scout base move speed")
+	var vsp: Resource = null
+	for u in scout.get("upgrades") as Array:
+		if u != null and u.get("id") == &"vessel_speed":
+			vsp = u
+			break
+	_assert_true(vsp != null, "vessel_speed upgrade exists")
+	_assert_eq(int(vsp.get("base_cost")), 10, "vessel_speed base cost")
+	var vfx: Array = vsp.get("effects") as Array
+	_assert_approx(float(vfx[0].get("value")), 1.0, "vessel_speed add per level")
+
+	var ud_linear = VesselUpgradeDataScript.new()
+	ud_linear.base_cost = 10
+	ud_linear.cost_operation = "add"
+	ud_linear.cost_value = 5.0
+	_assert_eq(VesselUpgradeMathScript.cost_at_level(ud_linear, 0), 10, "add cost L0")
+	_assert_eq(VesselUpgradeMathScript.cost_at_level(ud_linear, 1), 15, "add cost L1")
+
 	var vessel := MiningVesselScene.instantiate() as MiningVessel
 	add_child(vessel)
 	await get_tree().process_frame
@@ -38,8 +62,8 @@ func _ready() -> void:
 	GameStatistics.money = 1000
 	_assert_eq(UpgradeBus.get_purchase_count_for_request(&"mining_power", 5), 5, "fixed batch count")
 	_assert_eq(UpgradeBus.get_purchase_cost_for_count(&"mining_power", 3), 33, "three-level batch cost")
-	_assert_eq(UpgradeBus.get_purchase_count_for_request(&"mining_power", -1), 10, "max batch count")
-	_assert_eq(UpgradeBus.get_purchase_cost_for_count(&"mining_power", 10), 159, "max batch cost")
+	_assert_eq(UpgradeBus.get_purchase_count_for_request(&"mining_power", -1), 20, "max batch count")
+	_assert_eq(UpgradeBus.get_purchase_cost_for_count(&"mining_power", 20), 574, "max batch cost")
 	_assert_true(UpgradeBus.try_purchase_count(&"mining_power", 5), "five-level purchase succeeds")
 	_assert_eq(UpgradeBus.get_level(&"mining_power"), 5, "five-level purchase level")
 	_assert_eq(GameStatistics.money, 939, "five-level purchase money")
@@ -52,7 +76,7 @@ func _ready() -> void:
 	hud.set_upgrade_batch_request_for_test(5)
 	_assert_eq_string(hud.get_upgrade_cost_display_for_test(&"mining_power"), "5x $61", "5x HUD cost")
 	hud.set_upgrade_batch_request_for_test(-1)
-	_assert_eq_string(hud.get_upgrade_cost_display_for_test(&"mining_power"), "10x $159", "max HUD cost")
+	_assert_eq_string(hud.get_upgrade_cost_display_for_test(&"mining_power"), "20x $574", "max HUD cost")
 	hud.queue_free()
 
 	UpgradeBus._levels.clear()
@@ -63,7 +87,7 @@ func _ready() -> void:
 	prep.set_upgrade_batch_request_for_test(5)
 	_assert_eq_string(prep.get_shop_cost_display_for_test(&"mining_power"), "5x $61", "5x prep cost")
 	prep.set_upgrade_batch_request_for_test(-1)
-	_assert_eq_string(prep.get_shop_cost_display_for_test(&"mining_power"), "10x $159", "max prep cost")
+	_assert_eq_string(prep.get_shop_cost_display_for_test(&"mining_power"), "20x $574", "max prep cost")
 	prep.queue_free()
 
 	vessel.queue_free()

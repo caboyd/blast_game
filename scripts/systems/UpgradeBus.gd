@@ -1,17 +1,15 @@
 extends Node
 
+const _VESSEL_UPGRADE_MATH = preload("res://scripts/data/VesselUpgradeMath.gd")
+
 ## Central hub for upgrade purchases. UI calls `try_purchase`; gameplay systems connect to `upgrade_purchased`.
-## Optional `max_level` in DEFS (inclusive cap on stored level after purchases). Omit `max_level` for infinite levels.
+## Mining upgrade defs/costs come from `VesselDataRegistry` (per-vessel `.tres`). Legacy combat/click defs stay in code.
+## Optional `max_level` in legacy defs (inclusive cap). Omit `max_level` for infinite levels.
 ## `laser_count` / `cannon_count` caps come from current Ship small-slot pool (shared).
 
 signal upgrade_purchased(id: StringName, new_level: int)
 
-const DEFS: Dictionary = {
-	&"mining_power": {"base_cost": 10, "multiplier": 1.1, "max_level": 20},
-	&"fuel_tank": {"base_cost": 10, "multiplier": 1.1, "max_level": 1000},
-	&"visibility_range": {"base_cost": 10, "multiplier": 1.1, "max_level": 10},
-	&"vessel_speed": {"base_cost": 10, "multiplier": 1.1, "max_level": 100},
-	&"drill_range": {"base_cost": 5, "multiplier": 1.1, "max_level": 10},
+const LEGACY_UPGRADE_DEFS: Dictionary = {
 	&"laser_count": {"base_cost": 120, "multiplier": 2.0},
 	&"laser_fire_rate": {"base_cost": 100, "multiplier": 2.0, "max_level": 0},
 	&"melter": {"base_cost": 100, "multiplier": 2.0},
@@ -26,6 +24,10 @@ const DEFS: Dictionary = {
 }
 
 var _levels: Dictionary = {}  # StringName -> int
+
+
+func has_def(id: StringName) -> bool:
+	return LEGACY_UPGRADE_DEFS.has(id) or VesselDataRegistry.has_upgrade(id)
 
 
 func get_level(id: StringName) -> int:
@@ -57,11 +59,14 @@ func _max_level_for_turret_count(id: StringName) -> int:
 
 ## Returns inclusive max level, or -1 if unlimited.
 func get_max_level(id: StringName) -> int:
-	if not DEFS.has(id):
+	var vud: Resource = VesselDataRegistry.get_upgrade(id)
+	if vud != null:
+		return int(vud.get("max_level"))
+	if not LEGACY_UPGRADE_DEFS.has(id):
 		return 0
 	if id == &"laser_count" or id == &"cannon_count":
 		return _max_level_for_turret_count(id)
-	var d: Dictionary = DEFS[id]
+	var d: Dictionary = LEGACY_UPGRADE_DEFS[id]
 	if not d.has("max_level"):
 		return -1
 	return int(d["max_level"])
@@ -75,26 +80,34 @@ func is_maxed(id: StringName) -> bool:
 
 
 func can_upgrade(id: StringName) -> bool:
-	return DEFS.has(id) and not is_maxed(id)
+	return has_def(id) and not is_maxed(id)
 
 
 func get_cost(id: StringName) -> int:
-	if not DEFS.has(id):
+	if not has_def(id):
 		return 999999999
 	return _cost_at_level(id, get_level(id))
 
 
-func _cost_at_level(id: StringName, level: int) -> int:
-	if not DEFS.has(id):
-		return 999999999
-	var base: int = int(DEFS[id].get("base_cost", 100))
-	var mult: float = float(DEFS[id].get("multiplier", 2.0))
+func _legacy_cost_at_level(id: StringName, level: int) -> int:
+	var d: Dictionary = LEGACY_UPGRADE_DEFS[id]
+	var base: int = int(d.get("base_cost", 100))
+	var mult: float = float(d.get("multiplier", 2.0))
 	var c: float = float(base) * pow(mult, float(level))
 	return maxi(1, int(round(c)))
 
 
+func _cost_at_level(id: StringName, level: int) -> int:
+	var vud: Resource = VesselDataRegistry.get_upgrade(id)
+	if vud != null:
+		return _VESSEL_UPGRADE_MATH.cost_at_level(vud, level)
+	if LEGACY_UPGRADE_DEFS.has(id):
+		return _legacy_cost_at_level(id, level)
+	return 999999999
+
+
 func can_afford(id: StringName) -> bool:
-	if not DEFS.has(id):
+	if not has_def(id):
 		return false
 	return GameStatistics.money >= get_cost(id)
 
@@ -104,7 +117,7 @@ func can_purchase(id: StringName) -> bool:
 
 
 func get_purchase_count_for_request(id: StringName, requested_count: int) -> int:
-	if not DEFS.has(id) or requested_count == 0 or is_maxed(id):
+	if not has_def(id) or requested_count == 0 or is_maxed(id):
 		return 0
 	var desired: int = requested_count
 	if requested_count < 0:
@@ -128,7 +141,7 @@ func get_purchase_count_for_request(id: StringName, requested_count: int) -> int
 
 
 func get_purchase_cost_for_count(id: StringName, count: int) -> int:
-	if not DEFS.has(id) or count <= 0 or is_maxed(id):
+	if not has_def(id) or count <= 0 or is_maxed(id):
 		return 0
 	var cap: int = get_max_level(id)
 	var level: int = get_level(id)
@@ -164,18 +177,35 @@ func try_purchase_count(id: StringName, requested_count: int) -> bool:
 const _CONFIG_SECTION := "upgrades"
 
 
+func _all_persisted_upgrade_ids() -> Array[StringName]:
+	var id_set: Dictionary = {}
+	for k in LEGACY_UPGRADE_DEFS:
+		id_set[k] = true
+	var vd: Resource = VesselDataRegistry.get_active()
+	if vd != null:
+		var ups: Array = vd.get("upgrades") as Array
+		for u in ups:
+			if u != null:
+				id_set[u.get("id")] = true
+	for k in _levels:
+		id_set[k] = true
+	var out: Array[StringName] = []
+	for idn in id_set:
+		out.append(idn)
+	return out
+
+
 func read_from_career_config(c: ConfigFile) -> void:
 	_levels.clear()
 	if not c.has_section(_CONFIG_SECTION):
 		return
-	for id in DEFS:
-		var n: int = int(c.get_value(_CONFIG_SECTION, String(id), 0)) if c.has_section_key(
-			_CONFIG_SECTION, String(id)
-		) else 0
+	for k in c.get_section_keys(_CONFIG_SECTION):
+		var id: StringName = StringName(k)
+		var n: int = int(c.get_value(_CONFIG_SECTION, k, 0))
 		if n > 0:
 			_levels[id] = n
 
 
 func write_to_career_config(c: ConfigFile) -> void:
-	for id in DEFS:
+	for id in _all_persisted_upgrade_ids():
 		c.set_value(_CONFIG_SECTION, String(id), get_level(id))

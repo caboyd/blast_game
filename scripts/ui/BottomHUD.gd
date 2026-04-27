@@ -13,7 +13,7 @@ const DEFAULT_STAT_CONFIG: Array[Dictionary] = [
 	{"id": &"ship_hp", "name": "fuel"},
 ]
 
-## Per-source `upgrades` entries map to UpgradeBus.DEFS. Optional `max_level` in DEFS caps levels; omit for infinite.
+## Per-source `upgrades` entries use `UpgradeBus.has_def` (legacy defs + mining defs from `VesselDataRegistry`).
 const DEFAULT_UPGRADE_CONFIG: Array[Dictionary] = [
 	{
 		"id": &"laser_turret",
@@ -220,12 +220,14 @@ func _set_expanded_horizontal_layout() -> void:
 
 ## Pixels from bottom of viewport to topmost visible HUD pixel (includes handle above panel).
 func get_occlusion_bottom_reserve_px() -> int:
+	if not is_inside_tree():
+		return _occlusion_reserve_fallback_px()
 	var r: Rect2 = get_global_rect()
 	for c in get_children():
 		if c is Control and (c as Control).visible:
 			r = r.merge((c as Control).get_global_rect())
 	var vp: Viewport = get_viewport()
-	if vp == null:
+	if vp == null and is_inside_tree():
 		var st := get_tree()
 		if st != null:
 			vp = st.root as Viewport
@@ -235,6 +237,15 @@ func get_occlusion_bottom_reserve_px() -> int:
 	var top_y: float = r.position.y
 	var reserve: float = vis.end.y - top_y
 	return maxi(ceili(reserve), 1)
+
+
+func _occlusion_reserve_fallback_px() -> int:
+	var h: float = 0.0
+	if outer != null:
+		h = maxf(h, outer.get_combined_minimum_size().y)
+	if handle_wrap != null:
+		h = maxf(h, handle_wrap.get_combined_minimum_size().y)
+	return maxi(ceili(h), 1)
 
 
 func _on_fuel_changed(_current: float, _max: float) -> void:

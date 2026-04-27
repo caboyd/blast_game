@@ -36,6 +36,12 @@ var _debug_layer: Node2D
 
 
 func _ready() -> void:
+	var vd: Resource = VesselDataRegistry.get_active()
+	if vd != null:
+		move_speed_px_s = float(vd.get("move_speed_px_s"))
+		vision_radius_cells = int(vd.get("vision_radius_cells"))
+		mine_damage_per_tick = float(vd.get("mine_damage_per_tick"))
+		mine_interval_s = float(vd.get("mine_interval_s"))
 	_base_mine_damage_per_tick = mine_damage_per_tick
 	_base_move_speed_px_s = move_speed_px_s
 	_base_vision_radius_cells = vision_radius_cells
@@ -60,22 +66,18 @@ func _ready() -> void:
 
 
 func get_effective_mine_damage_per_tick() -> float:
-	return _base_mine_damage_per_tick + float(UpgradeBus.get_level(&"mining_power")) * GameStatistics.MINE_UPGRADE_DMG_PER_LEVEL
+	return VesselDataRegistry.apply_effects_for_stat(&"mine_damage_per_tick", _base_mine_damage_per_tick)
 
 
 func get_effective_vision_radius_cells() -> int:
 	return maxi(
 		1,
-		_base_vision_radius_cells
-		+ UpgradeBus.get_level(&"visibility_range") * GameStatistics.VISIBILITY_RANGE_UPGRADE_CELLS_PER_LEVEL
+		VesselDataRegistry.apply_effects_for_stat_int(&"vision_radius_cells", _base_vision_radius_cells)
 	)
 
 
 func get_effective_move_speed_px_s() -> float:
-	return (
-		_base_move_speed_px_s
-		+ float(UpgradeBus.get_level(&"vessel_speed")) * GameStatistics.VESSEL_SPEED_UPGRADE_PX_PER_LEVEL
-	)
+	return VesselDataRegistry.apply_effects_for_stat(&"move_speed_px_s", _base_move_speed_px_s)
 
 
 ## Same circle as movement (`hull_radius_px` at `global_position`). Call once after `grid` is set (stage start).
@@ -237,10 +239,7 @@ func _game_to_world_radius_scale() -> float:
 
 
 func get_effective_drill_world_radius_px() -> float:
-	var bonus_game_px: float = (
-		float(UpgradeBus.get_level(&"drill_range")) * GameStatistics.DRILL_RANGE_UPGRADE_PX_PER_LEVEL
-	)
-	return get_drill_world_radius_px() + bonus_game_px * _game_to_world_radius_scale()
+	return get_effective_drill_game_radius_px() * _game_to_world_radius_scale()
 
 
 ## Radius in the same **game** space as `MiningGrid` (cell = `CELL_SIZE_PX` px), i.e. with this
@@ -254,11 +253,9 @@ func get_drill_game_radius_px() -> float:
 
 
 func get_effective_drill_game_radius_px() -> float:
-	var w: float = get_effective_drill_world_radius_px()
-	var s: float = _game_to_world_radius_scale()
-	if s > 0.0:
-		w /= s
-	return w
+	var base_game: float = get_drill_game_radius_px()
+	var bonus: float = VesselDataRegistry.apply_effects_for_stat(&"drill_range_bonus_game_px", 0.0)
+	return base_game + bonus
 
 
 func get_debug_drill_draw_radius_px() -> float:

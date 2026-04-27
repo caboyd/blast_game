@@ -1,0 +1,91 @@
+[gd_resource type="Resource" script_class="VesselData" load_steps=14 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/VesselData.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/data/VesselUpgradeData.gd" id="2"]
+[ext_resource type="Script" path="res://scripts/data/VesselUpgradeEffect.gd" id="3"]
+
+[sub_resource type="Resource" id="eff_mp"]
+script = ExtResource("3")
+stat = &"mine_damage_per_tick"
+operation = "add"
+value = 0.15
+
+[sub_resource type="Resource" id="eff_ft"]
+script = ExtResource("3")
+stat = &"fuel_max"
+operation = "add"
+value = 25.0
+
+[sub_resource type="Resource" id="eff_vis"]
+script = ExtResource("3")
+stat = &"vision_radius_cells"
+operation = "add"
+value = 1.0
+
+[sub_resource type="Resource" id="eff_sp"]
+script = ExtResource("3")
+stat = &"move_speed_px_s"
+operation = "add"
+value = 1.0
+
+[sub_resource type="Resource" id="eff_dr"]
+script = ExtResource("3")
+stat = &"drill_range_bonus_game_px"
+operation = "add"
+value = 1.0
+
+[sub_resource type="Resource" id="up_mp"]
+script = ExtResource("2")
+id = &"mining_power"
+base_cost = 10
+cost_operation = "multiply"
+cost_value = 1.1
+max_level = 20
+effects = Array[ExtResource("3")]([SubResource("eff_mp")])
+
+[sub_resource type="Resource" id="up_ft"]
+script = ExtResource("2")
+id = &"fuel_tank"
+base_cost = 10
+cost_operation = "multiply"
+cost_value = 1.1
+max_level = 1000
+effects = Array[ExtResource("3")]([SubResource("eff_ft")])
+
+[sub_resource type="Resource" id="up_vis"]
+script = ExtResource("2")
+id = &"visibility_range"
+base_cost = 10
+cost_operation = "multiply"
+cost_value = 1.1
+max_level = 10
+effects = Array[ExtResource("3")]([SubResource("eff_vis")])
+
+[sub_resource type="Resource" id="up_sp"]
+script = ExtResource("2")
+id = &"vessel_speed"
+base_cost = 10
+cost_operation = "multiply"
+cost_value = 1.1
+max_level = 100
+effects = Array[ExtResource("3")]([SubResource("eff_sp")])
+
+[sub_resource type="Resource" id="up_dr"]
+script = ExtResource("2")
+id = &"drill_range"
+base_cost = 5
+cost_operation = "multiply"
+cost_value = 1.1
+max_level = 10
+effects = Array[ExtResource("3")]([SubResource("eff_dr")])
+
+[resource]
+script = ExtResource("1")
+id = &"scout"
+display_name = "Mining Vessel"
+move_speed_px_s = 8.0
+vision_radius_cells = 3
+mine_damage_per_tick = 1.0
+mine_interval_s = 0.2
+fuel_max_base = 100.0
+upgrades = Array[ExtResource("2")]([SubResource("up_mp"), SubResource("up_ft"), SubResource("up_vis"), SubResource("up_sp"), SubResource("up_dr")])

@@ -70,7 +70,7 @@ func _on_main_resized_for_viewport() -> void:
 
 
 func _hud_bottom_reserve_px() -> float:
-	if _bottom_hud != null:
+	if _bottom_hud != null and _bottom_hud.is_inside_tree():
 		return float(_bottom_hud.get_occlusion_bottom_reserve_px())
 	return float(HUD_RESERVE_PX)
 

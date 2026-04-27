@@ -35,24 +35,28 @@ var click_radius_cells: int = 2
 ## Minimum interval between click damage ticks while holding LMB (ms); reduced by click_fire_rate upgrade.
 var click_fire_rate_ms: float = CLICK_FIRE_RATE_START_MS
 
-const FUEL_TANK_BONUS := 10.0
-## Max fuel with zero `fuel_tank` upgrades. Keep in sync with `begin_run` / career reset expectations.
-const BASE_FUEL_MAX := 100.0
-const MINE_UPGRADE_DMG_PER_LEVEL := 0.15
-const VISIBILITY_RANGE_UPGRADE_CELLS_PER_LEVEL := 1
-const VESSEL_SPEED_UPGRADE_PX_PER_LEVEL := 1.0
-const DRILL_RANGE_UPGRADE_PX_PER_LEVEL := 1.0
+## Base max fuel before `fuel_tank` upgrades; set from active `VesselData.fuel_max_base`.
+var _base_fuel_max: float = 100.0
 
 var fuel: float = 100.0
-var fuel_max: float = BASE_FUEL_MAX
+var fuel_max: float = 100.0
 
 ## Master switch for world gizmos (mining vessel hull/drill debug, conveyor bounds, viewport label). Toggled from `DebugOverlay` on planet; default off so Prep (no overlay) is clean.
 var debug_world_visuals: bool = false
 
 
 func _ready() -> void:
+	_apply_vessel_fuel_base()
 	if not UpgradeBus.upgrade_purchased.is_connected(_on_upgrade_purchased):
 		UpgradeBus.upgrade_purchased.connect(_on_upgrade_purchased)
+
+
+func _apply_vessel_fuel_base() -> void:
+	var vd: Resource = VesselDataRegistry.get_active()
+	if vd != null:
+		_base_fuel_max = float(vd.get("fuel_max_base"))
+	else:
+		_base_fuel_max = 100.0
 
 
 func _on_upgrade_purchased(id: StringName, _new_level: int) -> void:
@@ -198,7 +202,7 @@ func apply_fuel_max_from_career_load() -> void:
 
 
 func effective_fuel_max() -> float:
-	return BASE_FUEL_MAX + float(UpgradeBus.get_level(&"fuel_tank")) * FUEL_TANK_BONUS
+	return VesselDataRegistry.apply_effects_for_stat(&"fuel_max", _base_fuel_max)
 
 
 func _refit_fuel_tank_add_capacity_preserve_fill() -> void:

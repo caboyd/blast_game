@@ -39,6 +39,11 @@ const UPGRADE_BATCH_REQUESTS: Array[int] = [1, 5, 25, 100, -1]
 @onready var _shop_drill_range_tier: Label = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/DrillRangeRow/DrillRangeBuyRow/DrillRangeTierStack/DrillRangeTierLabel
 @onready var _shop_drill_range_tier_bar: ProgressBar = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/DrillRangeRow/DrillRangeBuyRow/DrillRangeTierStack/DrillRangeTierProgress
 @onready var _shop_drill_range_btn: Button = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/DrillRangeRow/DrillRangeBuyRow/DrillRangeBtn
+@onready var _shop_mining_info: Label = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/MiningRow/MiningInfo
+@onready var _shop_fuel_info: Label = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/FuelRow/FuelInfo
+@onready var _shop_visibility_info: Label = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/VisibilityRow/VisibilityInfo
+@onready var _shop_speed_info: Label = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/SpeedRow/SpeedInfo
+@onready var _shop_drill_info: Label = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/DrillRangeRow/DrillRangeInfo
 
 var _upgrade_batch_index: int = 0
 
@@ -200,12 +205,95 @@ func _refresh_shop() -> void:
 		_set_shop_button(&"vessel_speed", _shop_speed_btn)
 	if _shop_drill_range_btn:
 		_set_shop_button(&"drill_range", _shop_drill_range_btn)
+	_set_shop_info_label(&"mining_power", _shop_mining_info)
+	_set_shop_info_label(&"fuel_tank", _shop_fuel_info)
+	_set_shop_info_label(&"visibility_range", _shop_visibility_info)
+	_set_shop_info_label(&"vessel_speed", _shop_speed_info)
+	_set_shop_info_label(&"drill_range", _shop_drill_info)
+
+
+func _set_shop_info_label(upgrade_id: StringName, label: Label) -> void:
+	if label == null:
+		return
+	if not UpgradeBus.has_def(upgrade_id) or not VesselDataRegistry.has_upgrade(upgrade_id):
+		label.text = ""
+		return
+	if UpgradeBus.is_maxed(upgrade_id):
+		label.text = "Fully upgraded"
+		return
+	var req: int = _current_upgrade_batch_request()
+	var n_afford: int = UpgradeBus.get_purchase_count_for_request(
+		upgrade_id, req if req >= 0 else -1
+	)
+	var next_teaser: bool = n_afford <= 0
+	var n_disp: int = 1 if next_teaser else n_afford
+	var deltas: Array = VesselDataRegistry.preview_upgrade_stat_deltas(upgrade_id, n_disp)
+	var parts: Array[String] = []
+	for e in deltas:
+		var line: String = _shop_format_stat_delta_line(e, upgrade_id, n_disp)
+		if not line.is_empty():
+			parts.append(line)
+	if parts.is_empty():
+		label.text = ""
+		return
+	var prefix: String = ""
+	if next_teaser:
+		prefix = "Next: "
+	elif n_disp > 1:
+		prefix = "×%d: " % n_disp
+	var body: String = " · ".join(parts)
+	label.text = prefix + body
+
+
+func _shop_drill_radius_display_total(upgrade_id: StringName, drill_level: int) -> float:
+	var h: float = MiningGrid.CELL_SIZE_PX * 0.5
+	var base: float = _vessel.get_drill_game_radius_px()
+	var bonus: float = VesselDataRegistry.preview_effective_stat(
+		&"drill_range_bonus_game_px", upgrade_id, drill_level
+	)
+	return (base + bonus) / h if h > 0.0 else 0.0
+
+
+func _shop_format_stat_delta_line(e: Dictionary, upgrade_id: StringName, n_disp: int) -> String:
+	var st: StringName = e["stat"] as StringName
+	var delta: float = float(e["delta"])
+	var after: float = float(e["after"])
+	if st == &"drill_range_bonus_game_px":
+		if _vessel == null:
+			return ""
+		var cur: int = UpgradeBus.get_level(upgrade_id)
+		var before_u: float = _shop_drill_radius_display_total(upgrade_id, cur)
+		var after_u: float = _shop_drill_radius_display_total(upgrade_id, cur + n_disp)
+		delta = after_u - before_u
+		after = after_u
+	return _shop_format_line_for_stat(st, delta, after)
+
+
+func _shop_format_line_for_stat(st: StringName, delta: float, after: float) -> String:
+	if absf(delta) < 1e-5:
+		return ""
+	match String(st):
+		"mine_damage_per_tick":
+			return "+%.2f dmg/tick (→ %.2f)" % [delta, after]
+		"fuel_max":
+			return "+%d fuel max (→ %d)" % [int(round(delta)), int(round(after))]
+		"vision_radius_cells":
+			return "+%d vision cells (→ %d)" % [
+				int(round(delta)),
+				maxi(1, int(round(after))),
+			]
+		"move_speed_px_s":
+			return "+%d speed (→ %d)" % [int(round(delta)), int(round(after))]
+		"drill_range_bonus_game_px":
+			return "+%.2f mining radius (→ %.2f)" % [delta, after]
+		_:
+			return "+%.2f (→ %.2f)" % [delta, after]
 
 
 func _set_shop_tier_label(upgrade_id: StringName, label: Label) -> void:
 	if label == null:
 		return
-	if not UpgradeBus.DEFS.has(upgrade_id):
+	if not UpgradeBus.has_def(upgrade_id):
 		label.text = ""
 		return
 	var cap: int = UpgradeBus.get_max_level(upgrade_id)
@@ -219,7 +307,7 @@ func _set_shop_tier_label(upgrade_id: StringName, label: Label) -> void:
 func _set_shop_tier_progress(upgrade_id: StringName, bar: ProgressBar) -> void:
 	if bar == null:
 		return
-	if not UpgradeBus.DEFS.has(upgrade_id):
+	if not UpgradeBus.has_def(upgrade_id):
 		bar.visible = false
 		return
 	var cap: int = UpgradeBus.get_max_level(upgrade_id)
@@ -234,7 +322,7 @@ func _set_shop_tier_progress(upgrade_id: StringName, bar: ProgressBar) -> void:
 
 
 func _set_shop_button(upgrade_id: StringName, btn: Button) -> void:
-	if not UpgradeBus.DEFS.has(upgrade_id):
+	if not UpgradeBus.has_def(upgrade_id):
 		btn.text = "—"
 		btn.disabled = true
 		btn.modulate = Color.WHITE

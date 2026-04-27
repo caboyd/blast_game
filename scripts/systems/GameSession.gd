@@ -26,7 +26,8 @@ var _stage_block_types_found: Dictionary = {}
 
 
 func _ready() -> void:
-	_load_career()
+	# Defer so `VesselDataRegistry` (and other autoloads) finish `_ready` before career applies upgrade keys.
+	call_deferred("_load_career")
 
 
 func go_to_planet(path: String) -> void:
@@ -47,6 +48,9 @@ func return_to_prep() -> void:
 func _load_career() -> void:
 	var c := ConfigFile.new()
 	if c.load(_CAREER_SAVE_PATH) != OK:
+		# First launch: no save yet — still apply vessel-derived fuel max (and empty upgrade levels).
+		UpgradeBus._levels.clear()
+		GameStatistics.apply_fuel_max_from_career_load()
 		return
 	career_blocks_destroyed = int(c.get_value(_CAREER_SECTION, _CAREER_KEY_BLOCKS, 0))
 	GameStatistics.money = maxi(0, int(c.get_value(_CAREER_SECTION, _CAREER_KEY_MONEY, 0)))
@@ -224,9 +228,10 @@ func reset_all_progress() -> void:
 	GameStatistics.click_damage = 1
 	GameStatistics.click_radius_cells = 2
 	GameStatistics.click_fire_rate_ms = GameStatistics.CLICK_FIRE_RATE_START_MS
-	GameStatistics.fuel_max = GameStatistics.BASE_FUEL_MAX
-	GameStatistics.fuel = GameStatistics.fuel_max
+	GameStatistics._apply_vessel_fuel_base()
 	UpgradeBus._levels.clear()
+	GameStatistics.fuel_max = GameStatistics.effective_fuel_max()
+	GameStatistics.fuel = GameStatistics.fuel_max
 	_stage_block_types_found.clear()
 	_career_write_pending = false
 	_write_career_to_disk()
