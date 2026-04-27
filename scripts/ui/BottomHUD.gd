@@ -36,7 +36,7 @@ const DEFAULT_UPGRADE_CONFIG: Array[Dictionary] = [
 			upgrades_grid.columns_horizontal = upgrades_columns_horizontal
 
 ## Bottom edge inset when the HUD is fully open (matches panel height from bottom).
-@export var expanded_offset_top: float = -288.0
+@export var expanded_offset_top: float = -330.0
 
 ## Horizontal inset from screen edges when expanded (anchor left/right 0..1).
 @export var expanded_margin_horizontal: float = 8.0
@@ -76,7 +76,6 @@ func _ready() -> void:
 	GameStatistics.stats_changed.connect(_on_stats_changed)
 	if not GameStatistics.fuel_changed.is_connected(_on_fuel_changed):
 		GameStatistics.fuel_changed.connect(_on_fuel_changed)
-	UpgradeBus.upgrade_purchased.connect(_on_upgrade_purchased)
 	refresh()
 	set_process(_stat_items.has(&"time"))
 	if not get_viewport().size_changed.is_connected(_on_viewport_size_changed_fit_stats):
@@ -92,7 +91,6 @@ func _process(_delta: float) -> void:
 func _on_upgrade_batch_btn_pressed() -> void:
 	_upgrade_batch_index = (_upgrade_batch_index + 1) % UPGRADE_BATCH_REQUESTS.size()
 	_refresh_upgrade_batch_button()
-	_refresh_upgrades()
 
 
 func _on_collapse_handle_pressed() -> void:
@@ -196,14 +194,8 @@ func _occlusion_reserve_fallback_px() -> int:
 func _on_fuel_changed(_current: float, _max: float) -> void:
 	refresh()
 
-
 func _on_stats_changed() -> void:
 	refresh()
-
-
-func _on_upgrade_purchased(_id: StringName, _new_level: int) -> void:
-	_refresh_upgrades()
-
 
 func _build_stats() -> void:
 	for c in stats_grid.get_children():
@@ -263,9 +255,6 @@ func _source_instance_count(sid: StringName) -> int:
 		return get_tree().get_nodes_in_group(&"cannon_turrets").size()
 	return 0
 
-
-func _stat_value_for_source(sid: StringName, stat_id: StringName) -> int:
-	return 0
 	
 func _cost_display_for(uid: StringName) -> String:
 	if not UpgradeBus.can_upgrade(uid):
@@ -354,9 +343,9 @@ func _read_texture(d: Dictionary, key: String) -> Texture2D:
 
 func _format_mission_elapsed(sec: float) -> String:
 	var t: int = maxi(0, int(floorf(sec)))
-	var h: int = t / 3600
+	var h: int = int(t / 3600)
 	t %= 3600
-	var m: int = t / 60
+	var m: int = int(t / 60)
 	var s2: int = t % 60
 	if h > 0:
 		return "%d:%02d:%02d" % [h, m, s2]
@@ -366,46 +355,6 @@ func _format_mission_elapsed(sec: float) -> String:
 func _on_upgrade_item_purchase_pressed(upgrade_id: StringName) -> void:
 	UpgradeBus.try_purchase_count(upgrade_id, _current_upgrade_batch_request())
 
-
-func _refresh_upgrades() -> void:
-	for c in upgrades_grid.get_children():
-		if not c is UpgradeItem:
-			continue
-		var it: UpgradeItem = c
-		if it.upgrade_disabled:
-			continue
-		var def: Dictionary = _find_source_def(it.source_id)
-		if def.is_empty():
-			continue
-		var stats_raw = def.get("stats", [])
-		if stats_raw is Array:
-			for st in stats_raw:
-				if st is Dictionary:
-					var stid: StringName = _read_string_name(st, "id")
-					if String(stid).is_empty():
-						continue
-					it.set_stat_value(stid, _stat_value_for_source(it.source_id, stid))
-		var ups_raw = def.get("upgrades", [])
-		if ups_raw is Array:
-			for u in ups_raw:
-				if u is Dictionary:
-					var uid: StringName = _read_string_name(u, "id")
-					if String(uid).is_empty():
-						continue
-					if UpgradeBus.get_max_level(uid) == 0:
-						continue
-					var ulbl: String = str(u.get("label", uid))
-					var purchaseable: bool = UpgradeBus.can_upgrade(uid) and _can_purchase_batch(uid)
-					var affordable: bool = _can_afford_batch(uid) if purchaseable else false
-					it.set_upgrade_state(
-						uid,
-						ulbl,
-						UpgradeBus.get_level(uid),
-						purchaseable,
-						affordable,
-						_cost_display_for(uid),
-						_batch_count_for_display(uid)
-					)
 
 
 func refresh() -> void:
@@ -426,4 +375,3 @@ func refresh() -> void:
 				)
 			_:
 				item.set_value("—")
-	_refresh_upgrades()
