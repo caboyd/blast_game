@@ -84,11 +84,13 @@ func set_upgrade_state(
 	level: int,
 	purchaseable: bool,
 	affordable: bool,
-	cost_display: String
+	cost_display: String,
+	batch_count: int = 1
 ) -> void:
 	_purchaseable[upgrade_key] = purchaseable
 	_affordable[upgrade_key] = affordable
 	var meta: Dictionary = _upgrade_meta.get(upgrade_key, {}) as Dictionary
+	meta["batch_count"] = maxi(0, batch_count)
 	var btn: Button = meta.get("button", null) as Button
 	if btn:
 		btn.text = "%s  Lv%d  %s" % [label_base, maxi(0, level), cost_display]
@@ -255,7 +257,7 @@ func _refresh_stat_display(stat_key: StringName) -> void:
 		var ts: StringName = meta.get("target_stat", &"") as StringName
 		if ts == stat_key:
 			show_delta = true
-			dlt = int(meta.get("delta", 0))
+			dlt = int(meta.get("delta", 0)) * maxi(0, int(meta.get("batch_count", 1)))
 	if show_delta and dlt > 0 and _purchaseable.get(_hover_upgrade, false):
 		var gc := _DMG_PREVIEW_GREEN.to_html(false)
 		rt.text = "%d [color=#%s]+ %d[/color]" % [base, gc, dlt]

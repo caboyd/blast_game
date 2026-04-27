@@ -314,6 +314,17 @@ theme_override_font_sizes/font_size = 18
 text = "Upgrades"
 horizontal_alignment = 1
 
+[node name="ShopBatchRow" type="HBoxContainer" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner"]
+layout_mode = 2
+theme_override_constants/separation = 6
+alignment = 2
+
+[node name="ShopBatchBtn" type="Button" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/ShopBatchRow"]
+custom_minimum_size = Vector2(96, 28)
+layout_mode = 2
+focus_mode = 0
+text = "Buy: 1x"
+
 [node name="MiningRow" type="VBoxContainer" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner" unique_id=1587319152]
 layout_mode = 2
 theme_override_constants/separation = 2

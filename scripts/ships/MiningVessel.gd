@@ -183,15 +183,7 @@ func _draw_mining_debug(ci: CanvasItem) -> void:
 				continue
 			ci.draw_circle(ci.to_local(ctr2), dot_r, color_mine_dot)
 
-	var d_circ: CircleShape2D = _drill_shape.shape as CircleShape2D if _drill_shape else null
-	if d_circ:
-		var drill_edge_w: Vector2 = (
-			_drill_shape.global_transform * Vector2(d_circ.radius, 0.0) - _drill_shape.global_position
-		)
-		var r_loc: float = (ci.to_local(_drill_shape.global_position + drill_edge_w) - front_local).length()
-		ci.draw_circle(front_local, maxf(r_loc, 0.4), color_drill_bearing)
-	else:
-		ci.draw_circle(front_local, 1.2, color_drill_bearing)
+	ci.draw_circle(front_local, maxf(get_debug_drill_draw_radius_px(), 0.4), color_drill_bearing)
 	ci.draw_line(Vector2.ZERO, front_local, color_drill_bearing, 1.0)
 
 
@@ -267,6 +259,10 @@ func get_effective_drill_game_radius_px() -> float:
 	if s > 0.0:
 		w /= s
 	return w
+
+
+func get_debug_drill_draw_radius_px() -> float:
+	return get_effective_drill_game_radius_px()
 
 
 ## World offset from this node's origin to the drill (mining sample point).

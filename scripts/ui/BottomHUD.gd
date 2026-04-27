@@ -3,6 +3,7 @@ class_name BottomHUD
 
 const StatItemScene := preload("res://scenes/ui/StatItem.tscn")
 const UpgradeItemScene := preload("res://scenes/ui/UpgradeItem.tscn")
+const UPGRADE_BATCH_REQUESTS: Array[int] = [1, 5, 25, 100, -1]
 
 const DEFAULT_STAT_CONFIG: Array[Dictionary] = [
 	{"id": &"blocks", "name": "blocks"},
@@ -104,10 +105,12 @@ const DEFAULT_UPGRADE_CONFIG: Array[Dictionary] = [
 @onready var collapse_handle: Button = $HandleWrap/CollapseHandle
 @onready var stats_scroll: ScrollContainer = $Outer/Inner/MainVBox/StatsRow/StatsSection/StatsScroll
 @onready var stats_grid = $Outer/Inner/MainVBox/StatsRow/StatsSection/StatsScroll/StatsGrid
-@onready var upgrades_grid = $Outer/Inner/MainVBox/UpgradesSection/UpgradesScroll/UpgradesGrid
+@onready var upgrade_batch_btn: Button = $Outer/Inner/MainVBox/UpgradesSection/UpgradesVBox/UpgradeBatchRow/UpgradeBatchBtn
+@onready var upgrades_grid = $Outer/Inner/MainVBox/UpgradesSection/UpgradesVBox/UpgradesScroll/UpgradesGrid
 
 var _is_expanded: bool = false
 var _hud_layout_ready: bool = false
+var _upgrade_batch_index: int = 0
 
 var _stat_items: Dictionary = {}  # StringName -> StatItem (instanced)
 var _handle_wrap_offset_top_base: float = 0.0
@@ -118,6 +121,7 @@ func _ready() -> void:
 	_handle_wrap_offset_top_base = handle_wrap.offset_top
 	_handle_wrap_offset_bottom_base = handle_wrap.offset_bottom
 	collapse_handle.pressed.connect(_on_collapse_handle_pressed)
+	upgrade_batch_btn.pressed.connect(_on_upgrade_batch_btn_pressed)
 	stats_grid.columns_horizontal = stats_columns_horizontal
 	upgrades_grid.columns_horizontal = upgrades_columns_horizontal
 	_build_stats()
@@ -138,6 +142,12 @@ func _process(_delta: float) -> void:
 	if not _stat_items.has(&"time"):
 		return
 	(_stat_items[&"time"] as StatItem).set_value(_format_mission_elapsed(GameSession.get_mission_elapsed_sec()))
+
+
+func _on_upgrade_batch_btn_pressed() -> void:
+	_upgrade_batch_index = (_upgrade_batch_index + 1) % UPGRADE_BATCH_REQUESTS.size()
+	_refresh_upgrade_batch_button()
+	_refresh_upgrades()
 
 
 func _on_collapse_handle_pressed() -> void:
@@ -263,6 +273,7 @@ func _build_upgrades() -> void:
 		if not item.upgrade_disabled:
 			item.purchase_pressed.connect(_on_upgrade_item_purchase_pressed)
 		upgrades_grid.add_child(item)
+	_refresh_upgrade_batch_button()
 
 
 func _schedule_layout_after_stat_change() -> void:
@@ -353,7 +364,70 @@ func _cost_display_for(uid: StringName) -> String:
 		if UpgradeBus.is_maxed(uid) and UpgradeBus.get_level(uid) > 0:
 			return "MAX"
 		return "—"
-	return "%d $" % UpgradeBus.get_cost(uid)
+	var requested_count: int = _current_upgrade_batch_request()
+	if requested_count < 0:
+		var max_count: int = UpgradeBus.get_purchase_count_for_request(uid, requested_count)
+		return "%dx $%d" % [max_count, UpgradeBus.get_purchase_cost_for_count(uid, max_count)]
+	if not _has_room_for_batch(uid, requested_count):
+		return "%dx —" % requested_count
+	return "%dx $%d" % [requested_count, UpgradeBus.get_purchase_cost_for_count(uid, requested_count)]
+
+
+func _current_upgrade_batch_request() -> int:
+	return UPGRADE_BATCH_REQUESTS[_upgrade_batch_index]
+
+
+func _current_upgrade_batch_label() -> String:
+	var requested_count: int = _current_upgrade_batch_request()
+	return "MAX" if requested_count < 0 else "%dx" % requested_count
+
+
+func _refresh_upgrade_batch_button() -> void:
+	if upgrade_batch_btn:
+		upgrade_batch_btn.text = "Buy: %s" % _current_upgrade_batch_label()
+
+
+func _has_room_for_batch(uid: StringName, requested_count: int) -> bool:
+	if requested_count <= 0:
+		return false
+	var cap: int = UpgradeBus.get_max_level(uid)
+	if cap < 0:
+		return true
+	return UpgradeBus.get_level(uid) + requested_count <= cap
+
+
+func _batch_count_for_display(uid: StringName) -> int:
+	var requested_count: int = _current_upgrade_batch_request()
+	if requested_count < 0:
+		return UpgradeBus.get_purchase_count_for_request(uid, requested_count)
+	return requested_count if _has_room_for_batch(uid, requested_count) else 0
+
+
+func _can_purchase_batch(uid: StringName) -> bool:
+	var requested_count: int = _current_upgrade_batch_request()
+	if requested_count < 0:
+		return UpgradeBus.get_purchase_count_for_request(uid, requested_count) > 0
+	return _has_room_for_batch(uid, requested_count)
+
+
+func _can_afford_batch(uid: StringName) -> bool:
+	var requested_count: int = _current_upgrade_batch_request()
+	if requested_count < 0:
+		return UpgradeBus.get_purchase_count_for_request(uid, requested_count) > 0
+	if not _has_room_for_batch(uid, requested_count):
+		return false
+	return GameStatistics.money >= UpgradeBus.get_purchase_cost_for_count(uid, requested_count)
+
+
+func set_upgrade_batch_request_for_test(requested_count: int) -> void:
+	var idx := UPGRADE_BATCH_REQUESTS.find(requested_count)
+	if idx >= 0:
+		_upgrade_batch_index = idx
+		_refresh_upgrade_batch_button()
+
+
+func get_upgrade_cost_display_for_test(uid: StringName) -> String:
+	return _cost_display_for(uid)
 
 
 func _read_string_name(d: Dictionary, key: String) -> StringName:
@@ -382,7 +456,7 @@ func _format_mission_elapsed(sec: float) -> String:
 
 
 func _on_upgrade_item_purchase_pressed(upgrade_id: StringName) -> void:
-	UpgradeBus.try_purchase(upgrade_id)
+	UpgradeBus.try_purchase_count(upgrade_id, _current_upgrade_batch_request())
 
 
 func _refresh_upgrades() -> void:
@@ -413,15 +487,16 @@ func _refresh_upgrades() -> void:
 					if UpgradeBus.get_max_level(uid) == 0:
 						continue
 					var ulbl: String = str(u.get("label", uid))
-					var purchaseable: bool = UpgradeBus.can_upgrade(uid)
-					var affordable: bool = UpgradeBus.can_afford(uid) if purchaseable else false
+					var purchaseable: bool = UpgradeBus.can_upgrade(uid) and _can_purchase_batch(uid)
+					var affordable: bool = _can_afford_batch(uid) if purchaseable else false
 					it.set_upgrade_state(
 						uid,
 						ulbl,
 						UpgradeBus.get_level(uid),
 						purchaseable,
 						affordable,
-						_cost_display_for(uid)
+						_cost_display_for(uid),
+						_batch_count_for_display(uid)
 					)
 
 

@@ -81,7 +81,12 @@ func can_upgrade(id: StringName) -> bool:
 func get_cost(id: StringName) -> int:
 	if not DEFS.has(id):
 		return 999999999
-	var level := get_level(id)
+	return _cost_at_level(id, get_level(id))
+
+
+func _cost_at_level(id: StringName, level: int) -> int:
+	if not DEFS.has(id):
+		return 999999999
 	var base: int = int(DEFS[id].get("base_cost", 100))
 	var mult: float = float(DEFS[id].get("multiplier", 2.0))
 	var c: float = float(base) * pow(mult, float(level))
@@ -98,13 +103,58 @@ func can_purchase(id: StringName) -> bool:
 	return can_upgrade(id) and can_afford(id)
 
 
+func get_purchase_count_for_request(id: StringName, requested_count: int) -> int:
+	if not DEFS.has(id) or requested_count == 0 or is_maxed(id):
+		return 0
+	var desired: int = requested_count
+	if requested_count < 0:
+		desired = 2147483647
+	var cap: int = get_max_level(id)
+	var level: int = get_level(id)
+	if cap >= 0:
+		desired = mini(desired, maxi(0, cap - level))
+	if desired <= 0:
+		return 0
+
+	var affordable_count := 0
+	var total_cost := 0
+	for i in range(desired):
+		var next_cost := _cost_at_level(id, level + i)
+		if total_cost + next_cost > GameStatistics.money:
+			break
+		total_cost += next_cost
+		affordable_count += 1
+	return affordable_count
+
+
+func get_purchase_cost_for_count(id: StringName, count: int) -> int:
+	if not DEFS.has(id) or count <= 0 or is_maxed(id):
+		return 0
+	var cap: int = get_max_level(id)
+	var level: int = get_level(id)
+	var actual_count: int = count
+	if cap >= 0:
+		actual_count = mini(actual_count, maxi(0, cap - level))
+	var total := 0
+	for i in range(actual_count):
+		total += _cost_at_level(id, level + i)
+	return total
+
+
 func try_purchase(id: StringName) -> bool:
-	if not can_purchase(id):
+	return try_purchase_count(id, 1)
+
+
+func try_purchase_count(id: StringName, requested_count: int) -> bool:
+	var count: int = get_purchase_count_for_request(id, requested_count)
+	if count <= 0:
 		return false
-	var cost := get_cost(id)
+	if requested_count > 0 and count < requested_count:
+		return false
+	var cost := get_purchase_cost_for_count(id, count)
 	if not GameStatistics.spend_money(cost, false):
 		return false
-	var new_level := get_level(id) + 1
+	var new_level := get_level(id) + count
 	_levels[id] = new_level
 	upgrade_purchased.emit(id, new_level)
 	GameSession.save_career()

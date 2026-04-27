@@ -3,6 +3,7 @@ extends Control
 const _STAGE_TAB_INDEX := 1
 const _STAGE_BLOCK_CATALOG_ID: StringName = &"planet1"
 const _UNKNOWN_BLOCK := "???"
+const UPGRADE_BATCH_REQUESTS: Array[int] = [1, 5, 25, 100, -1]
 
 @onready var _start: Button = $Margin/RootVBox/StartMission
 @onready var _career_label: Label = $"Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Progress/ProgressVBox/CareerBlocksLabel"
@@ -22,6 +23,7 @@ const _UNKNOWN_BLOCK := "???"
 @onready var _debug_reset: Button = $Margin/RootVBox/DebugRow/DebugResetProgress
 @onready var _stats_tabs: TabContainer = $Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs
 @onready var _shop_money_label: Label = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/ShopMoneyRow/ShopMoneyPanel/ShopMoneyLabel
+@onready var _shop_batch_btn: Button = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/ShopBatchRow/ShopBatchBtn
 @onready var _shop_mining_tier: Label = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/MiningRow/MiningBuyRow/MiningTierStack/MiningTierLabel
 @onready var _shop_mining_tier_bar: ProgressBar = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/MiningRow/MiningBuyRow/MiningTierStack/MiningTierProgress
 @onready var _shop_mining_btn: Button = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/MiningRow/MiningBuyRow/MiningBtn
@@ -37,6 +39,8 @@ const _UNKNOWN_BLOCK := "???"
 @onready var _shop_drill_range_tier: Label = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/DrillRangeRow/DrillRangeBuyRow/DrillRangeTierStack/DrillRangeTierLabel
 @onready var _shop_drill_range_tier_bar: ProgressBar = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/DrillRangeRow/DrillRangeBuyRow/DrillRangeTierStack/DrillRangeTierProgress
 @onready var _shop_drill_range_btn: Button = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/DrillRangeRow/DrillRangeBuyRow/DrillRangeBtn
+
+var _upgrade_batch_index: int = 0
 
 
 func _ready() -> void:
@@ -54,6 +58,8 @@ func _ready() -> void:
 		_start.pressed.connect(_on_start_mission_pressed)
 	if _debug_reset:
 		_debug_reset.pressed.connect(_on_debug_reset_pressed)
+	if _shop_batch_btn:
+		_shop_batch_btn.pressed.connect(_on_shop_batch_btn_pressed)
 	if not GameStatistics.stats_changed.is_connected(_on_stats_changed):
 		GameStatistics.stats_changed.connect(_on_stats_changed)
 	if not GameStatistics.fuel_changed.is_connected(_on_fuel_changed):
@@ -83,6 +89,12 @@ func _on_debug_reset_pressed() -> void:
 	_refresh_all()
 
 
+func _on_shop_batch_btn_pressed() -> void:
+	_upgrade_batch_index = (_upgrade_batch_index + 1) % UPGRADE_BATCH_REQUESTS.size()
+	_refresh_shop_batch_button()
+	_refresh_shop()
+
+
 func _on_stats_changed() -> void:
 	_refresh_all()
 
@@ -96,7 +108,7 @@ func _on_upgrade_purchased(_id: StringName, _new_level: int) -> void:
 
 
 func _on_shop_purchase(upgrade_id: StringName) -> void:
-	UpgradeBus.try_purchase(upgrade_id)
+	UpgradeBus.try_purchase_count(upgrade_id, _current_upgrade_batch_request())
 
 
 func _refresh_all() -> void:
@@ -167,6 +179,7 @@ func _refresh_ship_stats() -> void:
 
 
 func _refresh_shop() -> void:
+	_refresh_shop_batch_button()
 	_set_shop_tier_label(&"mining_power", _shop_mining_tier)
 	_set_shop_tier_label(&"fuel_tank", _shop_fuel_tier)
 	_set_shop_tier_label(&"visibility_range", _shop_visibility_tier)
@@ -231,15 +244,78 @@ func _set_shop_button(upgrade_id: StringName, btn: Button) -> void:
 		btn.disabled = true
 		btn.modulate = Color.WHITE
 		return
-	var cost: int = UpgradeBus.get_cost(upgrade_id)
-	var purchasable: bool = UpgradeBus.can_purchase(upgrade_id)
-	btn.text = "%d $" % cost
+	var purchasable: bool = UpgradeBus.can_upgrade(upgrade_id) and _can_purchase_batch(upgrade_id)
+	btn.text = _shop_cost_display_for(upgrade_id)
 	btn.disabled = not purchasable
 	btn.modulate = (
 		Color(0.75, 0.75, 0.8, 1.0)
-		if (UpgradeBus.can_upgrade(upgrade_id) and not UpgradeBus.can_afford(upgrade_id))
+		if (UpgradeBus.can_upgrade(upgrade_id) and not _can_afford_batch(upgrade_id))
 		else Color.WHITE
 	)
+
+
+func _shop_cost_display_for(upgrade_id: StringName) -> String:
+	if not UpgradeBus.can_upgrade(upgrade_id):
+		return "—"
+	var requested_count: int = _current_upgrade_batch_request()
+	if requested_count < 0:
+		var max_count: int = UpgradeBus.get_purchase_count_for_request(upgrade_id, requested_count)
+		return "%dx $%d" % [max_count, UpgradeBus.get_purchase_cost_for_count(upgrade_id, max_count)]
+	if not _has_room_for_batch(upgrade_id, requested_count):
+		return "%dx —" % requested_count
+	return "%dx $%d" % [
+		requested_count, UpgradeBus.get_purchase_cost_for_count(upgrade_id, requested_count)
+	]
+
+
+func _current_upgrade_batch_request() -> int:
+	return UPGRADE_BATCH_REQUESTS[_upgrade_batch_index]
+
+
+func _current_upgrade_batch_label() -> String:
+	var requested_count: int = _current_upgrade_batch_request()
+	return "MAX" if requested_count < 0 else "%dx" % requested_count
+
+
+func _refresh_shop_batch_button() -> void:
+	if _shop_batch_btn:
+		_shop_batch_btn.text = "Buy: %s" % _current_upgrade_batch_label()
+
+
+func _has_room_for_batch(upgrade_id: StringName, requested_count: int) -> bool:
+	if requested_count <= 0:
+		return false
+	var cap: int = UpgradeBus.get_max_level(upgrade_id)
+	if cap < 0:
+		return true
+	return UpgradeBus.get_level(upgrade_id) + requested_count <= cap
+
+
+func _can_purchase_batch(upgrade_id: StringName) -> bool:
+	var requested_count: int = _current_upgrade_batch_request()
+	if requested_count < 0:
+		return UpgradeBus.get_purchase_count_for_request(upgrade_id, requested_count) > 0
+	return _has_room_for_batch(upgrade_id, requested_count)
+
+
+func _can_afford_batch(upgrade_id: StringName) -> bool:
+	var requested_count: int = _current_upgrade_batch_request()
+	if requested_count < 0:
+		return UpgradeBus.get_purchase_count_for_request(upgrade_id, requested_count) > 0
+	if not _has_room_for_batch(upgrade_id, requested_count):
+		return false
+	return GameStatistics.money >= UpgradeBus.get_purchase_cost_for_count(upgrade_id, requested_count)
+
+
+func set_upgrade_batch_request_for_test(requested_count: int) -> void:
+	var idx := UPGRADE_BATCH_REQUESTS.find(requested_count)
+	if idx >= 0:
+		_upgrade_batch_index = idx
+		_refresh_shop_batch_button()
+
+
+func get_shop_cost_display_for_test(upgrade_id: StringName) -> String:
+	return _shop_cost_display_for(upgrade_id)
 
 
 func _on_start_mission_pressed() -> void:
