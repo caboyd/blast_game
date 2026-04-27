@@ -21,6 +21,7 @@ var _vp_h: int = 520
 
 
 func _ready() -> void:
+	MiningMissionUI.attach_fuel_bar_for_mining_host(self)
 	GameSession.start_mission_timer()
 	_apply_game_viewport_layout()
 	if _mining_grid:
@@ -39,6 +40,8 @@ func _ready() -> void:
 			_bottom_hud.resized.connect(_on_bottom_hud_layout_changed)
 		if not _bottom_hud.item_rect_changed.is_connected(_on_bottom_hud_layout_changed):
 			_bottom_hud.item_rect_changed.connect(_on_bottom_hud_layout_changed)
+	if not MiningMissionUI.top_fuel_layout_changed.is_connected(_on_top_fuel_bar_layout_changed):
+		MiningMissionUI.top_fuel_layout_changed.connect(_on_top_fuel_bar_layout_changed)
 	if not resized.is_connected(_on_main_resized_for_viewport):
 		resized.connect(_on_main_resized_for_viewport)
 	if not get_viewport().size_changed.is_connected(_on_main_resized_for_viewport):
@@ -58,6 +61,10 @@ func _on_bottom_hud_layout_changed() -> void:
 	call_deferred("_apply_game_viewport_layout")
 
 
+func _on_top_fuel_bar_layout_changed() -> void:
+	call_deferred("_apply_game_viewport_layout")
+
+
 func _on_main_resized_for_viewport() -> void:
 	call_deferred("_apply_game_viewport_layout")
 
@@ -68,9 +75,14 @@ func _hud_bottom_reserve_px() -> float:
 	return float(HUD_RESERVE_PX)
 
 
+func _top_fuel_band_px() -> float:
+	return MiningMissionUI.get_top_fuel_band_px()
+
+
 func _apply_game_viewport_layout() -> void:
 	var block := get_node_or_null("GameplayBlock") as Control
 	if block != null:
+		block.offset_top = _top_fuel_band_px()
 		block.offset_bottom = -_hud_bottom_reserve_px()
 	var ar := get_node_or_null("GameplayBlock/AspectRatioContainer") as AspectRatioContainer
 	if ar != null:

@@ -7,11 +7,11 @@ extends Node
 signal upgrade_purchased(id: StringName, new_level: int)
 
 const DEFS: Dictionary = {
-	&"mining_power": {"base_cost": 10, "multiplier": 1.1, "max_level": 10},
+	&"mining_power": {"base_cost": 10, "multiplier": 1.1, "max_level": 20},
 	&"fuel_tank": {"base_cost": 10, "multiplier": 1.1, "max_level": 1000},
 	&"visibility_range": {"base_cost": 10, "multiplier": 1.1, "max_level": 10},
-	&"vessel_speed": {"base_cost": 10, "multiplier": 1.1, "max_level": 10},
-	&"drill_range": {"base_cost": 10, "multiplier": 1.1, "max_level": 10},
+	&"vessel_speed": {"base_cost": 10, "multiplier": 1.1, "max_level": 100},
+	&"drill_range": {"base_cost": 5, "multiplier": 1.1, "max_level": 10},
 	&"laser_count": {"base_cost": 120, "multiplier": 2.0},
 	&"laser_fire_rate": {"base_cost": 100, "multiplier": 2.0, "max_level": 0},
 	&"melter": {"base_cost": 100, "multiplier": 2.0},

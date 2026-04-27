@@ -1,0 +1,78 @@
+[gd_scene load_steps=4 format=3 uid="uid://miningfuelbar01"]
+
+[ext_resource type="Script" path="res://scripts/ui/MiningFuelBar.gd" id="1"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBarBg"]
+bg_color = Color(0.08, 0.1, 0.14, 0.92)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.35, 0.55, 0.72, 0.95)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBarFill"]
+bg_color = Color(0.28, 0.82, 0.48, 1)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+
+[node name="TopFuelBar" type="Control"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 48.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+script = ExtResource("1")
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="BarStack" type="Control" parent="MarginContainer"]
+custom_minimum_size = Vector2(0, 22)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ProgressBar" type="ProgressBar" parent="MarginContainer/BarStack"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/background = SubResource("StyleBarBg")
+theme_override_styles/fill = SubResource("StyleBarFill")
+max_value = 100.0
+show_percentage = false
+
+[node name="ValueLabel" type="Label" parent="MarginContainer/BarStack"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.95, 0.98, 1, 1)
+theme_override_colors/font_outline_color = Color(0.05, 0.06, 0.1, 0.95)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 14
+text = "—"
+horizontal_alignment = 1
+vertical_alignment = 1

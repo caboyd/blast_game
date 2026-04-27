@@ -21,6 +21,7 @@ config/features=PackedStringArray("4.6")
 [autoload]
 
 GameSession="*res://scripts/systems/GameSession.gd"
+MiningMissionUI="*res://scripts/systems/MiningMissionUI.gd"
 UpgradeBus="*res://scripts/systems/UpgradeBus.gd"
 GameStatistics="*res://scripts/stats/GameStatistics.gd"
 

@@ -224,7 +224,14 @@ func get_occlusion_bottom_reserve_px() -> int:
 	for c in get_children():
 		if c is Control and (c as Control).visible:
 			r = r.merge((c as Control).get_global_rect())
-	var vis: Rect2 = get_viewport().get_visible_rect()
+	var vp: Viewport = get_viewport()
+	if vp == null:
+		var st := get_tree()
+		if st != null:
+			vp = st.root as Viewport
+	if vp == null:
+		return maxi(ceili(r.size.y), 1)
+	var vis: Rect2 = vp.get_visible_rect()
 	var top_y: float = r.position.y
 	var reserve: float = vis.end.y - top_y
 	return maxi(ceili(reserve), 1)
