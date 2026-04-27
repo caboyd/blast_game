@@ -20,6 +20,13 @@ static var TYPE_COLOR: PackedColorArray = PackedColorArray([
 const SHADER_TYPE_COLOR_MAX := 8
 const APRON_COLUMNS := 0
 
+
+## World-space center of the square covered by one chunk (`CHUNK_SIZE` cells per side).
+static func get_chunk_center_world(chunk: Vector2i) -> Vector2:
+	var s: float = float(CHUNK_SIZE) * CELL_SIZE_PX
+	return Vector2((float(chunk.x) + 0.5) * s, (float(chunk.y) + 0.5) * s)
+
+
 ## Landmarks in absolute world cell coordinates (post-generation stamp).
 const STATIC_CELLS: Array[Dictionary] = [
 	{"cell": Vector2i(0, -10), "type": TYPE_GOLD, "hp": 5},
@@ -180,6 +187,11 @@ func world_pos_to_cell(world: Vector2) -> Vector2i:
 	return Vector2i(int(floor(world.x / CELL_SIZE_PX)), int(floor(world.y / CELL_SIZE_PX)))
 
 
+## Chunk index `(floor(cell.x / CHUNK_SIZE), …)` in world / grid space.
+func get_chunk_for_world_pos(world: Vector2) -> Vector2i:
+	return _cell_to_chunk_coord(world_pos_to_cell(world))
+
+
 func cell_top_left_world(cell: Vector2i) -> Vector2:
 	return Vector2(float(cell.x) * CELL_SIZE_PX, float(cell.y) * CELL_SIZE_PX)
 
@@ -293,6 +305,7 @@ func _damage_cell_abs(cell: Vector2i, amount: int) -> int:
 	var t: int = int(cells[idx])
 	if t == TYPE_EMPTY or amount <= 0:
 		return 0
+	GameSession.mark_block_type_discovered(stage_id, t)
 	var hp_before: int = int(hparr[idx])
 	var new_hp: int = hp_before - amount
 	if new_hp <= 0:
@@ -415,6 +428,10 @@ func update_vision(center_world: Vector2, radius_cells: int) -> void:
 			if int(rev[idx]) == 0:
 				rev[idx] = 1
 				_reveal_dirty_chunks[ch] = true
+				var cells_ba: PackedByteArray = data["cells"]
+				var t: int = int(cells_ba[idx])
+				if t != TYPE_EMPTY:
+					GameSession.mark_block_type_discovered(stage_id, t)
 				any_new = true
 	if any_new:
 		_visual_dirty = true

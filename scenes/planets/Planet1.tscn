@@ -65,7 +65,7 @@ unique_name_in_owner = true
 
 [node name="MiningVessel" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport/World2D" instance=ExtResource("3")]
 unique_name_in_owner = true
-position = Vector2(0, 0)
+position = Vector2(160, 160)
 
 [node name="Border" type="ReferenceRect" parent="GameplayBlock/AspectRatioContainer/ViewportFrame"]
 layout_mode = 1

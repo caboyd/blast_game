@@ -1,6 +1,8 @@
 extends Control
 
 const _STAGE_TAB_INDEX := 1
+const _STAGE_BLOCK_CATALOG_ID: StringName = &"planet1"
+const _UNKNOWN_BLOCK := "???"
 
 @onready var _start: Button = $Margin/RootVBox/StartMission
 @onready var _career_label: Label = $"Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Progress/ProgressVBox/CareerBlocksLabel"
@@ -92,7 +94,7 @@ func _refresh_all() -> void:
 func _refresh_stage_tab() -> void:
 	if _stage_type_tree == null or _stage_summary == null:
 		return
-	_stage_summary.text = "Stage: %s" % String(&"planet1")
+	_stage_summary.text = "Stage: %s" % String(_STAGE_BLOCK_CATALOG_ID)
 	_stage_type_tree.clear()
 	var root: TreeItem = _stage_type_tree.create_item()
 	for spec in MiningGrid.get_stage_block_type_rows():
@@ -100,9 +102,14 @@ func _refresh_stage_tab() -> void:
 		if type_id < 0 or type_id >= MiningGrid.TYPE_MAX_HP.size():
 			continue
 		var it: TreeItem = _stage_type_tree.create_item(root)
-		it.set_text(0, str(spec.get("label", "?")))
-		it.set_text(1, "%d" % int(MiningGrid.TYPE_MAX_HP[type_id]))
-		it.set_text(2, "%d" % int(MiningGrid.TYPE_MONEY[type_id]))
+		if GameSession.is_block_type_discovered(_STAGE_BLOCK_CATALOG_ID, type_id):
+			it.set_text(0, str(spec.get("label", "?")))
+			it.set_text(1, "%d" % int(MiningGrid.TYPE_MAX_HP[type_id]))
+			it.set_text(2, "%d" % int(MiningGrid.TYPE_MONEY[type_id]))
+		else:
+			it.set_text(0, _UNKNOWN_BLOCK)
+			it.set_text(1, _UNKNOWN_BLOCK)
+			it.set_text(2, _UNKNOWN_BLOCK)
 
 
 func _refresh_progress() -> void:

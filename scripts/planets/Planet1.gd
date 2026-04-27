@@ -26,6 +26,8 @@ func _ready() -> void:
 		_mining_grid.stage_id = planet_id
 	if _vessel and _mining_grid:
 		_vessel.grid = _mining_grid
+		# Hull origin at the middle of chunk (0,0) in grid/world space.
+		_vessel.position = _mining_grid.get_chunk_center_world(Vector2i.ZERO)
 		_vessel.carve_hull_terrain_on_spawn()
 	if _vessel and not _vessel.out_of_fuel.is_connected(_on_vessel_out_of_fuel):
 		_vessel.out_of_fuel.connect(_on_vessel_out_of_fuel)

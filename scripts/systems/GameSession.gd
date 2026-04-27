@@ -9,6 +9,7 @@ const _CAREER_KEY_MONEY := "money"
 
 const _STAGE_REVEAL_MAGIC := 0x52455631
 const _MINING_CHUNK_BYTES := 40 * 40
+const _BLOCK_DISCOVERY_SECTION := "block_discovery"
 
 var selected_ship_id: StringName = &"scout"
 ## Reserved: slot index → turret type id; empty = no pre-mounted turrets from Prep.
@@ -18,6 +19,8 @@ var next_planet_scene: String = "res://scenes/planets/Planet1.tscn"
 ## Cumulative blocks destroyed across completed runs; saved to disk.
 var career_blocks_destroyed: int = 0
 var _career_write_pending: bool = false
+## `stage_id` (String) -> { type_id: true } for types seen (vision) or hit (damage).
+var _stage_block_types_found: Dictionary = {}
 
 
 func _ready() -> void:
@@ -47,6 +50,7 @@ func _load_career() -> void:
 	GameStatistics.money = maxi(0, int(c.get_value(_CAREER_SECTION, _CAREER_KEY_MONEY, 0)))
 	UpgradeBus.read_from_career_config(c)
 	GameStatistics.apply_fuel_max_from_career_load()
+	_load_block_discovery_from_config(c)
 
 
 ## Persists career blocks + current money. Debounced to one write per frame when called from `GameStatistics` money changes.
@@ -67,9 +71,72 @@ func _write_career_to_disk() -> void:
 	c.set_value(_CAREER_SECTION, _CAREER_KEY_BLOCKS, career_blocks_destroyed)
 	c.set_value(_CAREER_SECTION, _CAREER_KEY_MONEY, GameStatistics.money)
 	UpgradeBus.write_to_career_config(c)
+	_write_block_discovery_to_config(c)
 	var err := c.save(_CAREER_SAVE_PATH)
 	if err != OK:
 		push_error("GameSession._write_career_to_disk failed: %s" % error_string(err))
+
+
+func is_block_type_discovered(stage_id: StringName, type_id: int) -> bool:
+	if type_id <= 0:
+		return true
+	if not _stage_block_types_found.has(stage_id):
+		return false
+	return bool(_stage_block_types_found[stage_id].get(type_id, false))
+
+
+## Call when a solid block type is revealed or damaged (unlocks bestiary row on prep).
+func mark_block_type_discovered(stage_id: StringName, type_id: int) -> void:
+	if type_id <= 0:
+		return
+	if not _stage_block_types_found.has(stage_id):
+		_stage_block_types_found[stage_id] = {}
+	var m: Dictionary = _stage_block_types_found[stage_id]
+	if m.get(type_id, false):
+		return
+	m[type_id] = true
+	save_career()
+
+
+func _load_block_discovery_from_config(c: ConfigFile) -> void:
+	_stage_block_types_found.clear()
+	if not c.has_section(_BLOCK_DISCOVERY_SECTION):
+		return
+	for k in c.get_section_keys(_BLOCK_DISCOVERY_SECTION):
+		var stage_key: String = String(k)
+		var s: String = str(c.get_value(_BLOCK_DISCOVERY_SECTION, k, ""))
+		s = s.strip_edges()
+		if s.is_empty():
+			continue
+		var sid: StringName = StringName(stage_key)
+		_stage_block_types_found[sid] = {}
+		var m: Dictionary = _stage_block_types_found[sid]
+		for part in s.split(","):
+			var t: String = part.strip_edges()
+			if t.is_empty():
+				continue
+			if t.is_valid_int():
+				m[int(t)] = true
+
+
+func _write_block_discovery_to_config(c: ConfigFile) -> void:
+	if _stage_block_types_found.is_empty():
+		return
+	for sid in _stage_block_types_found:
+		var m: Dictionary = _stage_block_types_found[sid]
+		var ids: Array[int] = []
+		for tid in m:
+			if m[tid]:
+				ids.append(int(tid))
+		if ids.is_empty():
+			continue
+		ids.sort()
+		var s_ids := ""
+		for i in ids.size():
+			if i > 0:
+				s_ids += ","
+			s_ids += str(ids[i])
+		c.set_value(_BLOCK_DISCOVERY_SECTION, String(sid), s_ids)
 
 
 ## Call from Prep when starting a mission so HUD "blocks" counts this run only.
@@ -146,6 +213,7 @@ func reset_all_progress() -> void:
 	GameStatistics.fuel_max = GameStatistics.BASE_FUEL_MAX
 	GameStatistics.fuel = GameStatistics.fuel_max
 	UpgradeBus._levels.clear()
+	_stage_block_types_found.clear()
 	_career_write_pending = false
 	_write_career_to_disk()
 	_delete_all_stage_reveal_files()
