@@ -15,6 +15,8 @@ var _drill_shape: CollisionShape2D
 @export var mine_damage_per_tick: float = 1.0
 ## Seconds between mining ticks while colliding with a cell.
 @export var mine_interval_s: float = 0.2
+## Passive fuel drain while the mining grid is active (units per second).
+@export var fuel_drain_per_second: float = 1.0
 ## World-radius of `Hull` circle shape (set in `_ready` from the collider).
 var hull_radius_px: float = 8.0
 ## World-radius of `Drill` circle shape (debug draw / keeps export compat if read elsewhere).
@@ -98,6 +100,8 @@ func _physics_process(delta: float) -> void:
 		_move_with_collision(step)
 
 	_tick_mining(delta)
+
+	GameStatistics.consume_fuel(fuel_drain_per_second * delta)
 
 	grid.update_vision(_front_world(), get_effective_vision_radius_cells())
 
@@ -375,9 +379,7 @@ func _tick_mining(delta: float) -> void:
 		_mine_pending_damage -= float(whole)
 		drill_c = _drill_center_world()
 		drill_r = get_effective_drill_world_radius_px()
-		var hp_rm: int = grid.mine_solid_in_circle_world(drill_c, drill_r, whole)
-		if hp_rm > 0:
-			GameStatistics.consume_fuel(float(hp_rm))
+		grid.mine_solid_in_circle_world(drill_c, drill_r, whole)
 
 
 class _MiningDebugLayer extends Node2D:

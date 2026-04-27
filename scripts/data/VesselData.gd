@@ -7,7 +7,7 @@ extends Resource
 @export var vision_radius_cells: int = 3
 @export var mine_damage_per_tick: float = 1.0
 @export var mine_interval_s: float = 0.2
-@export var fuel_max_base: float = 100.0
+@export var fuel_max_base: float = 30.0
 @export var upgrades: Array = []
 
 
