@@ -39,6 +39,9 @@ const FUEL_TANK_BONUS := 10.0
 ## Max fuel with zero `fuel_tank` upgrades. Keep in sync with `begin_run` / career reset expectations.
 const BASE_FUEL_MAX := 100.0
 const MINE_UPGRADE_DMG_PER_LEVEL := 0.15
+const VISIBILITY_RANGE_UPGRADE_CELLS_PER_LEVEL := 1
+const VESSEL_SPEED_UPGRADE_PX_PER_LEVEL := 1.0
+const DRILL_RANGE_UPGRADE_PX_PER_LEVEL := 1.0
 
 var fuel: float = 100.0
 var fuel_max: float = BASE_FUEL_MAX
@@ -55,7 +58,12 @@ func _ready() -> void:
 func _on_upgrade_purchased(id: StringName, _new_level: int) -> void:
 	if id == &"fuel_tank":
 		_refit_fuel_tank_add_capacity_preserve_fill()
-	elif id == &"mining_power":
+	elif (
+		id == &"mining_power"
+		or id == &"visibility_range"
+		or id == &"vessel_speed"
+		or id == &"drill_range"
+	):
 		stats_changed.emit()
 	elif id == &"melter":
 		set_laser_turret_damage(laser_turret_damage + 1)

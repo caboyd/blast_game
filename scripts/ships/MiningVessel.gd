@@ -26,6 +26,8 @@ var mine_radius_px: float = 2.0
 var grid: MiningGrid
 ## Scene default before `mining_power` career upgrades; effective damage adds `GameStatistics` bonus per level.
 var _base_mine_damage_per_tick: float = 1.0
+var _base_move_speed_px_s: float = 8.0
+var _base_vision_radius_cells: int = 3
 var _fuel_out_emitted: bool = false
 var _mine_accum_time: float = 0.0
 ## Fractional damage carried over between mining ticks (shared pool for the whole drill area).
@@ -35,6 +37,8 @@ var _debug_layer: Node2D
 
 func _ready() -> void:
 	_base_mine_damage_per_tick = mine_damage_per_tick
+	_base_move_speed_px_s = move_speed_px_s
+	_base_vision_radius_cells = vision_radius_cells
 	_hull_shape = _find_hull_collider()
 	_drill_shape = _find_drill_collider()
 	if _hull_shape:
@@ -59,6 +63,21 @@ func get_effective_mine_damage_per_tick() -> float:
 	return _base_mine_damage_per_tick + float(UpgradeBus.get_level(&"mining_power")) * GameStatistics.MINE_UPGRADE_DMG_PER_LEVEL
 
 
+func get_effective_vision_radius_cells() -> int:
+	return maxi(
+		1,
+		_base_vision_radius_cells
+		+ UpgradeBus.get_level(&"visibility_range") * GameStatistics.VISIBILITY_RANGE_UPGRADE_CELLS_PER_LEVEL
+	)
+
+
+func get_effective_move_speed_px_s() -> float:
+	return (
+		_base_move_speed_px_s
+		+ float(UpgradeBus.get_level(&"vessel_speed")) * GameStatistics.VESSEL_SPEED_UPGRADE_PX_PER_LEVEL
+	)
+
+
 ## Same circle as movement (`hull_radius_px` at `global_position`). Call once after `grid` is set (stage start).
 func carve_hull_terrain_on_spawn() -> void:
 	if grid == null:
@@ -73,12 +92,12 @@ func _physics_process(delta: float) -> void:
 	var dir := mouse - global_position
 	if dir.length_squared() > 0.0001:
 		rotation = dir.angle()
-		var step := dir.normalized() * move_speed_px_s * delta
+		var step := dir.normalized() * get_effective_move_speed_px_s() * delta
 		_move_with_collision(step)
 
 	_tick_mining(delta)
 
-	grid.update_vision(_front_world(), vision_radius_cells)
+	grid.update_vision(_front_world(), get_effective_vision_radius_cells())
 
 	if GameStatistics.fuel <= 0.0 and not _fuel_out_emitted:
 		_fuel_out_emitted = true
@@ -149,7 +168,7 @@ func _draw_mining_debug(ci: CanvasItem) -> void:
 
 	# Drill: small red dots on solid cells in the mining footprint.
 	var drill_c: Vector2 = _drill_center_world()
-	var r: float = mine_radius_px
+	var r: float = get_effective_drill_world_radius_px()
 	var dot_r: float = maxf(0.6, cs * 0.1)
 	var cx0: int = int(floor((drill_c.x - r) / cs))
 	var cx1: int = int(floor((drill_c.x + r) / cs))
@@ -220,11 +239,31 @@ func get_drill_world_radius_px() -> float:
 	return _circle_max_world_radius(_drill_shape, mine_radius_px)
 
 
+func _game_to_world_radius_scale() -> float:
+	var s: float = maxf(absf(scale.x), absf(scale.y))
+	return s if s > 0.0 else 1.0
+
+
+func get_effective_drill_world_radius_px() -> float:
+	var bonus_game_px: float = (
+		float(UpgradeBus.get_level(&"drill_range")) * GameStatistics.DRILL_RANGE_UPGRADE_PX_PER_LEVEL
+	)
+	return get_drill_world_radius_px() + bonus_game_px * _game_to_world_radius_scale()
+
+
 ## Radius in the same **game** space as `MiningGrid` (cell = `CELL_SIZE_PX` px), i.e. with this
 ## vessel’s `scale` factored out. Use for prep UI when the instance is zoom-scaled; avoids huge `world_r`.
 func get_drill_game_radius_px() -> float:
 	var w: float = get_drill_world_radius_px()
 	var s: float = maxf(absf(scale.x), absf(scale.y))
+	if s > 0.0:
+		w /= s
+	return w
+
+
+func get_effective_drill_game_radius_px() -> float:
+	var w: float = get_effective_drill_world_radius_px()
+	var s: float = _game_to_world_radius_scale()
 	if s > 0.0:
 		w /= s
 	return w
@@ -328,7 +367,8 @@ func _move_with_collision(step: Vector2) -> void:
 
 func _tick_mining(delta: float) -> void:
 	var drill_c: Vector2 = _drill_center_world()
-	if not grid.has_solid_overlapping_circle_world(drill_c, mine_radius_px):
+	var drill_r: float = get_effective_drill_world_radius_px()
+	if not grid.has_solid_overlapping_circle_world(drill_c, drill_r):
 		_mine_accum_time = 0.0
 		return
 
@@ -341,7 +381,8 @@ func _tick_mining(delta: float) -> void:
 			continue
 		_mine_pending_damage -= float(whole)
 		drill_c = _drill_center_world()
-		var hp_rm: int = grid.mine_solid_in_circle_world(drill_c, mine_radius_px, whole)
+		drill_r = get_effective_drill_world_radius_px()
+		var hp_rm: int = grid.mine_solid_in_circle_world(drill_c, drill_r, whole)
 		if hp_rm > 0:
 			GameStatistics.consume_fuel(float(hp_rm))
 

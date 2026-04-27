@@ -115,6 +115,12 @@ theme_override_font_sizes/font_size = 16
 text = "Fuel: 100 / 100"
 autowrap_mode = 3
 
+[node name="VisibilityRangeLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Visibility Range: 3 cells"
+autowrap_mode = 3
+
 [node name="MiningRadiusLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox" unique_id=127091633]
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
@@ -392,6 +398,138 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="FuelBtn" type="Button" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/FuelRow/FuelBuyRow" unique_id=82409858]
+custom_minimum_size = Vector2(96, 32)
+layout_mode = 2
+text = "10 $"
+
+[node name="VisibilityRow" type="VBoxContainer" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="VisibilityInfo" type="Label" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/VisibilityRow"]
+layout_mode = 2
+text = "+1 Visibility Range"
+
+[node name="VisibilityBuyRow" type="HBoxContainer" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/VisibilityRow"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="VisibilityTierStack" type="Control" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/VisibilityRow/VisibilityBuyRow"]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="VisibilityTierProgress" type="ProgressBar" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/VisibilityRow/VisibilityBuyRow/VisibilityTierStack"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+max_value = 10.0
+show_percentage = false
+
+[node name="VisibilityTierLabel" type="Label" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/VisibilityRow/VisibilityBuyRow/VisibilityTierStack"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 14
+text = "0 / 10"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="VisibilityBtn" type="Button" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/VisibilityRow/VisibilityBuyRow"]
+custom_minimum_size = Vector2(96, 32)
+layout_mode = 2
+text = "10 $"
+
+[node name="SpeedRow" type="VBoxContainer" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="SpeedInfo" type="Label" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/SpeedRow"]
+layout_mode = 2
+text = "+1 Move Speed"
+
+[node name="SpeedBuyRow" type="HBoxContainer" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/SpeedRow"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SpeedTierStack" type="Control" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/SpeedRow/SpeedBuyRow"]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SpeedTierProgress" type="ProgressBar" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/SpeedRow/SpeedBuyRow/SpeedTierStack"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+max_value = 10.0
+show_percentage = false
+
+[node name="SpeedTierLabel" type="Label" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/SpeedRow/SpeedBuyRow/SpeedTierStack"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 14
+text = "0 / 10"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="SpeedBtn" type="Button" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/SpeedRow/SpeedBuyRow"]
+custom_minimum_size = Vector2(96, 32)
+layout_mode = 2
+text = "10 $"
+
+[node name="DrillRangeRow" type="VBoxContainer" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="DrillRangeInfo" type="Label" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/DrillRangeRow"]
+layout_mode = 2
+text = "+1 Drill Range"
+
+[node name="DrillRangeBuyRow" type="HBoxContainer" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/DrillRangeRow"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="DrillRangeTierStack" type="Control" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/DrillRangeRow/DrillRangeBuyRow"]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="DrillRangeTierProgress" type="ProgressBar" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/DrillRangeRow/DrillRangeBuyRow/DrillRangeTierStack"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+max_value = 10.0
+show_percentage = false
+
+[node name="DrillRangeTierLabel" type="Label" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/DrillRangeRow/DrillRangeBuyRow/DrillRangeTierStack"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 14
+text = "0 / 10"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="DrillRangeBtn" type="Button" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/DrillRangeRow/DrillRangeBuyRow"]
 custom_minimum_size = Vector2(96, 32)
 layout_mode = 2
 text = "10 $"

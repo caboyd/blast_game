@@ -9,6 +9,7 @@ const _UNKNOWN_BLOCK := "???"
 @onready var _money_label: Label = $"Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Progress/ProgressVBox/MoneyLabel"
 @onready var _depth_label: Label = $"Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Progress/ProgressVBox/DepthLabel"
 @onready var _ship_fuel_label: Label = $"Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox/ShipFuelLabel"
+@onready var _visibility_range_label: Label = $"Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox/VisibilityRangeLabel"
 @onready var _mining_radius_label: Label = $"Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox/MiningRadiusLabel"
 @onready var _move_speed_label: Label = $"Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox/MoveSpeedLabel"
 @onready var _mining_power_label: Label = $"Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox/MiningPowerLabel"
@@ -27,6 +28,15 @@ const _UNKNOWN_BLOCK := "???"
 @onready var _shop_fuel_tier: Label = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/FuelRow/FuelBuyRow/FuelTierStack/FuelTierLabel
 @onready var _shop_fuel_tier_bar: ProgressBar = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/FuelRow/FuelBuyRow/FuelTierStack/FuelTierProgress
 @onready var _shop_fuel_btn: Button = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/FuelRow/FuelBuyRow/FuelBtn
+@onready var _shop_visibility_tier: Label = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/VisibilityRow/VisibilityBuyRow/VisibilityTierStack/VisibilityTierLabel
+@onready var _shop_visibility_tier_bar: ProgressBar = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/VisibilityRow/VisibilityBuyRow/VisibilityTierStack/VisibilityTierProgress
+@onready var _shop_visibility_btn: Button = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/VisibilityRow/VisibilityBuyRow/VisibilityBtn
+@onready var _shop_speed_tier: Label = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/SpeedRow/SpeedBuyRow/SpeedTierStack/SpeedTierLabel
+@onready var _shop_speed_tier_bar: ProgressBar = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/SpeedRow/SpeedBuyRow/SpeedTierStack/SpeedTierProgress
+@onready var _shop_speed_btn: Button = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/SpeedRow/SpeedBuyRow/SpeedBtn
+@onready var _shop_drill_range_tier: Label = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/DrillRangeRow/DrillRangeBuyRow/DrillRangeTierStack/DrillRangeTierLabel
+@onready var _shop_drill_range_tier_bar: ProgressBar = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/DrillRangeRow/DrillRangeBuyRow/DrillRangeTierStack/DrillRangeTierProgress
+@onready var _shop_drill_range_btn: Button = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/DrillRangeRow/DrillRangeBuyRow/DrillRangeBtn
 
 
 func _ready() -> void:
@@ -54,6 +64,12 @@ func _ready() -> void:
 		_shop_mining_btn.pressed.connect(func() -> void: _on_shop_purchase(&"mining_power"))
 	if _shop_fuel_btn:
 		_shop_fuel_btn.pressed.connect(func() -> void: _on_shop_purchase(&"fuel_tank"))
+	if _shop_visibility_btn:
+		_shop_visibility_btn.pressed.connect(func() -> void: _on_shop_purchase(&"visibility_range"))
+	if _shop_speed_btn:
+		_shop_speed_btn.pressed.connect(func() -> void: _on_shop_purchase(&"vessel_speed"))
+	if _shop_drill_range_btn:
+		_shop_drill_range_btn.pressed.connect(func() -> void: _on_shop_purchase(&"drill_range"))
 	_refresh_all()
 
 
@@ -128,13 +144,15 @@ func _refresh_ship_stats() -> void:
 		_ship_fuel_label.text = "Fuel: %d / %d" % [int(floorf(GameStatistics.fuel)), int(floorf(GameStatistics.fuel_max))]
 	if _vessel == null:
 		return
+	if _visibility_range_label:
+		_visibility_range_label.text = "Visibility Range: %d cells" % _vessel.get_effective_vision_radius_cells()
 	if _mining_radius_label:
 		var half_cell: float = MiningGrid.CELL_SIZE_PX * 0.5
-		var world_r: float = _vessel.get_drill_game_radius_px()
+		var world_r: float = _vessel.get_effective_drill_game_radius_px()
 		var r_rel: float = world_r / half_cell if half_cell > 0.0 else 0.0
 		_mining_radius_label.text = "Mining Radius: %.2f" % r_rel
 	if _move_speed_label:
-		_move_speed_label.text = "Move Speed: %d" % int(roundf(_vessel.move_speed_px_s))
+		_move_speed_label.text = "Move Speed: %d" % int(roundf(_vessel.get_effective_move_speed_px_s()))
 	if _mining_power_label:
 		_mining_power_label.text = "Mining Power: %.1f" % _vessel.get_effective_mine_damage_per_tick()
 	if _mining_interval_label:
@@ -151,12 +169,24 @@ func _refresh_ship_stats() -> void:
 func _refresh_shop() -> void:
 	_set_shop_tier_label(&"mining_power", _shop_mining_tier)
 	_set_shop_tier_label(&"fuel_tank", _shop_fuel_tier)
+	_set_shop_tier_label(&"visibility_range", _shop_visibility_tier)
+	_set_shop_tier_label(&"vessel_speed", _shop_speed_tier)
+	_set_shop_tier_label(&"drill_range", _shop_drill_range_tier)
 	_set_shop_tier_progress(&"mining_power", _shop_mining_tier_bar)
 	_set_shop_tier_progress(&"fuel_tank", _shop_fuel_tier_bar)
+	_set_shop_tier_progress(&"visibility_range", _shop_visibility_tier_bar)
+	_set_shop_tier_progress(&"vessel_speed", _shop_speed_tier_bar)
+	_set_shop_tier_progress(&"drill_range", _shop_drill_range_tier_bar)
 	if _shop_mining_btn:
 		_set_shop_button(&"mining_power", _shop_mining_btn)
 	if _shop_fuel_btn:
 		_set_shop_button(&"fuel_tank", _shop_fuel_btn)
+	if _shop_visibility_btn:
+		_set_shop_button(&"visibility_range", _shop_visibility_btn)
+	if _shop_speed_btn:
+		_set_shop_button(&"vessel_speed", _shop_speed_btn)
+	if _shop_drill_range_btn:
+		_set_shop_button(&"drill_range", _shop_drill_range_btn)
 
 
 func _set_shop_tier_label(upgrade_id: StringName, label: Label) -> void:
