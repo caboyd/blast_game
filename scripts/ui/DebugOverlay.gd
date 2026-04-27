@@ -1,6 +1,5 @@
 extends Control
 
-var _conveyor: TargetConveyor
 var _gold_spin: SpinBox
 var _gold_give: Button
 var _return_to_prep: Button
@@ -9,7 +8,6 @@ var _viewport_info: Label
 
 
 func _ready() -> void:
-	_conveyor = get_node_or_null("%TargetConveyor") as TargetConveyor
 	_gold_spin = get_node_or_null("Panel/VBox/GoldRow/GoldSpin") as SpinBox
 	_gold_give = get_node_or_null("Panel/VBox/GoldRow/GoldGive") as Button
 	_return_to_prep = get_node_or_null("Panel/VBox/ReturnToPrep") as Button
@@ -22,8 +20,6 @@ func _ready() -> void:
 		_return_to_prep.pressed.connect(_on_return_to_prep_pressed)
 	if _debug_visuals:
 		_debug_visuals.toggled.connect(_on_debug_visuals_toggled)
-	if _conveyor != null and not _conveyor.active_target_changed.is_connected(_on_active_target_changed):
-		_conveyor.active_target_changed.connect(_on_active_target_changed)
 	var on: bool = _debug_visuals.button_pressed if _debug_visuals else false
 	_apply_debug_visuals(on)
 
@@ -61,11 +57,3 @@ func _apply_debug_visuals(on: bool) -> void:
 		for n in get_tree().get_nodes_in_group(&"mining_vessel"):
 			if n is CanvasItem:
 				(n as CanvasItem).queue_redraw()
-	if _conveyor == null:
-		return
-	for t in [_conveyor.front_target, _conveyor.next_target]:
-		if t == null:
-			continue
-		var bounds: Node = t.get_node_or_null("DebugBounds")
-		if bounds != null:
-			bounds.visible = on

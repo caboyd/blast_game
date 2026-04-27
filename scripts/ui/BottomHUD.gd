@@ -15,62 +15,7 @@ const DEFAULT_STAT_CONFIG: Array[Dictionary] = [
 
 ## Per-source `upgrades` entries use `UpgradeBus.has_def` (legacy defs + mining defs from `VesselDataRegistry`).
 const DEFAULT_UPGRADE_CONFIG: Array[Dictionary] = [
-	{
-		"id": &"laser_turret",
-		"name": "LASER TURRET",
-		"stats": [
-			{"id": &"count", "label": "Count"},
-			{"id": &"damage", "label": "Damage"},
-			{"id": &"fire_rate", "label": "Fire/s"},
-			{"id": &"dmg_dealt", "label": "Dmg Dealt"},
-		],
-		"upgrades": [
-			{"id": &"laser_count", "label": "Count", "target_stat": &"count", "delta": 1},
-			{"id": &"laser_fire_rate", "label": "Fire rate", "target_stat": &"fire_rate", "delta": 0},
-			{"id": &"melter", "label": "Damage", "target_stat": &"damage", "delta": 1},
-		],
-	},
-	{
-		"id": &"click",
-		"name": "CLICK",
-		"stats": [
-			{"id": &"count", "label": "Count"},
-			{"id": &"damage", "label": "Damage"},
-			{"id": &"fire_rate", "label": "Fire/s"},
-			{"id": &"radius", "label": "Radius"},
-			{"id": &"dmg_dealt", "label": "Dmg Dealt"},
-		],
-		"upgrades": [
-			{"id": &"click_count", "label": "Count", "target_stat": &"count", "delta": 0},
-			{"id": &"click_fire_rate", "label": "Fire rate", "target_stat": &"fire_rate", "delta": 0},
-			{"id": &"click_dmg", "label": "Damage", "target_stat": &"damage", "delta": 1},
-			{"id": &"click_radius", "label": "Radius", "target_stat": &"radius", "delta": 1},
-		],
-	},
-	{
-		"id": &"cannon_turret",
-		"name": "CANNON TURRET",
-		"stats": [
-			{"id": &"count", "label": "Count"},
-			{"id": &"damage", "label": "Damage"},
-			{"id": &"fire_rate", "label": "Fire/s"},
-			{"id": &"blast", "label": "Blast (px)"},
-			{"id": &"dmg_dealt", "label": "Dmg Dealt"},
-		],
-		"upgrades": [
-			{"id": &"cannon_count", "label": "Count", "target_stat": &"count", "delta": 1},
-			{"id": &"cannon_fire_rate", "label": "Fire rate", "target_stat": &"fire_rate", "delta": 0},
-			{"id": &"cannon_shell", "label": "Damage", "target_stat": &"damage", "delta": 1},
-			{"id": &"cannon_blast", "label": "Blast r", "target_stat": &"blast", "delta": 4},
-		],
-	},
-	{"id": &"stub_fusion", "name": "FUSION CORE", "disabled": true},
-	{"id": &"stub_turret", "name": "AUTO TURRET", "disabled": true},
-	{"id": &"stub_shield", "name": "SHIELD GEN", "disabled": true},
-	{"id": &"stub_drone", "name": "REPAIR DRONE", "disabled": true},
-	{"id": &"stub_aura", "name": "EMP AURA", "disabled": true},
 ]
-
 ## If empty, DEFAULT_STAT_CONFIG used. Keys: `id` (StringName), optional `name` (display label), optional `icon` (Texture2D).
 @export var stat_config: Array[Dictionary] = []
 
@@ -319,64 +264,9 @@ func _source_instance_count(sid: StringName) -> int:
 	return 0
 
 
-func _first_laser_fire_rate_hz() -> float:
-	var nodes: Array[Node] = get_tree().get_nodes_in_group(&"laser_turrets")
-	if nodes.is_empty():
-		return 10.0
-	var t: Node = nodes[0]
-	if t is LaserTurret:
-		return (t as LaserTurret).update_frequency_hz
-	return 10.0
-
-
-func _first_cannon_fire_rate_hz() -> float:
-	var nodes: Array[Node] = get_tree().get_nodes_in_group(&"cannon_turrets")
-	if nodes.is_empty():
-		return 1.0
-	var t: Node = nodes[0]
-	if t is CannonTurret:
-		return (t as CannonTurret).fire_rate_hz
-	return 1.0
-
-
 func _stat_value_for_source(sid: StringName, stat_id: StringName) -> int:
-	match String(stat_id):
-		"count":
-			return _source_instance_count(sid)
-		"fire_rate":
-			if sid == &"laser_turret":
-				return int(round(_first_laser_fire_rate_hz()))
-			if sid == &"cannon_turret":
-				return int(round(_first_cannon_fire_rate_hz()))
-			if sid == &"click":
-				return int(round(1000.0 / maxf(GameStatistics.click_fire_rate_ms, 1.0)))
-			return 0
-	match String(sid):
-		"laser_turret":
-			match String(stat_id):
-				"damage":
-					return GameStatistics.laser_turret_damage
-				"dmg_dealt":
-					return GameStatistics.damage_to_blocks_laser_turret
-		"cannon_turret":
-			match String(stat_id):
-				"damage":
-					return GameStatistics.cannon_turret_damage
-				"blast":
-					return int(round(GameStatistics.cannon_explosion_radius_px))
-				"dmg_dealt":
-					return GameStatistics.damage_to_blocks_cannon_turret
-		"click":
-			match String(stat_id):
-				"damage":
-					return GameStatistics.click_damage
-				"radius":
-					return GameStatistics.click_radius_cells
-				"dmg_dealt":
-					return GameStatistics.damage_to_blocks_click
 	return 0
-
-
+	
 func _cost_display_for(uid: StringName) -> String:
 	if not UpgradeBus.can_upgrade(uid):
 		if UpgradeBus.is_maxed(uid) and UpgradeBus.get_level(uid) > 0:

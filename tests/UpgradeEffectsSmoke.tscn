@@ -1,6 +1,6 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3 uid="uid://bypanup3b6mi"]
 
-[ext_resource type="Script" path="res://tests/upgrade_effects_smoke.gd" id="1"]
+[ext_resource type="Script" uid="uid://c8ufutpsw3amu" path="res://tests/upgrade_effects_smoke.gd" id="1"]
 
-[node name="UpgradeEffectsSmoke" type="Node"]
+[node name="UpgradeEffectsSmoke" type="Node" unique_id=1721903930]
 script = ExtResource("1")

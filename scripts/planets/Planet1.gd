@@ -9,7 +9,7 @@ const CELL_SIZE_PX: float = 8.0
 
 @export var planet_id: StringName = &"planet1"
 
-@onready var _mining_grid: MiningGrid = %MiningGrid
+@onready var _mining_world: MiningWorld = %MiningWorld
 @onready var _vessel: MiningVessel = %MiningVessel
 @onready var _viewport_info: Label = %ViewportInfo
 @onready var _game_camera: Camera2D = %GameCamera2D
@@ -24,12 +24,12 @@ func _ready() -> void:
 	MiningMissionUI.attach_fuel_bar_for_mining_host(self)
 	GameSession.start_mission_timer()
 	_apply_game_viewport_layout()
-	if _mining_grid:
-		_mining_grid.stage_id = planet_id
-	if _vessel and _mining_grid:
-		_vessel.grid = _mining_grid
+	if _mining_world:
+		_mining_world.stage_id = planet_id
+	if _vessel and _mining_world:
+		_vessel.grid = _mining_world
 		# Hull origin at the middle of chunk (0,0) in grid/world space.
-		_vessel.position = _mining_grid.get_chunk_center_world(Vector2i.ZERO)
+		_vessel.position = _mining_world.get_chunk_center_world(Vector2i.ZERO)
 		_vessel.carve_hull_terrain_on_spawn()
 	if _vessel and not _vessel.out_of_fuel.is_connected(_on_vessel_out_of_fuel):
 		_vessel.out_of_fuel.connect(_on_vessel_out_of_fuel)
@@ -109,7 +109,7 @@ func _apply_game_viewport_layout() -> void:
 
 
 func _physics_process(_delta: float) -> void:
-	if _game_camera == null or _vessel == null or _mining_grid == null:
+	if _game_camera == null or _vessel == null or _mining_world == null:
 		return
 	_game_camera.global_position = _vessel.global_position
 	var z: float = _game_camera.zoom.x
@@ -117,4 +117,4 @@ func _physics_process(_delta: float) -> void:
 		return
 	var half := Vector2(float(_vp_w) / (2.0 * z), float(_vp_h) / (2.0 * z))
 	var r := Rect2(_vessel.global_position - half, half * 2.0)
-	_mining_grid.set_camera_view_world_rect(r)
+	_mining_world.set_camera_view_world_rect(r)

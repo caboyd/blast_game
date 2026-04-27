@@ -130,15 +130,15 @@ func _refresh_stage_tab() -> void:
 	_stage_summary.text = "Stage: %s" % String(_STAGE_BLOCK_CATALOG_ID)
 	_stage_type_tree.clear()
 	var root: TreeItem = _stage_type_tree.create_item()
-	for spec in MiningGrid.get_stage_block_type_rows():
+	for spec in MiningWorld.get_stage_block_type_rows():
 		var type_id: int = int(spec["type_id"])
-		if type_id < 0 or type_id >= MiningGrid.TYPE_MAX_HP.size():
+		if type_id < 0 or type_id >= MiningWorld.TYPE_MAX_HP.size():
 			continue
 		var it: TreeItem = _stage_type_tree.create_item(root)
 		if GameSession.is_block_type_discovered(_STAGE_BLOCK_CATALOG_ID, type_id):
 			it.set_text(0, str(spec.get("label", "?")))
-			it.set_text(1, "%d" % int(MiningGrid.TYPE_MAX_HP[type_id]))
-			it.set_text(2, "%d" % int(MiningGrid.TYPE_MONEY[type_id]))
+			it.set_text(1, "%d" % int(MiningWorld.TYPE_MAX_HP[type_id]))
+			it.set_text(2, "%d" % int(MiningWorld.TYPE_MONEY[type_id]))
 		else:
 			it.set_text(0, _UNKNOWN_BLOCK)
 			it.set_text(1, _UNKNOWN_BLOCK)
@@ -164,7 +164,7 @@ func _refresh_ship_stats() -> void:
 	if _visibility_range_label:
 		_visibility_range_label.text = "Visibility Range: %d cells" % _vessel.get_effective_vision_radius_cells()
 	if _mining_radius_label:
-		var half_cell: float = MiningGrid.CELL_SIZE_PX * 0.5
+		var half_cell: float = MiningWorld.CELL_SIZE_PX * 0.5
 		var world_r: float = _vessel.get_effective_drill_game_radius_px()
 		var r_rel: float = world_r / half_cell if half_cell > 0.0 else 0.0
 		_mining_radius_label.text = "Mining Radius: %.2f" % r_rel
@@ -246,7 +246,7 @@ func _set_shop_info_label(upgrade_id: StringName, label: Label) -> void:
 
 
 func _shop_drill_radius_display_total(upgrade_id: StringName, drill_level: int) -> float:
-	var h: float = MiningGrid.CELL_SIZE_PX * 0.5
+	var h: float = MiningWorld.CELL_SIZE_PX * 0.5
 	var base: float = _vessel.get_drill_game_radius_px()
 	var bonus: float = VesselDataRegistry.preview_effective_stat(
 		&"drill_range_bonus_game_px", upgrade_id, drill_level

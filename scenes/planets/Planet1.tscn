@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://bqhuyhfryq34g"]
 
 [ext_resource type="Script" uid="uid://conweb5pvayjf" path="res://scripts/planets/Planet1.gd" id="1"]
-[ext_resource type="PackedScene" uid="uid://mininggrid01" path="res://scenes/target/MiningGrid.tscn" id="2"]
+[ext_resource type="PackedScene" uid="uid://wfvva5w2yqqq" path="res://scenes/world/MiningWorld.tscn" id="2"]
 [ext_resource type="PackedScene" uid="uid://c3ujct1udqxw7" path="res://scenes/ships/MiningVessel.tscn" id="3"]
 [ext_resource type="PackedScene" uid="uid://s27h7pw54ab5" path="res://scenes/ui/BottomHUD.tscn" id="4"]
 [ext_resource type="PackedScene" path="res://scenes/ui/DebugOverlay.tscn" id="5"]
@@ -58,7 +58,7 @@ unique_name_in_owner = true
 
 [node name="World2D" type="Node2D" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport" unique_id=264430991]
 
-[node name="MiningGrid" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport/World2D" unique_id=1384592697 instance=ExtResource("2")]
+[node name="MiningWorld" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport/World2D" unique_id=1384592697 instance=ExtResource("2")]
 unique_name_in_owner = true
 
 [node name="MiningVessel" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport/World2D" unique_id=945517021 instance=ExtResource("3")]

@@ -1,15 +1,15 @@
-[gd_scene load_steps=7 format=3 uid="uid://c8bottomhud001"]
+[gd_scene format=3 uid="uid://s27h7pw54ab5"]
 
-[ext_resource type="Script" path="res://scripts/ui/BottomHUD.gd" id="1"]
-[ext_resource type="StyleBoxFlat" path="res://resources/ui/hud_style_outer.tres" id="2"]
-[ext_resource type="StyleBoxFlat" path="res://resources/ui/hud_style_inner.tres" id="3"]
-[ext_resource type="StyleBoxFlat" path="res://resources/ui/hud_style_section.tres" id="4"]
-[ext_resource type="Script" path="res://scripts/ui/ResponsiveGrid.gd" id="5"]
-[ext_resource type="StyleBoxFlat" path="res://resources/ui/hud_style_inner_flat.tres" id="6"]
+[ext_resource type="Script" uid="uid://cid4yg61v606y" path="res://scripts/ui/BottomHUD.gd" id="1"]
+[ext_resource type="StyleBox" path="res://resources/ui/hud_style_outer.tres" id="2"]
+[ext_resource type="StyleBox" path="res://resources/ui/hud_style_inner.tres" id="3"]
+[ext_resource type="StyleBox" path="res://resources/ui/hud_style_section.tres" id="4"]
+[ext_resource type="Script" uid="uid://5ier1j3oenmx" path="res://scripts/ui/ResponsiveGrid.gd" id="5"]
+[ext_resource type="StyleBox" path="res://resources/ui/hud_style_inner_flat.tres" id="6"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_btn"]
 
-[node name="BottomHUD" type="Control"]
+[node name="BottomHUD" type="Control" unique_id=597548671]
 layout_mode = 3
 anchors_preset = 12
 anchor_top = 1.0
@@ -24,7 +24,7 @@ grow_vertical = 0
 mouse_filter = 2
 script = ExtResource("1")
 
-[node name="Outer" type="PanelContainer" parent="."]
+[node name="Outer" type="PanelContainer" parent="." unique_id=1423311448]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -33,36 +33,34 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = ExtResource("2")
 
-[node name="Inner" type="PanelContainer" parent="Outer"]
+[node name="Inner" type="PanelContainer" parent="Outer" unique_id=716319073]
 layout_mode = 2
 theme_override_styles/panel = ExtResource("3")
 
-[node name="MainVBox" type="VBoxContainer" parent="Outer/Inner"]
+[node name="MainVBox" type="VBoxContainer" parent="Outer/Inner" unique_id=2090972172]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="StatsRow" type="HBoxContainer" parent="Outer/Inner/MainVBox"]
+[node name="StatsRow" type="HBoxContainer" parent="Outer/Inner/MainVBox" unique_id=1444335633]
 layout_mode = 2
 size_flags_vertical = 8
 theme_override_constants/separation = 0
 
-[node name="StatsSpacerL" type="Control" parent="Outer/Inner/MainVBox/StatsRow"]
+[node name="StatsSpacerL" type="Control" parent="Outer/Inner/MainVBox/StatsRow" unique_id=585562249]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="StatsSection" type="PanelContainer" parent="Outer/Inner/MainVBox/StatsRow"]
+[node name="StatsSection" type="PanelContainer" parent="Outer/Inner/MainVBox/StatsRow" unique_id=553319274]
 layout_mode = 2
 size_flags_horizontal = 0
 theme_override_styles/panel = ExtResource("4")
 
-[node name="StatsScroll" type="ScrollContainer" parent="Outer/Inner/MainVBox/StatsRow/StatsSection"]
-custom_minimum_size = Vector2(0, 0)
+[node name="StatsScroll" type="ScrollContainer" parent="Outer/Inner/MainVBox/StatsRow/StatsSection" unique_id=596665174]
 layout_mode = 2
 size_flags_vertical = 4
-horizontal_scroll_mode = 1
 vertical_scroll_mode = 0
 
-[node name="StatsGrid" type="GridContainer" parent="Outer/Inner/MainVBox/StatsRow/StatsSection/StatsScroll"]
+[node name="StatsGrid" type="GridContainer" parent="Outer/Inner/MainVBox/StatsRow/StatsSection/StatsScroll" unique_id=778695092]
 layout_mode = 2
 size_flags_vertical = 4
 theme_override_constants/h_separation = 6
@@ -71,73 +69,70 @@ script = ExtResource("5")
 columns_horizontal = 32
 force_single_column_when_portrait = false
 
-[node name="StatsSpacerR" type="Control" parent="Outer/Inner/MainVBox/StatsRow"]
+[node name="StatsSpacerR" type="Control" parent="Outer/Inner/MainVBox/StatsRow" unique_id=1692417275]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="UpgradesSection" type="PanelContainer" parent="Outer/Inner/MainVBox"]
+[node name="UpgradesSection" type="PanelContainer" parent="Outer/Inner/MainVBox" unique_id=46569345]
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_styles/panel = ExtResource("4")
 
-[node name="UpgradesVBox" type="VBoxContainer" parent="Outer/Inner/MainVBox/UpgradesSection"]
+[node name="UpgradesVBox" type="VBoxContainer" parent="Outer/Inner/MainVBox/UpgradesSection" unique_id=1006898788]
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="UpgradeBatchRow" type="HBoxContainer" parent="Outer/Inner/MainVBox/UpgradesSection/UpgradesVBox"]
+[node name="UpgradeBatchRow" type="HBoxContainer" parent="Outer/Inner/MainVBox/UpgradesSection/UpgradesVBox" unique_id=770651443]
 layout_mode = 2
 theme_override_constants/separation = 6
 alignment = 2
 
-[node name="UpgradeBatchBtn" type="Button" parent="Outer/Inner/MainVBox/UpgradesSection/UpgradesVBox/UpgradeBatchRow"]
+[node name="UpgradeBatchBtn" type="Button" parent="Outer/Inner/MainVBox/UpgradesSection/UpgradesVBox/UpgradeBatchRow" unique_id=1743564537]
 custom_minimum_size = Vector2(96, 28)
 layout_mode = 2
 focus_mode = 0
 text = "Buy: 1x"
 
-[node name="UpgradesScroll" type="ScrollContainer" parent="Outer/Inner/MainVBox/UpgradesSection/UpgradesVBox"]
+[node name="UpgradesScroll" type="ScrollContainer" parent="Outer/Inner/MainVBox/UpgradesSection/UpgradesVBox" unique_id=1795442429]
 custom_minimum_size = Vector2(0, 200)
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 vertical_scroll_mode = 4
 
-[node name="UpgradesGrid" type="GridContainer" parent="Outer/Inner/MainVBox/UpgradesSection/UpgradesVBox/UpgradesScroll"]
+[node name="UpgradesGrid" type="GridContainer" parent="Outer/Inner/MainVBox/UpgradesSection/UpgradesVBox/UpgradesScroll" unique_id=631885340]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/h_separation = 8
 theme_override_constants/v_separation = 8
 script = ExtResource("5")
 columns_horizontal = 2
-force_single_column_when_portrait = true
 
-[node name="HandleWrap" type="PanelContainer" parent="."]
+[node name="HandleWrap" type="PanelContainer" parent="." unique_id=729755959]
 layout_mode = 1
+anchors_preset = 5
 anchor_left = 0.5
 anchor_right = 0.5
-anchor_top = 0.0
-anchor_bottom = 0.0
 offset_left = -52.0
 offset_top = -20.0
 offset_right = 52.0
 offset_bottom = 20.0
 grow_horizontal = 2
 grow_vertical = 0
-mouse_filter = 0
 theme_override_styles/panel = ExtResource("6")
 
-[node name="CollapseHandle" type="Button" parent="HandleWrap"]
+[node name="CollapseHandle" type="Button" parent="HandleWrap" unique_id=1507524372]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 focus_mode = 0
 theme_override_colors/font_color = Color(0.2, 0.12, 0.08, 1)
-theme_override_colors/font_hover_color = Color(0.35, 0.22, 0.14, 1)
 theme_override_colors/font_pressed_color = Color(0.15, 0.09, 0.06, 1)
+theme_override_colors/font_hover_color = Color(0.35, 0.22, 0.14, 1)
 theme_override_font_sizes/font_size = 18
 theme_override_styles/normal = SubResource("StyleBoxEmpty_btn")
-theme_override_styles/hover = SubResource("StyleBoxEmpty_btn")
 theme_override_styles/pressed = SubResource("StyleBoxEmpty_btn")
+theme_override_styles/hover = SubResource("StyleBoxEmpty_btn")
 theme_override_styles/focus = SubResource("StyleBoxEmpty_btn")
-flat = true
 text = "▲"
+flat = true

@@ -1,0 +1,10 @@
+[gd_scene format=3 uid="uid://miningworld01"]
+
+[ext_resource type="Script" uid="uid://cs655syhp8bid" path="res://scripts/world/MiningWorld.gd" id="1_gr8o2"]
+
+[node name="World" type="Node2D" unique_id=1400227605]
+script = ExtResource("1_gr8o2")
+
+[node name="WorldVisual" type="Sprite2D" parent="." unique_id=716519693]
+
+[node name="FogVisual" type="Sprite2D" parent="." unique_id=1293813776]

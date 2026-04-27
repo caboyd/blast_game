@@ -34,28 +34,6 @@ func get_level(id: StringName) -> int:
 	return int(_levels.get(id, 0))
 
 
-func _resolve_ship() -> Ship:
-	var tree := get_tree()
-	if tree == null:
-		return null
-	return tree.get_first_node_in_group(&"player_ship") as Ship
-
-
-## Max level L such that (1+L) turrets of this type + (1+other) <= small_slot_count.
-func _max_level_for_turret_count(id: StringName) -> int:
-	var ship := _resolve_ship()
-	if ship == null:
-		return 0
-	var S: int = ship.get_small_slot_count()
-	var cap_sum: int = S - 2
-	if cap_sum < 0:
-		cap_sum = 0
-	if id == &"laser_count":
-		return maxi(0, cap_sum - get_level(&"cannon_count"))
-	if id == &"cannon_count":
-		return maxi(0, cap_sum - get_level(&"laser_count"))
-	return 0
-
 
 ## Returns inclusive max level, or -1 if unlimited.
 func get_max_level(id: StringName) -> int:
@@ -64,8 +42,6 @@ func get_max_level(id: StringName) -> int:
 		return int(vud.get("max_level"))
 	if not LEGACY_UPGRADE_DEFS.has(id):
 		return 0
-	if id == &"laser_count" or id == &"cannon_count":
-		return _max_level_for_turret_count(id)
 	var d: Dictionary = LEGACY_UPGRADE_DEFS[id]
 	if not d.has("max_level"):
 		return -1

@@ -3,8 +3,6 @@ extends Node
 signal stats_changed
 signal fuel_changed(current: float, max_fuel: float)
 
-const DAMAGE_SOURCE_LASER_TURRET := &"laser_turret"
-const DAMAGE_SOURCE_CANNON_TURRET := &"cannon_turret"
 const DAMAGE_SOURCE_CLICK := &"click"
 
 const CLICK_FIRE_RATE_START_MS := 500.0
@@ -17,26 +15,9 @@ var _blocks_destroyed_run_baseline: int = 0
 ## Currency earned from destroying blocks; spent on upgrades.
 var money: int = 0
 var furthest_depth_cells: int = 0
-## Total HP removed from block cells (not the same as blocks destroyed).
-var damage_to_blocks_laser_turret: int = 0
-var damage_to_blocks_cannon_turret: int = 0
-var damage_to_blocks_click: int = 0
-## Per-shot laser turret damage (weapon stat); updated by LaserTurret.
-var laser_turret_damage: int = 1
-## Per-shot cannon projectile direct blast damage; updated by CannonTurret.
-var cannon_turret_damage: int = 5
-## Cannon shell explosion radius (px); increased by `cannon_blast` upgrade.
-var cannon_explosion_radius_px: float = 16.0
-const CANNON_BLAST_RADIUS_STEP_PX := 4.0
-## Per-click damage to the destructible grid; updated by upgrades.
-var click_damage: int = 1
-## Click AoE radius in whole cells (circle in cell space).
-var click_radius_cells: int = 2
-## Minimum interval between click damage ticks while holding LMB (ms); reduced by click_fire_rate upgrade.
-var click_fire_rate_ms: float = CLICK_FIRE_RATE_START_MS
 
 ## Base max fuel before `fuel_tank` upgrades; set from active `VesselData.fuel_max_base`.
-var _base_fuel_max: float = 100.0
+var _base_fuel_max: float = 0.0
 
 var fuel: float = 100.0
 var fuel_max: float = 100.0
@@ -69,78 +50,6 @@ func _on_upgrade_purchased(id: StringName, _new_level: int) -> void:
 		or id == &"drill_range"
 	):
 		stats_changed.emit()
-	elif id == &"melter":
-		set_laser_turret_damage(laser_turret_damage + 1)
-	elif id == &"cannon_shell":
-		set_cannon_turret_damage(cannon_turret_damage + 1)
-	elif id == &"cannon_blast":
-		set_cannon_explosion_radius_px(cannon_explosion_radius_px + CANNON_BLAST_RADIUS_STEP_PX)
-	elif id == &"click_dmg":
-		set_click_damage(click_damage + 1)
-	elif id == &"click_radius":
-		set_click_radius_cells(click_radius_cells + 1)
-	elif id == &"click_fire_rate":
-		set_click_fire_rate_ms(click_fire_rate_ms * CLICK_FIRE_RATE_STEP)
-
-
-func set_laser_turret_damage(amount: int) -> void:
-	var v := maxi(1, amount)
-	if laser_turret_damage == v:
-		return
-	laser_turret_damage = v
-	stats_changed.emit()
-
-
-func set_cannon_turret_damage(amount: int) -> void:
-	var v := maxi(1, amount)
-	if cannon_turret_damage == v:
-		return
-	cannon_turret_damage = v
-	stats_changed.emit()
-
-
-func set_cannon_explosion_radius_px(px: float) -> void:
-	var v := maxf(1.0, px)
-	if is_equal_approx(cannon_explosion_radius_px, v):
-		return
-	cannon_explosion_radius_px = v
-	stats_changed.emit()
-
-
-func set_click_damage(amount: int) -> void:
-	var v := maxi(1, amount)
-	if click_damage == v:
-		return
-	click_damage = v
-	stats_changed.emit()
-
-
-func set_click_radius_cells(cells: int) -> void:
-	var v := maxi(1, cells)
-	if click_radius_cells == v:
-		return
-	click_radius_cells = v
-	stats_changed.emit()
-
-
-func set_click_fire_rate_ms(ms: float) -> void:
-	var v := maxf(CLICK_FIRE_RATE_MIN_MS, ms)
-	if is_equal_approx(click_fire_rate_ms, v):
-		return
-	click_fire_rate_ms = v
-	stats_changed.emit()
-
-
-func add_block_damage(amount: int, source: StringName) -> void:
-	if amount <= 0:
-		return
-	if source == DAMAGE_SOURCE_LASER_TURRET:
-		damage_to_blocks_laser_turret += amount
-	elif source == DAMAGE_SOURCE_CANNON_TURRET:
-		damage_to_blocks_cannon_turret += amount
-	elif source == DAMAGE_SOURCE_CLICK:
-		damage_to_blocks_click += amount
-	stats_changed.emit()
 
 
 func set_blocks_run_baseline() -> void:

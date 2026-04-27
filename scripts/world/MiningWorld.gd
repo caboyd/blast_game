@@ -1,4 +1,4 @@
-class_name MiningGrid
+class_name MiningWorld
 extends Node2D
 
 const CHUNK_SIZE := 40
@@ -512,7 +512,7 @@ func _sync_shader_texture_params() -> void:
 
 func _init_visuals() -> void:
 	if _world_visual == null:
-		push_error("MiningGrid needs WorldVisual Sprite2D child.")
+		push_error("World needs WorldVisual Sprite2D child.")
 		return
 	_resize_view_textures(32, 32)
 	var sm := ShaderMaterial.new()

@@ -25,7 +25,7 @@ var mine_radius_px: float = 2.0
 ## Real collision never lets the hull disk overlap those tiles, so a tiny pad is needed to see them.
 @export var hull_debug_blocked_pad_px: float = 0.15
 
-var grid: MiningGrid
+var grid: MiningWorld
 ## Scene default before `mining_power` career upgrades; effective damage adds `GameStatistics` bonus per level.
 var _base_mine_damage_per_tick: float = 1.0
 var _base_move_speed_px_s: float = 8.0
@@ -131,15 +131,15 @@ func _draw_mining_debug(ci: CanvasItem) -> void:
 	var color_drill_bearing: Color = Color(1.0, 0.35, 0.35, 0.85)
 	var color_chunk_border: Color = Color(0.3, 0.65, 1.0, 0.88)
 
-	var cs: float = MiningGrid.CELL_SIZE_PX
-	var chunk_px: float = float(MiningGrid.CHUNK_SIZE) * cs
+	var cs: float = MiningWorld.CELL_SIZE_PX
+	var chunk_px: float = float(MiningWorld.CHUNK_SIZE) * cs
 	var origin_chunk: Vector2i = grid.get_chunk_for_world_pos(global_position)
 	const _CHUNK_BORDERS_HALF: int = 4
 	for dcy in range(-_CHUNK_BORDERS_HALF, _CHUNK_BORDERS_HALF + 1):
 		for dcx in range(-_CHUNK_BORDERS_HALF, _CHUNK_BORDERS_HALF + 1):
 			var cchunk: Vector2i = origin_chunk + Vector2i(dcx, dcy)
-			var tlx: float = float(cchunk.x * MiningGrid.CHUNK_SIZE) * cs
-			var tly: float = float(cchunk.y * MiningGrid.CHUNK_SIZE) * cs
+			var tlx: float = float(cchunk.x * MiningWorld.CHUNK_SIZE) * cs
+			var tly: float = float(cchunk.y * MiningWorld.CHUNK_SIZE) * cs
 			_draw_world_rect_outline(
 				ci, Vector2(tlx, tly), chunk_px, chunk_px, color_chunk_border, 1.0
 			)
@@ -246,7 +246,7 @@ func get_effective_drill_world_radius_px() -> float:
 	return get_effective_drill_game_radius_px() * _game_to_world_radius_scale()
 
 
-## Radius in the same **game** space as `MiningGrid` (cell = `CELL_SIZE_PX` px), i.e. with this
+## Radius in the same **game** space as `MiningWorld` (cell = `CELL_SIZE_PX` px), i.e. with this
 ## vessel’s `scale` factored out. Use for prep UI when the instance is zoom-scaled; avoids huge `world_r`.
 func get_drill_game_radius_px() -> float:
 	var w: float = get_drill_world_radius_px()
@@ -300,7 +300,7 @@ func _drill_center_world() -> Vector2:
 
 
 func _circle_overlaps_cell_rect(center: Vector2, radius: float, cell_x: int, cell_y: int) -> bool:
-	var cs: float = MiningGrid.CELL_SIZE_PX
+	var cs: float = MiningWorld.CELL_SIZE_PX
 	var L: float = float(cell_x) * cs
 	var T: float = float(cell_y) * cs
 	var R: float = L + cs
@@ -314,7 +314,7 @@ func _circle_overlaps_cell_rect(center: Vector2, radius: float, cell_x: int, cel
 
 ## True if the hull circle at `center_world` intersects any solid grid cell.
 func _hull_overlaps_solid(center_world: Vector2) -> bool:
-	var cs: float = MiningGrid.CELL_SIZE_PX
+	var cs: float = MiningWorld.CELL_SIZE_PX
 	var r: float = hull_radius_px
 	var cx0: int = int(floor((center_world.x - r) / cs))
 	var cx1: int = int(floor((center_world.x + r) / cs))
