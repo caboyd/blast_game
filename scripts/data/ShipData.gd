@@ -1,8 +1,8 @@
-class_name VesselData
+class_name ShipData
 extends Resource
 
 @export var id: StringName = &"scout"
-@export var display_name: String = "Mining Vessel"
+@export var display_name: String = "Mining Ship"
 @export var move_speed_px_s: float = 8.0
 @export var vision_radius_cells: int = 3
 @export var mine_damage_per_tick: float = 1.0

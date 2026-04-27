@@ -16,28 +16,30 @@ var _blocks_destroyed_run_baseline: int = 0
 var money: int = 0
 var furthest_depth_cells: int = 0
 
-## Base max fuel before `fuel_tank` upgrades; set from active `VesselData.fuel_max_base`.
+## Base max fuel before `fuel_tank` upgrades; set from active `ShipData.fuel_max_base`.
 var _base_fuel_max: float = 0.0
 
-var fuel: float = 100.0
-var fuel_max: float = 100.0
+var fuel: float = 0.0
+var fuel_max: float = 0.0
 
-## Master switch for world gizmos (mining vessel hull/drill debug, conveyor bounds, viewport label). Toggled from `DebugOverlay` on planet; default off so Prep (no overlay) is clean.
+## Master switch for world gizmos (mining ship hull/drill debug, conveyor bounds, viewport label). Toggled from `DebugOverlay` on planet; default off so Prep (no overlay) is clean.
 var debug_world_visuals: bool = false
 
 
 func _ready() -> void:
-	_apply_vessel_fuel_base()
+	_apply_ship_fuel_base()
 	if not UpgradeBus.upgrade_purchased.is_connected(_on_upgrade_purchased):
 		UpgradeBus.upgrade_purchased.connect(_on_upgrade_purchased)
 
 
-func _apply_vessel_fuel_base() -> void:
-	var vd: Resource = VesselDataRegistry.get_active()
-	if vd != null:
-		_base_fuel_max = float(vd.get("fuel_max_base"))
-	else:
-		_base_fuel_max = 100.0
+func _apply_ship_fuel_base() -> void:
+	var sd: Resource = ShipDataRegistry.get_active()
+	if sd == null:
+		push_error("ShipDataRegistry.get_active() returned null")
+		assert(false)
+		return
+
+	_base_fuel_max = float(sd.get("fuel_max_base"))
 
 
 func _on_upgrade_purchased(id: StringName, _new_level: int) -> void:
@@ -46,7 +48,7 @@ func _on_upgrade_purchased(id: StringName, _new_level: int) -> void:
 	elif (
 		id == &"mining_power"
 		or id == &"visibility_range"
-		or id == &"vessel_speed"
+		or id == &"ship_speed"
 		or id == &"drill_range"
 	):
 		stats_changed.emit()
@@ -111,7 +113,7 @@ func apply_fuel_max_from_career_load() -> void:
 
 
 func effective_fuel_max() -> float:
-	return VesselDataRegistry.apply_effects_for_stat(&"fuel_max", _base_fuel_max)
+	return ShipDataRegistry.apply_effects_for_stat(&"fuel_max", _base_fuel_max)
 
 
 func _refit_fuel_tank_add_capacity_preserve_fill() -> void:

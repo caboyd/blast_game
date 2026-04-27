@@ -16,10 +16,10 @@ const UPGRADE_BATCH_REQUESTS: Array[int] = [1, 5, 25, 100, -1]
 @onready var _mining_power_label: Label = $"Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox/MiningPowerLabel"
 @onready var _mining_interval_label: Label = $"Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox/MiningIntervalLabel"
 @onready var _mining_power_per_sec_label: Label = $"Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox/MiningPowerPerSecLabel"
-@onready var _vessel: MiningVessel = $Margin/RootVBox/Row/PreviewCol/VesselColumn/VesselTabs/Preview/SubViewportContainer/SubViewport/World/MiningVessel
-@onready var _vessel_tabs: TabContainer = $Margin/RootVBox/Row/PreviewCol/VesselColumn/VesselTabs
-@onready var _stage_summary: Label = $Margin/RootVBox/Row/PreviewCol/VesselColumn/VesselTabs/Stage/StageScroll/StageVBox/StageSummaryLabel
-@onready var _stage_type_tree: Tree = $Margin/RootVBox/Row/PreviewCol/VesselColumn/VesselTabs/Stage/StageScroll/StageVBox/StageTypeTree
+@onready var _ship: Scout = $Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/SubViewportContainer/SubViewport/World/Scout
+@onready var _ship_tabs: TabContainer = $Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs
+@onready var _stage_summary: Label = $Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Stage/StageScroll/StageVBox/StageSummaryLabel
+@onready var _stage_type_tree: Tree = $Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Stage/StageScroll/StageVBox/StageTypeTree
 @onready var _debug_reset: Button = $Margin/RootVBox/DebugRow/DebugResetProgress
 @onready var _stats_tabs: TabContainer = $Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs
 @onready var _shop_money_label: Label = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/ShopMoneyRow/ShopMoneyPanel/ShopMoneyLabel
@@ -51,10 +51,10 @@ var _upgrade_batch_index: int = 0
 func _ready() -> void:
 	_stats_tabs.set_tab_title(0, "Ship")
 	_stats_tabs.set_tab_title(1, "Progress")
-	if _vessel_tabs:
-		_vessel_tabs.set_tab_title(0, "Vessel")
-		_vessel_tabs.set_tab_title(1, "Stage")
-		_vessel_tabs.tab_changed.connect(_on_vessel_tab_changed)
+	if _ship_tabs:
+		_ship_tabs.set_tab_title(0, "Ship")
+		_ship_tabs.set_tab_title(1, "Stage")
+		_ship_tabs.tab_changed.connect(_on_ship_tab_changed)
 	if _stage_type_tree:
 		_stage_type_tree.set_column_title(0, "Block")
 		_stage_type_tree.set_column_title(1, "Max HP")
@@ -78,13 +78,13 @@ func _ready() -> void:
 	if _shop_visibility_btn:
 		_shop_visibility_btn.pressed.connect(func() -> void: _on_shop_purchase(&"visibility_range"))
 	if _shop_speed_btn:
-		_shop_speed_btn.pressed.connect(func() -> void: _on_shop_purchase(&"vessel_speed"))
+		_shop_speed_btn.pressed.connect(func() -> void: _on_shop_purchase(&"ship_speed"))
 	if _shop_drill_range_btn:
 		_shop_drill_range_btn.pressed.connect(func() -> void: _on_shop_purchase(&"drill_range"))
 	_refresh_all()
 
 
-func _on_vessel_tab_changed(tab: int) -> void:
+func _on_ship_tab_changed(tab: int) -> void:
 	if tab == _STAGE_TAB_INDEX:
 		_refresh_stage_tab()
 
@@ -120,7 +120,7 @@ func _refresh_all() -> void:
 	_refresh_progress()
 	_refresh_ship_stats()
 	_refresh_shop()
-	if _vessel_tabs and _vessel_tabs.current_tab == _STAGE_TAB_INDEX:
+	if _ship_tabs and _ship_tabs.current_tab == _STAGE_TAB_INDEX:
 		_refresh_stage_tab()
 
 
@@ -159,25 +159,25 @@ func _refresh_progress() -> void:
 func _refresh_ship_stats() -> void:
 	if _ship_fuel_label:
 		_ship_fuel_label.text = "Fuel: %d / %d" % [int(floorf(GameStatistics.fuel)), int(floorf(GameStatistics.fuel_max))]
-	if _vessel == null:
+	if _ship == null:
 		return
 	if _visibility_range_label:
-		_visibility_range_label.text = "Visibility Range: %d cells" % _vessel.get_effective_vision_radius_cells()
+		_visibility_range_label.text = "Visibility Range: %d cells" % _ship.get_effective_vision_radius_cells()
 	if _mining_radius_label:
 		var half_cell: float = MiningWorld.CELL_SIZE_PX * 0.5
-		var world_r: float = _vessel.get_effective_drill_game_radius_px()
+		var world_r: float = _ship.get_effective_drill_game_radius_px()
 		var r_rel: float = world_r / half_cell if half_cell > 0.0 else 0.0
 		_mining_radius_label.text = "Mining Radius: %.2f" % r_rel
 	if _move_speed_label:
-		_move_speed_label.text = "Move Speed: %d" % int(roundf(_vessel.get_effective_move_speed_px_s()))
+		_move_speed_label.text = "Move Speed: %d" % int(roundf(_ship.get_effective_move_speed_px_s()))
 	if _mining_power_label:
-		_mining_power_label.text = "Mining Power: %.1f" % _vessel.get_effective_mine_damage_per_tick()
+		_mining_power_label.text = "Mining Power: %.1f" % _ship.get_effective_mine_damage_per_tick()
 	if _mining_interval_label:
-		_mining_interval_label.text = "Mining Interval: %.1f" % _vessel.mine_interval_s
+		_mining_interval_label.text = "Mining Interval: %.1f" % _ship.mine_interval_s
 	if _mining_power_per_sec_label:
-		var dt: float = _vessel.mine_interval_s
+		var dt: float = _ship.mine_interval_s
 		if dt > 0.0:
-			var dps: float = _vessel.get_effective_mine_damage_per_tick() / dt
+			var dps: float = _ship.get_effective_mine_damage_per_tick() / dt
 			_mining_power_per_sec_label.text = "Mining Power / s: %.1f" % dps
 		else:
 			_mining_power_per_sec_label.text = "Mining Power / s: —"
@@ -188,12 +188,12 @@ func _refresh_shop() -> void:
 	_set_shop_tier_label(&"mining_power", _shop_mining_tier)
 	_set_shop_tier_label(&"fuel_tank", _shop_fuel_tier)
 	_set_shop_tier_label(&"visibility_range", _shop_visibility_tier)
-	_set_shop_tier_label(&"vessel_speed", _shop_speed_tier)
+	_set_shop_tier_label(&"ship_speed", _shop_speed_tier)
 	_set_shop_tier_label(&"drill_range", _shop_drill_range_tier)
 	_set_shop_tier_progress(&"mining_power", _shop_mining_tier_bar)
 	_set_shop_tier_progress(&"fuel_tank", _shop_fuel_tier_bar)
 	_set_shop_tier_progress(&"visibility_range", _shop_visibility_tier_bar)
-	_set_shop_tier_progress(&"vessel_speed", _shop_speed_tier_bar)
+	_set_shop_tier_progress(&"ship_speed", _shop_speed_tier_bar)
 	_set_shop_tier_progress(&"drill_range", _shop_drill_range_tier_bar)
 	if _shop_mining_btn:
 		_set_shop_button(&"mining_power", _shop_mining_btn)
@@ -202,20 +202,20 @@ func _refresh_shop() -> void:
 	if _shop_visibility_btn:
 		_set_shop_button(&"visibility_range", _shop_visibility_btn)
 	if _shop_speed_btn:
-		_set_shop_button(&"vessel_speed", _shop_speed_btn)
+		_set_shop_button(&"ship_speed", _shop_speed_btn)
 	if _shop_drill_range_btn:
 		_set_shop_button(&"drill_range", _shop_drill_range_btn)
 	_set_shop_info_label(&"mining_power", _shop_mining_info)
 	_set_shop_info_label(&"fuel_tank", _shop_fuel_info)
 	_set_shop_info_label(&"visibility_range", _shop_visibility_info)
-	_set_shop_info_label(&"vessel_speed", _shop_speed_info)
+	_set_shop_info_label(&"ship_speed", _shop_speed_info)
 	_set_shop_info_label(&"drill_range", _shop_drill_info)
 
 
 func _set_shop_info_label(upgrade_id: StringName, label: Label) -> void:
 	if label == null:
 		return
-	if not UpgradeBus.has_def(upgrade_id) or not VesselDataRegistry.has_upgrade(upgrade_id):
+	if not UpgradeBus.has_def(upgrade_id) or not ShipDataRegistry.has_upgrade(upgrade_id):
 		label.text = ""
 		return
 	if UpgradeBus.is_maxed(upgrade_id):
@@ -227,7 +227,7 @@ func _set_shop_info_label(upgrade_id: StringName, label: Label) -> void:
 	)
 	var next_teaser: bool = n_afford <= 0
 	var n_disp: int = 1 if next_teaser else n_afford
-	var deltas: Array = VesselDataRegistry.preview_upgrade_stat_deltas(upgrade_id, n_disp)
+	var deltas: Array = ShipDataRegistry.preview_upgrade_stat_deltas(upgrade_id, n_disp)
 	var parts: Array[String] = []
 	for e in deltas:
 		var line: String = _shop_format_stat_delta_line(e, upgrade_id, n_disp)
@@ -247,8 +247,8 @@ func _set_shop_info_label(upgrade_id: StringName, label: Label) -> void:
 
 func _shop_drill_radius_display_total(upgrade_id: StringName, drill_level: int) -> float:
 	var h: float = MiningWorld.CELL_SIZE_PX * 0.5
-	var base: float = _vessel.get_drill_game_radius_px()
-	var bonus: float = VesselDataRegistry.preview_effective_stat(
+	var base: float = _ship.get_drill_game_radius_px()
+	var bonus: float = ShipDataRegistry.preview_effective_stat(
 		&"drill_range_bonus_game_px", upgrade_id, drill_level
 	)
 	return (base + bonus) / h if h > 0.0 else 0.0
@@ -259,7 +259,7 @@ func _shop_format_stat_delta_line(e: Dictionary, upgrade_id: StringName, n_disp:
 	var delta: float = float(e["delta"])
 	var after: float = float(e["after"])
 	if st == &"drill_range_bonus_game_px":
-		if _vessel == null:
+		if _ship == null:
 			return ""
 		var cur: int = UpgradeBus.get_level(upgrade_id)
 		var before_u: float = _shop_drill_radius_display_total(upgrade_id, cur)

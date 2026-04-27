@@ -1,9 +1,9 @@
 extends Node
 
-## Loads `res://data/vessels/<GameSession.selected_ship_id>.tres` and exposes mining vessel stat/upgrade data.
+## Loads `res://data/ships/<GameSession.selected_ship_id>.tres` and exposes mining ship stat/upgrade data.
 
-const _VESSEL_DATA_SCRIPT = preload("res://scripts/data/VesselData.gd")
-const _VESSEL_UPGRADE_MATH = preload("res://scripts/data/VesselUpgradeMath.gd")
+const _SHIP_DATA_SCRIPT = preload("res://scripts/data/ShipData.gd")
+const _SHIP_UPGRADE_MATH = preload("res://scripts/data/ShipUpgradeMath.gd")
 
 var _active: Resource
 
@@ -14,14 +14,14 @@ func _ready() -> void:
 
 func reload_active() -> void:
 	var sid: StringName = GameSession.selected_ship_id
-	var path: String = "res://data/vessels/%s.tres" % String(sid)
+	var path: String = "res://data/ships/%s.tres" % String(sid)
 	if not ResourceLoader.exists(path):
-		push_error("VesselDataRegistry: missing vessel data at %s" % path)
+		push_error("ShipDataRegistry: missing ship data at %s" % path)
 		_active = null
 		return
 	var res: Resource = ResourceLoader.load(path, "", ResourceLoader.CACHE_MODE_REUSE)
-	if res == null or res.get_script() != _VESSEL_DATA_SCRIPT:
-		push_error("VesselDataRegistry: not a VesselData resource: %s" % path)
+	if res == null or res.get_script() != _SHIP_DATA_SCRIPT:
+		push_error("ShipDataRegistry: not a ShipData resource: %s" % path)
 		_active = null
 		return
 	_active = res
@@ -60,7 +60,7 @@ func apply_effects_for_stat(stat: StringName, base: float) -> float:
 		var effs: Array = ud.get("effects") as Array
 		for eff in effs:
 			if eff != null and eff.get("stat") == stat:
-				v = _VESSEL_UPGRADE_MATH.apply_effect(v, lvl, eff)
+				v = _SHIP_UPGRADE_MATH.apply_effect(v, lvl, eff)
 	return v
 
 
@@ -90,7 +90,7 @@ func preview_effective_stat(stat: StringName, focus_upgrade_id: StringName, focu
 		var effs: Array = ud.get("effects") as Array
 		for eff in effs:
 			if eff != null and eff.get("stat") == stat:
-				v = _VESSEL_UPGRADE_MATH.apply_effect(v, lvl, eff)
+				v = _SHIP_UPGRADE_MATH.apply_effect(v, lvl, eff)
 	return v
 
 

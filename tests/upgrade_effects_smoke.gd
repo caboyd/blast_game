@@ -1,60 +1,60 @@
 extends Node
 
-const MiningVesselScene := preload("res://scenes/ships/MiningVessel.tscn")
+const ScoutShipScene := preload("res://scenes/ships/Scout.tscn")
 const BottomHUDScene := preload("res://scenes/ui/BottomHUD.tscn")
 const PrepScene := preload("res://scenes/prep/Prep.tscn")
-const ScoutVesselData := preload("res://data/vessels/scout.tres")
-const VesselUpgradeDataScript := preload("res://scripts/data/VesselUpgradeData.gd")
-const VesselUpgradeMathScript := preload("res://scripts/data/VesselUpgradeMath.gd")
+const ScoutShipData := preload("res://data/ships/scout.tres")
+const ShipUpgradeDataScript := preload("res://scripts/data/ShipUpgradeData.gd")
+const ShipUpgradeMathScript := preload("res://scripts/data/ShipUpgradeMath.gd")
 
 
 func _ready() -> void:
-	var scout: Resource = ScoutVesselData as Resource
-	_assert_true(scout != null, "scout vessel resource loads")
+	var scout: Resource = ScoutShipData as Resource
+	_assert_true(scout != null, "scout ship resource loads")
 	_assert_true(scout.get("id") == &"scout", "scout id")
 	_assert_approx(float(scout.get("move_speed_px_s")), 8.0, "scout base move speed")
 	var vsp: Resource = null
 	for u in scout.get("upgrades") as Array:
-		if u != null and u.get("id") == &"vessel_speed":
+		if u != null and u.get("id") == &"ship_speed":
 			vsp = u
 			break
-	_assert_true(vsp != null, "vessel_speed upgrade exists")
-	_assert_eq(int(vsp.get("base_cost")), 10, "vessel_speed base cost")
+	_assert_true(vsp != null, "ship_speed upgrade exists")
+	_assert_eq(int(vsp.get("base_cost")), 10, "ship_speed base cost")
 	var vfx: Array = vsp.get("effects") as Array
-	_assert_approx(float(vfx[0].get("value")), 1.0, "vessel_speed add per level")
+	_assert_approx(float(vfx[0].get("value")), 1.0, "ship_speed add per level")
 
-	var ud_linear = VesselUpgradeDataScript.new()
+	var ud_linear = ShipUpgradeDataScript.new()
 	ud_linear.base_cost = 10
 	ud_linear.cost_operation = "add"
 	ud_linear.cost_value = 5.0
-	_assert_eq(VesselUpgradeMathScript.cost_at_level(ud_linear, 0), 10, "add cost L0")
-	_assert_eq(VesselUpgradeMathScript.cost_at_level(ud_linear, 1), 15, "add cost L1")
+	_assert_eq(ShipUpgradeMathScript.cost_at_level(ud_linear, 0), 10, "add cost L0")
+	_assert_eq(ShipUpgradeMathScript.cost_at_level(ud_linear, 1), 15, "add cost L1")
 
-	var vessel := MiningVesselScene.instantiate() as MiningVessel
-	add_child(vessel)
+	var ship := ScoutShipScene.instantiate() as Scout
+	add_child(ship)
 	await get_tree().process_frame
 
 	UpgradeBus._levels.clear()
 	_assert_eq(UpgradeBus.get_max_level(&"fuel_tank"), 1000, "fuel tank max level")
 
 	UpgradeBus._levels[&"visibility_range"] = 3
-	UpgradeBus._levels[&"vessel_speed"] = 4
+	UpgradeBus._levels[&"ship_speed"] = 4
 	UpgradeBus._levels[&"drill_range"] = 5
 
-	_assert_eq(vessel.get_effective_vision_radius_cells(), vessel.vision_radius_cells + 3, "vision range")
+	_assert_eq(ship.get_effective_vision_radius_cells(), ship.vision_radius_cells + 3, "vision range")
 	_assert_approx(
-		vessel.get_effective_move_speed_px_s(),
-		vessel.move_speed_px_s + 4.0,
-		"vessel speed"
+		ship.get_effective_move_speed_px_s(),
+		ship.move_speed_px_s + 4.0,
+		"ship speed"
 	)
 	_assert_approx(
-		vessel.get_effective_drill_game_radius_px(),
-		vessel.get_drill_game_radius_px() + 5.0,
+		ship.get_effective_drill_game_radius_px(),
+		ship.get_drill_game_radius_px() + 5.0,
 		"drill range"
 	)
 	_assert_approx(
-		vessel.get_debug_drill_draw_radius_px(),
-		vessel.get_effective_drill_game_radius_px(),
+		ship.get_debug_drill_draw_radius_px(),
+		ship.get_effective_drill_game_radius_px(),
 		"debug drill radius"
 	)
 
@@ -90,7 +90,7 @@ func _ready() -> void:
 	_assert_eq_string(prep.get_shop_cost_display_for_test(&"mining_power"), "20x $574", "max prep cost")
 	prep.queue_free()
 
-	vessel.queue_free()
+	ship.queue_free()
 	get_tree().quit(0)
 
 

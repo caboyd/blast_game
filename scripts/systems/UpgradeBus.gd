@@ -1,9 +1,9 @@
 extends Node
 
-const _VESSEL_UPGRADE_MATH = preload("res://scripts/data/VesselUpgradeMath.gd")
+const _SHIP_UPGRADE_MATH = preload("res://scripts/data/ShipUpgradeMath.gd")
 
 ## Central hub for upgrade purchases. UI calls `try_purchase`; gameplay systems connect to `upgrade_purchased`.
-## Mining upgrade defs/costs come from `VesselDataRegistry` (per-vessel `.tres`). Legacy combat/click defs stay in code.
+## Mining upgrade defs/costs come from `ShipDataRegistry` (per-ship `.tres`). Legacy combat/click defs stay in code.
 ## Optional `max_level` in legacy defs (inclusive cap). Omit `max_level` for infinite levels.
 ## `laser_count` / `cannon_count` caps come from current Ship small-slot pool (shared).
 
@@ -27,7 +27,7 @@ var _levels: Dictionary = {}  # StringName -> int
 
 
 func has_def(id: StringName) -> bool:
-	return LEGACY_UPGRADE_DEFS.has(id) or VesselDataRegistry.has_upgrade(id)
+	return LEGACY_UPGRADE_DEFS.has(id) or ShipDataRegistry.has_upgrade(id)
 
 
 func get_level(id: StringName) -> int:
@@ -37,7 +37,7 @@ func get_level(id: StringName) -> int:
 
 ## Returns inclusive max level, or -1 if unlimited.
 func get_max_level(id: StringName) -> int:
-	var vud: Resource = VesselDataRegistry.get_upgrade(id)
+	var vud: Resource = ShipDataRegistry.get_upgrade(id)
 	if vud != null:
 		return int(vud.get("max_level"))
 	if not LEGACY_UPGRADE_DEFS.has(id):
@@ -74,9 +74,9 @@ func _legacy_cost_at_level(id: StringName, level: int) -> int:
 
 
 func _cost_at_level(id: StringName, level: int) -> int:
-	var vud: Resource = VesselDataRegistry.get_upgrade(id)
+	var vud: Resource = ShipDataRegistry.get_upgrade(id)
 	if vud != null:
-		return _VESSEL_UPGRADE_MATH.cost_at_level(vud, level)
+		return _SHIP_UPGRADE_MATH.cost_at_level(vud, level)
 	if LEGACY_UPGRADE_DEFS.has(id):
 		return _legacy_cost_at_level(id, level)
 	return 999999999
@@ -157,7 +157,7 @@ func _all_persisted_upgrade_ids() -> Array[StringName]:
 	var id_set: Dictionary = {}
 	for k in LEGACY_UPGRADE_DEFS:
 		id_set[k] = true
-	var vd: Resource = VesselDataRegistry.get_active()
+	var vd: Resource = ShipDataRegistry.get_active()
 	if vd != null:
 		var ups: Array = vd.get("upgrades") as Array
 		for u in ups:

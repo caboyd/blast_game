@@ -13,7 +13,7 @@ const DEFAULT_STAT_CONFIG: Array[Dictionary] = [
 	{"id": &"ship_hp", "name": "fuel"},
 ]
 
-## Per-source `upgrades` entries use `UpgradeBus.has_def` (legacy defs + mining defs from `VesselDataRegistry`).
+## Per-source `upgrades` entries use `UpgradeBus.has_def` (legacy defs + mining defs from `ShipDataRegistry`).
 const DEFAULT_UPGRADE_CONFIG: Array[Dictionary] = [
 ]
 ## If empty, DEFAULT_STAT_CONFIG used. Keys: `id` (StringName), optional `name` (display label), optional `icon` (Texture2D).

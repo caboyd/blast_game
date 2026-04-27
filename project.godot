@@ -21,7 +21,7 @@ config/features=PackedStringArray("4.6")
 [autoload]
 
 GameSession="*res://scripts/systems/GameSession.gd"
-VesselDataRegistry="*res://scripts/systems/VesselDataRegistry.gd"
+ShipDataRegistry="*res://scripts/systems/ShipDataRegistry.gd"
 UpgradeBus="*res://scripts/systems/UpgradeBus.gd"
 GameStatistics="*res://scripts/stats/GameStatistics.gd"
 MiningMissionUI="*res://scripts/systems/MiningMissionUI.gd"

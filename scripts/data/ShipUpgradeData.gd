@@ -1,4 +1,4 @@
-class_name VesselUpgradeData
+class_name ShipUpgradeData
 extends Resource
 
 @export var id: StringName = &""

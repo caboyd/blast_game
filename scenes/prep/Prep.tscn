@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://dr7td61b7wsqq"]
 
 [ext_resource type="Script" uid="uid://dy8m3p7vxk01q" path="res://scripts/prep/Prep.gd" id="1"]
-[ext_resource type="PackedScene" uid="uid://c3ujct1udqxw7" path="res://scenes/ships/MiningVessel.tscn" id="2"]
+[ext_resource type="PackedScene" uid="uid://c3ujct1udqxw7" path="res://scenes/ships/Scout.tscn" id="2"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_shop_money_yellow"]
 content_margin_left = 10.0
@@ -112,10 +112,10 @@ theme_override_constants/separation = 8
 [node name="ShipFuelLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox" unique_id=570433817]
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
-text = "Fuel: 100 / 100"
+text = "Fuel: 0"
 autowrap_mode = 3
 
-[node name="VisibilityRangeLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox"]
+[node name="VisibilityRangeLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox" unique_id=1677405545]
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
 text = "Visibility Range: 3 cells"
@@ -183,7 +183,7 @@ theme_override_font_sizes/font_size = 16
 text = "Furthest depth: 0 cells"
 autowrap_mode = 3
 
-[node name="VesselColumn" type="VBoxContainer" parent="Margin/RootVBox/Row/PreviewCol" unique_id=1578879453]
+[node name="ShipColumn" type="VBoxContainer" parent="Margin/RootVBox/Row/PreviewCol" unique_id=1578879453]
 custom_minimum_size = Vector2(360, 0)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -191,45 +191,45 @@ size_flags_vertical = 3
 size_flags_stretch_ratio = 1.4
 theme_override_constants/separation = 4
 
-[node name="VesselTabs" type="TabContainer" parent="Margin/RootVBox/Row/PreviewCol/VesselColumn" unique_id=1437096350]
+[node name="ShipTabs" type="TabContainer" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn" unique_id=1437096350]
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_font_sizes/font_size = 16
 current_tab = 1
 
-[node name="Preview" type="VBoxContainer" parent="Margin/RootVBox/Row/PreviewCol/VesselColumn/VesselTabs" unique_id=2006811125]
+[node name="Preview" type="VBoxContainer" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs" unique_id=2006811125]
 visible = false
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/separation = 8
 metadata/_tab_index = 0
 
-[node name="ShipLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/VesselColumn/VesselTabs/Preview" unique_id=1890885564]
+[node name="ShipLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview" unique_id=1890885564]
 layout_mode = 2
-text = "Mining Vessel"
+text = "Scout"
 horizontal_alignment = 1
 
-[node name="SubViewportContainer" type="SubViewportContainer" parent="Margin/RootVBox/Row/PreviewCol/VesselColumn/VesselTabs/Preview" unique_id=1498962718]
+[node name="SubViewportContainer" type="SubViewportContainer" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview" unique_id=1498962718]
 custom_minimum_size = Vector2(400, 360)
 layout_mode = 2
 size_flags_vertical = 3
 stretch = true
 
-[node name="SubViewport" type="SubViewport" parent="Margin/RootVBox/Row/PreviewCol/VesselColumn/VesselTabs/Preview/SubViewportContainer" unique_id=71169305]
+[node name="SubViewport" type="SubViewport" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/SubViewportContainer" unique_id=71169305]
 handle_input_locally = false
 size = Vector2i(400, 360)
 render_target_update_mode = 0
 
-[node name="Camera2D" type="Camera2D" parent="Margin/RootVBox/Row/PreviewCol/VesselColumn/VesselTabs/Preview/SubViewportContainer/SubViewport" unique_id=577357977]
+[node name="Camera2D" type="Camera2D" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/SubViewportContainer/SubViewport" unique_id=577357977]
 position = Vector2(200, 180)
 
-[node name="World" type="Node2D" parent="Margin/RootVBox/Row/PreviewCol/VesselColumn/VesselTabs/Preview/SubViewportContainer/SubViewport" unique_id=362404321]
+[node name="World" type="Node2D" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/SubViewportContainer/SubViewport" unique_id=362404321]
 
-[node name="MiningVessel" parent="Margin/RootVBox/Row/PreviewCol/VesselColumn/VesselTabs/Preview/SubViewportContainer/SubViewport/World" unique_id=16454101 instance=ExtResource("2")]
+[node name="Scout" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/SubViewportContainer/SubViewport/World" unique_id=16454101 instance=ExtResource("2")]
 position = Vector2(200, 180)
 scale = Vector2(8, 8)
 
-[node name="Stage" type="MarginContainer" parent="Margin/RootVBox/Row/PreviewCol/VesselColumn/VesselTabs" unique_id=2107525904]
+[node name="Stage" type="MarginContainer" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs" unique_id=2107525904]
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/margin_left = 4
@@ -238,28 +238,28 @@ theme_override_constants/margin_right = 4
 theme_override_constants/margin_bottom = 4
 metadata/_tab_index = 1
 
-[node name="StageScroll" type="ScrollContainer" parent="Margin/RootVBox/Row/PreviewCol/VesselColumn/VesselTabs/Stage" unique_id=262005053]
+[node name="StageScroll" type="ScrollContainer" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Stage" unique_id=262005053]
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
-[node name="StageVBox" type="VBoxContainer" parent="Margin/RootVBox/Row/PreviewCol/VesselColumn/VesselTabs/Stage/StageScroll" unique_id=783277851]
+[node name="StageVBox" type="VBoxContainer" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Stage/StageScroll" unique_id=783277851]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 6
 
-[node name="StageSummaryLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/VesselColumn/VesselTabs/Stage/StageScroll/StageVBox" unique_id=738306154]
+[node name="StageSummaryLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Stage/StageScroll/StageVBox" unique_id=738306154]
 layout_mode = 2
 text = "Stage: planet1"
 autowrap_mode = 3
 
-[node name="BlockTypesLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/VesselColumn/VesselTabs/Stage/StageScroll/StageVBox" unique_id=609788534]
+[node name="BlockTypesLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Stage/StageScroll/StageVBox" unique_id=609788534]
 layout_mode = 2
 text = "Planet with basic resources"
 autowrap_mode = 3
 
-[node name="StageTypeTree" type="Tree" parent="Margin/RootVBox/Row/PreviewCol/VesselColumn/VesselTabs/Stage/StageScroll/StageVBox" unique_id=318527422]
+[node name="StageTypeTree" type="Tree" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Stage/StageScroll/StageVBox" unique_id=318527422]
 custom_minimum_size = Vector2(0, 100)
 layout_mode = 2
 size_flags_vertical = 3
@@ -314,12 +314,12 @@ theme_override_font_sizes/font_size = 18
 text = "Upgrades"
 horizontal_alignment = 1
 
-[node name="ShopBatchRow" type="HBoxContainer" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner"]
+[node name="ShopBatchRow" type="HBoxContainer" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner" unique_id=340891043]
 layout_mode = 2
 theme_override_constants/separation = 6
 alignment = 2
 
-[node name="ShopBatchBtn" type="Button" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/ShopBatchRow"]
+[node name="ShopBatchBtn" type="Button" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/ShopBatchRow" unique_id=1581972107]
 custom_minimum_size = Vector2(96, 28)
 layout_mode = 2
 focus_mode = 0
@@ -413,24 +413,24 @@ custom_minimum_size = Vector2(96, 32)
 layout_mode = 2
 text = "10 $"
 
-[node name="VisibilityRow" type="VBoxContainer" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner"]
+[node name="VisibilityRow" type="VBoxContainer" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner" unique_id=329241582]
 layout_mode = 2
 theme_override_constants/separation = 2
 
-[node name="VisibilityInfo" type="Label" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/VisibilityRow"]
+[node name="VisibilityInfo" type="Label" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/VisibilityRow" unique_id=1955090454]
 layout_mode = 2
 text = "+1 Visibility Range"
 
-[node name="VisibilityBuyRow" type="HBoxContainer" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/VisibilityRow"]
+[node name="VisibilityBuyRow" type="HBoxContainer" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/VisibilityRow" unique_id=1849748429]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="VisibilityTierStack" type="Control" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/VisibilityRow/VisibilityBuyRow"]
+[node name="VisibilityTierStack" type="Control" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/VisibilityRow/VisibilityBuyRow" unique_id=1429578953]
 custom_minimum_size = Vector2(0, 32)
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="VisibilityTierProgress" type="ProgressBar" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/VisibilityRow/VisibilityBuyRow/VisibilityTierStack"]
+[node name="VisibilityTierProgress" type="ProgressBar" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/VisibilityRow/VisibilityBuyRow/VisibilityTierStack" unique_id=821093708]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -440,7 +440,7 @@ grow_vertical = 2
 max_value = 10.0
 show_percentage = false
 
-[node name="VisibilityTierLabel" type="Label" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/VisibilityRow/VisibilityBuyRow/VisibilityTierStack"]
+[node name="VisibilityTierLabel" type="Label" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/VisibilityRow/VisibilityBuyRow/VisibilityTierStack" unique_id=721564815]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -452,29 +452,29 @@ text = "0 / 10"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="VisibilityBtn" type="Button" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/VisibilityRow/VisibilityBuyRow"]
+[node name="VisibilityBtn" type="Button" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/VisibilityRow/VisibilityBuyRow" unique_id=2039452861]
 custom_minimum_size = Vector2(96, 32)
 layout_mode = 2
 text = "10 $"
 
-[node name="SpeedRow" type="VBoxContainer" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner"]
+[node name="SpeedRow" type="VBoxContainer" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner" unique_id=687090204]
 layout_mode = 2
 theme_override_constants/separation = 2
 
-[node name="SpeedInfo" type="Label" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/SpeedRow"]
+[node name="SpeedInfo" type="Label" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/SpeedRow" unique_id=133480825]
 layout_mode = 2
 text = "+1 Move Speed"
 
-[node name="SpeedBuyRow" type="HBoxContainer" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/SpeedRow"]
+[node name="SpeedBuyRow" type="HBoxContainer" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/SpeedRow" unique_id=1236492497]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="SpeedTierStack" type="Control" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/SpeedRow/SpeedBuyRow"]
+[node name="SpeedTierStack" type="Control" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/SpeedRow/SpeedBuyRow" unique_id=1973522947]
 custom_minimum_size = Vector2(0, 32)
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="SpeedTierProgress" type="ProgressBar" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/SpeedRow/SpeedBuyRow/SpeedTierStack"]
+[node name="SpeedTierProgress" type="ProgressBar" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/SpeedRow/SpeedBuyRow/SpeedTierStack" unique_id=1159042973]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -484,7 +484,7 @@ grow_vertical = 2
 max_value = 10.0
 show_percentage = false
 
-[node name="SpeedTierLabel" type="Label" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/SpeedRow/SpeedBuyRow/SpeedTierStack"]
+[node name="SpeedTierLabel" type="Label" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/SpeedRow/SpeedBuyRow/SpeedTierStack" unique_id=743162494]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -496,29 +496,29 @@ text = "0 / 10"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="SpeedBtn" type="Button" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/SpeedRow/SpeedBuyRow"]
+[node name="SpeedBtn" type="Button" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/SpeedRow/SpeedBuyRow" unique_id=211451505]
 custom_minimum_size = Vector2(96, 32)
 layout_mode = 2
 text = "10 $"
 
-[node name="DrillRangeRow" type="VBoxContainer" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner"]
+[node name="DrillRangeRow" type="VBoxContainer" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner" unique_id=686456027]
 layout_mode = 2
 theme_override_constants/separation = 2
 
-[node name="DrillRangeInfo" type="Label" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/DrillRangeRow"]
+[node name="DrillRangeInfo" type="Label" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/DrillRangeRow" unique_id=1676135904]
 layout_mode = 2
 text = "+1 Drill Range"
 
-[node name="DrillRangeBuyRow" type="HBoxContainer" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/DrillRangeRow"]
+[node name="DrillRangeBuyRow" type="HBoxContainer" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/DrillRangeRow" unique_id=1305480316]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="DrillRangeTierStack" type="Control" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/DrillRangeRow/DrillRangeBuyRow"]
+[node name="DrillRangeTierStack" type="Control" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/DrillRangeRow/DrillRangeBuyRow" unique_id=359656995]
 custom_minimum_size = Vector2(0, 32)
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="DrillRangeTierProgress" type="ProgressBar" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/DrillRangeRow/DrillRangeBuyRow/DrillRangeTierStack"]
+[node name="DrillRangeTierProgress" type="ProgressBar" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/DrillRangeRow/DrillRangeBuyRow/DrillRangeTierStack" unique_id=920333568]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -528,7 +528,7 @@ grow_vertical = 2
 max_value = 10.0
 show_percentage = false
 
-[node name="DrillRangeTierLabel" type="Label" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/DrillRangeRow/DrillRangeBuyRow/DrillRangeTierStack"]
+[node name="DrillRangeTierLabel" type="Label" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/DrillRangeRow/DrillRangeBuyRow/DrillRangeTierStack" unique_id=127089006]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -540,7 +540,7 @@ text = "0 / 10"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="DrillRangeBtn" type="Button" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/DrillRangeRow/DrillRangeBuyRow"]
+[node name="DrillRangeBtn" type="Button" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/DrillRangeRow/DrillRangeBuyRow" unique_id=976436017]
 custom_minimum_size = Vector2(96, 32)
 layout_mode = 2
 text = "10 $"

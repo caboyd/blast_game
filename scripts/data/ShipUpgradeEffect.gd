@@ -1,4 +1,4 @@
-class_name VesselUpgradeEffect
+class_name ShipUpgradeEffect
 extends Resource
 
 ## Gameplay stat this effect modifies (e.g. &"mine_damage_per_tick", &"fuel_max").

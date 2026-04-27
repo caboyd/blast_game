@@ -52,8 +52,8 @@ func _apply_debug_visuals(on: bool) -> void:
 	GameStatistics.debug_world_visuals = on
 	if _viewport_info != null:
 		_viewport_info.visible = on
-	# Re-paint so MiningVessel clears when debug is off (toggle does not run _physics every frame for redraw).
+	# Re-paint so MiningShip clears when debug is off (toggle does not run _physics every frame for redraw).
 	if get_tree() != null:
-		for n in get_tree().get_nodes_in_group(&"mining_vessel"):
+		for n in get_tree().get_nodes_in_group(&"mining_ship"):
 			if n is CanvasItem:
 				(n as CanvasItem).queue_redraw()

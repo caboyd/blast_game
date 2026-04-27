@@ -1,4 +1,4 @@
-class_name MiningVessel
+class_name Scout
 extends Node2D
 
 ## Local +X is forward. Hull + drill use `CircleShape2D` on nodes resolved at runtime
@@ -38,12 +38,15 @@ var _debug_layer: Node2D
 
 
 func _ready() -> void:
-	var vd: Resource = VesselDataRegistry.get_active()
-	if vd != null:
-		move_speed_px_s = float(vd.get("move_speed_px_s"))
-		vision_radius_cells = int(vd.get("vision_radius_cells"))
-		mine_damage_per_tick = float(vd.get("mine_damage_per_tick"))
-		mine_interval_s = float(vd.get("mine_interval_s"))
+	var sd: Resource = ShipDataRegistry.get_active()
+	if sd == null:
+		push_error("ShipDataRegistry.get_active() returned null")
+		assert(false)
+		return
+	move_speed_px_s = float(sd.get("move_speed_px_s"))
+	vision_radius_cells = int(sd.get("vision_radius_cells"))
+	mine_damage_per_tick = float(sd.get("mine_damage_per_tick"))
+	mine_interval_s = float(sd.get("mine_interval_s"))
 	_base_mine_damage_per_tick = mine_damage_per_tick
 	_base_move_speed_px_s = move_speed_px_s
 	_base_vision_radius_cells = vision_radius_cells
@@ -52,34 +55,34 @@ func _ready() -> void:
 	if _hull_shape:
 		hull_radius_px = _circle_max_world_radius(_hull_shape, 8.0)
 	else:
-		push_warning("MiningVessel: no hull CollisionShape2D; using hull_radius_px=%s" % hull_radius_px)
+		push_warning("Scout: no hull CollisionShape2D; using hull_radius_px=%s" % hull_radius_px)
 	if _drill_shape:
 		mine_radius_px = _circle_max_world_radius(_drill_shape, 2.0)
 	else:
-		push_warning("MiningVessel: no drill CollisionShape2D; using mine_radius_px=%s" % mine_radius_px)
+		push_warning("Scout: no drill CollisionShape2D; using mine_radius_px=%s" % mine_radius_px)
 	_debug_layer = _MiningDebugLayer.new()
-	_debug_layer._vessel = self
+	_debug_layer._ship = self
 	_debug_layer.name = "DebugDraw"
 	_debug_layer.z_as_relative = true
 	# Above Hull/Drill art (e.g. Drill may use z_index 1 on that subtree).
 	_debug_layer.z_index = 10
 	add_child(_debug_layer)
-	_debug_layer.add_to_group(&"mining_vessel")
+	_debug_layer.add_to_group(&"mining_ship")
 
 
 func get_effective_mine_damage_per_tick() -> float:
-	return VesselDataRegistry.apply_effects_for_stat(&"mine_damage_per_tick", _base_mine_damage_per_tick)
+	return ShipDataRegistry.apply_effects_for_stat(&"mine_damage_per_tick", _base_mine_damage_per_tick)
 
 
 func get_effective_vision_radius_cells() -> int:
 	return maxi(
 		1,
-		VesselDataRegistry.apply_effects_for_stat_int(&"vision_radius_cells", _base_vision_radius_cells)
+		ShipDataRegistry.apply_effects_for_stat_int(&"vision_radius_cells", _base_vision_radius_cells)
 	)
 
 
 func get_effective_move_speed_px_s() -> float:
-	return VesselDataRegistry.apply_effects_for_stat(&"move_speed_px_s", _base_move_speed_px_s)
+	return ShipDataRegistry.apply_effects_for_stat(&"move_speed_px_s", _base_move_speed_px_s)
 
 
 ## Same circle as movement (`hull_radius_px` at `global_position`). Call once after `grid` is set (stage start).
@@ -247,7 +250,7 @@ func get_effective_drill_world_radius_px() -> float:
 
 
 ## Radius in the same **game** space as `MiningWorld` (cell = `CELL_SIZE_PX` px), i.e. with this
-## vessel’s `scale` factored out. Use for prep UI when the instance is zoom-scaled; avoids huge `world_r`.
+## ship’s `scale` factored out. Use for prep UI when the instance is zoom-scaled; avoids huge `world_r`.
 func get_drill_game_radius_px() -> float:
 	var w: float = get_drill_world_radius_px()
 	var s: float = maxf(absf(scale.x), absf(scale.y))
@@ -258,7 +261,7 @@ func get_drill_game_radius_px() -> float:
 
 func get_effective_drill_game_radius_px() -> float:
 	var base_game: float = get_drill_game_radius_px()
-	var bonus: float = VesselDataRegistry.apply_effects_for_stat(&"drill_range_bonus_game_px", 0.0)
+	var bonus: float = ShipDataRegistry.apply_effects_for_stat(&"drill_range_bonus_game_px", 0.0)
 	return base_game + bonus
 
 
@@ -351,7 +354,7 @@ func _try_move_by(step: Vector2) -> bool:
 	return false
 
 
-## Hull circle at the vessel origin cannot overlap solid cells. Try full step, then axis slides.
+## Hull circle at the ship origin cannot overlap solid cells. Try full step, then axis slides.
 func _move_with_collision(step: Vector2) -> void:
 	if step == Vector2.ZERO:
 		return
@@ -383,8 +386,8 @@ func _tick_mining(delta: float) -> void:
 
 
 class _MiningDebugLayer extends Node2D:
-	var _vessel: MiningVessel
+	var _ship: Scout
 
 	func _draw() -> void:
-		if _vessel:
-			_vessel._draw_mining_debug(self)
+		if _ship:
+			_ship._draw_mining_debug(self)

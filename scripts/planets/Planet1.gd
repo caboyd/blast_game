@@ -10,7 +10,7 @@ const CELL_SIZE_PX: float = 8.0
 @export var planet_id: StringName = &"planet1"
 
 @onready var _mining_world: MiningWorld = %MiningWorld
-@onready var _vessel: MiningVessel = %MiningVessel
+@onready var _ship: Scout = %Ship
 @onready var _viewport_info: Label = %ViewportInfo
 @onready var _game_camera: Camera2D = %GameCamera2D
 @onready var _subviewport_container: SubViewportContainer = $GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer
@@ -26,13 +26,13 @@ func _ready() -> void:
 	_apply_game_viewport_layout()
 	if _mining_world:
 		_mining_world.stage_id = planet_id
-	if _vessel and _mining_world:
-		_vessel.grid = _mining_world
+	if _ship and _mining_world:
+		_ship.grid = _mining_world
 		# Hull origin at the middle of chunk (0,0) in grid/world space.
-		_vessel.position = _mining_world.get_chunk_center_world(Vector2i.ZERO)
-		_vessel.carve_hull_terrain_on_spawn()
-	if _vessel and not _vessel.out_of_fuel.is_connected(_on_vessel_out_of_fuel):
-		_vessel.out_of_fuel.connect(_on_vessel_out_of_fuel)
+		_ship.position = _mining_world.get_chunk_center_world(Vector2i.ZERO)
+		_ship.carve_hull_terrain_on_spawn()
+	if _ship and not _ship.out_of_fuel.is_connected(_on_ship_out_of_fuel):
+		_ship.out_of_fuel.connect(_on_ship_out_of_fuel)
 	if _subviewport_container != null and not _subviewport_container.resized.is_connected(_on_subviewport_container_resized):
 		_subviewport_container.resized.connect(_on_subviewport_container_resized)
 	if _bottom_hud != null:
@@ -49,7 +49,7 @@ func _ready() -> void:
 	call_deferred("_apply_game_viewport_layout")
 
 
-func _on_vessel_out_of_fuel() -> void:
+func _on_ship_out_of_fuel() -> void:
 	GameSession.end_current_run_to_prep()
 
 
@@ -109,12 +109,12 @@ func _apply_game_viewport_layout() -> void:
 
 
 func _physics_process(_delta: float) -> void:
-	if _game_camera == null or _vessel == null or _mining_world == null:
+	if _game_camera == null or _ship == null or _mining_world == null:
 		return
-	_game_camera.global_position = _vessel.global_position
+	_game_camera.global_position = _ship.global_position
 	var z: float = _game_camera.zoom.x
 	if z <= 0.0:
 		return
 	var half := Vector2(float(_vp_w) / (2.0 * z), float(_vp_h) / (2.0 * z))
-	var r := Rect2(_vessel.global_position - half, half * 2.0)
+	var r := Rect2(_ship.global_position - half, half * 2.0)
 	_mining_world.set_camera_view_world_rect(r)

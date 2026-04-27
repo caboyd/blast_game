@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://c3ujct1udqxw7"]
 
-[ext_resource type="Script" uid="uid://fcy3wcutxd20" path="res://scripts/ships/MiningVessel.gd" id="1"]
+[ext_resource type="Script" uid="uid://fcy3wcutxd20" path="res://scripts/ships/Scout.gd" id="1_jv3lx"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_yiq1f"]
 radius = 3.0000005
@@ -8,8 +8,8 @@ radius = 3.0000005
 [sub_resource type="CircleShape2D" id="CircleShape2D_iwkxr"]
 radius = 3.0
 
-[node name="MiningVessel" type="Node2D" unique_id=665882411]
-script = ExtResource("1")
+[node name="Scout" type="Node2D" unique_id=665882411]
+script = ExtResource("1_jv3lx")
 
 [node name="Drill" type="Polygon2D" parent="." unique_id=712383373]
 position = Vector2(0.99999994, 2.646978e-23)
