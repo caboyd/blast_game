@@ -21,6 +21,7 @@ var _vp_h: int = 520
 
 
 func _ready() -> void:
+	GameSession.start_mission_timer()
 	_apply_game_viewport_layout()
 	if _mining_grid:
 		_mining_grid.stage_id = planet_id

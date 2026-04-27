@@ -19,6 +19,8 @@ var next_planet_scene: String = "res://scenes/planets/Planet1.tscn"
 ## Cumulative blocks destroyed across completed runs; saved to disk.
 var career_blocks_destroyed: int = 0
 var _career_write_pending: bool = false
+## Wall-clock start for mission timer (see `get_mission_elapsed_sec`); set in `begin_run()`.
+var _mission_start_ticks_msec: int = 0
 ## `stage_id` (String) -> { type_id: true } for types seen (vision) or hit (damage).
 var _stage_block_types_found: Dictionary = {}
 
@@ -143,6 +145,18 @@ func _write_block_discovery_to_config(c: ConfigFile) -> void:
 func begin_run() -> void:
 	GameStatistics.set_blocks_run_baseline()
 	GameStatistics.reset_fuel_for_run()
+
+
+## Call when entering a gameplay planet scene so the HUD mission timer measures time in-mission only.
+func start_mission_timer() -> void:
+	_mission_start_ticks_msec = Time.get_ticks_msec()
+
+
+## Seconds since `start_mission_timer()` (gameplay mission clock). 0 if the clock was never started.
+func get_mission_elapsed_sec() -> float:
+	if _mission_start_ticks_msec == 0:
+		return 0.0
+	return float(Time.get_ticks_msec() - _mission_start_ticks_msec) / 1000.0
 
 
 func _stage_reveal_path(stage_id: StringName) -> String:

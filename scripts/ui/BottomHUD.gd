@@ -8,6 +8,7 @@ const DEFAULT_STAT_CONFIG: Array[Dictionary] = [
 	{"id": &"blocks", "name": "blocks"},
 	{"id": &"depth", "name": "depth"},
 	{"id": &"money", "name": "money"},
+	{"id": &"time", "name": "time"},
 	{"id": &"ship_hp", "name": "fuel"},
 ]
 
@@ -128,8 +129,15 @@ func _ready() -> void:
 		GameStatistics.fuel_changed.connect(_on_fuel_changed)
 	UpgradeBus.upgrade_purchased.connect(_on_upgrade_purchased)
 	refresh()
+	set_process(_stat_items.has(&"time"))
 	if not get_viewport().size_changed.is_connected(_on_viewport_size_changed_fit_stats):
 		get_viewport().size_changed.connect(_on_viewport_size_changed_fit_stats)
+
+
+func _process(_delta: float) -> void:
+	if not _stat_items.has(&"time"):
+		return
+	(_stat_items[&"time"] as StatItem).set_value(_format_mission_elapsed(GameSession.get_mission_elapsed_sec()))
 
 
 func _on_collapse_handle_pressed() -> void:
@@ -362,6 +370,17 @@ func _read_texture(d: Dictionary, key: String) -> Texture2D:
 	return t if t is Texture2D else null
 
 
+func _format_mission_elapsed(sec: float) -> String:
+	var t: int = maxi(0, int(floorf(sec)))
+	var h: int = t / 3600
+	t %= 3600
+	var m: int = t / 60
+	var s2: int = t % 60
+	if h > 0:
+		return "%d:%02d:%02d" % [h, m, s2]
+	return "%d:%02d" % [m, s2]
+
+
 func _on_upgrade_item_purchase_pressed(upgrade_id: StringName) -> void:
 	UpgradeBus.try_purchase(upgrade_id)
 
@@ -416,6 +435,8 @@ func refresh() -> void:
 				item.set_value(str(GameStatistics.furthest_depth_cells))
 			"money":
 				item.set_value(str(GameStatistics.money))
+			"time":
+				item.set_value(_format_mission_elapsed(GameSession.get_mission_elapsed_sec()))
 			"ship_hp":
 				item.set_value(
 					"%.0f / %.0f" % [GameStatistics.fuel, GameStatistics.fuel_max]
