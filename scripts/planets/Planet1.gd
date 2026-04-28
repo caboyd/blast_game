@@ -31,7 +31,9 @@ func _ready() -> void:
 	if _ship and _mining_world:
 		_ship.grid = _mining_world
 		# Hull origin at the middle of chunk (0,0) in grid/world space.
-		_ship.position = MiningWorld.get_chunk_center_world(Vector2i.ZERO)
+		var spawn_world: Vector2 = MiningWorld.get_chunk_center_world(Vector2i.ZERO)
+		_ship.position = spawn_world
+		_mining_world.stamp_dirt_chebyshev_from_world(spawn_world, 4)
 		_ship.carve_hull_terrain_on_spawn()
 	if _ship and not _ship.out_of_fuel.is_connected(_on_ship_out_of_fuel):
 		_ship.out_of_fuel.connect(_on_ship_out_of_fuel)

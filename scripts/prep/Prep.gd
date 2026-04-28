@@ -490,9 +490,7 @@ func _set_shop_info_label(upgrade_id: StringName, label: Label) -> void:
 		label.text = ""
 		return
 	var prefix: String = ""
-	if next_teaser:
-		prefix = "Next: "
-	elif n_disp > 1:
+	if n_disp > 1:
 		prefix = "×%d: " % n_disp
 	var body: String = " · ".join(parts)
 	label.text = prefix + body

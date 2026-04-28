@@ -5,15 +5,17 @@ const CHUNK_SIZE := 40
 const CELL_SIZE_PX := 8.0
 
 const TYPE_EMPTY := 0
-const TYPE_STONE := 1
-const TYPE_GOLD := 2
-const TYPE_COUNT := 3
+const TYPE_DIRT := 1
+const TYPE_STONE := 2
+const TYPE_GOLD := 3
+const TYPE_COUNT := 4
 
-static var TYPE_MAX_HP: PackedInt32Array = PackedInt32Array([0, 5, 5])
-static var TYPE_MONEY: PackedInt32Array = PackedInt32Array([0, 1, 15])
+static var TYPE_MAX_HP: PackedInt32Array = PackedInt32Array([0, 5, 50, 5])
+static var TYPE_MONEY: PackedInt32Array = PackedInt32Array([0, 1, 2, 15])
 static var TYPE_COLOR: PackedColorArray = PackedColorArray([
 	Color(0.0, 0.0, 0.0, 0.0),
-	Color(0.55, 0.55, 0.58, 1.0),
+	Color(0.42, 0.28, 0.18, 1.0),
+	Color(0.52, 0.52, 0.55, 1.0),
 	Color(1.0, 0.82, 0.2, 1.0),
 ])
 
@@ -36,8 +38,15 @@ const STATIC_CELLS: Array[Dictionary] = [
 @export var stage_seed: int = 0
 @export var view_margin_cells: int = 2
 @export var reveal_save_debounce_s: float = 1.0
-## Probability per cell of being gold during chunk generation. Sparse by default.
+## Probability per cell during gold pass (after dirt + rock splats). Sparse by default.
 @export_range(0.0, 1.0, 0.0001) var gold_density: float = 0.012
+
+
+const _VEIN_NEIGHBOR_DIRS: Array[Vector2i] = [
+	Vector2i(-1, -1), Vector2i(0, -1), Vector2i(1, -1),
+	Vector2i(-1, 0), Vector2i(1, 0),
+	Vector2i(-1, 1), Vector2i(0, 1), Vector2i(1, 1),
+]
 
 var _chunks: Dictionary = {} # Vector2i -> { cells, hp, revealed PackedByteArray }
 
@@ -118,15 +127,66 @@ func _ensure_chunk(chunk: Vector2i) -> void:
 	var revealed := PackedByteArray()
 	revealed.resize(n)
 
+	var dirt_hp: int = clampi(int(TYPE_MAX_HP[TYPE_DIRT]), 0, 255)
 	var stone_hp: int = clampi(int(TYPE_MAX_HP[TYPE_STONE]), 0, 255)
 	var gold_hp: int = clampi(int(TYPE_MAX_HP[TYPE_GOLD]), 0, 255)
+
 	for i in n:
-		if rng.randf() < gold_density:
-			cells[i] = TYPE_GOLD
-			hp[i] = gold_hp
-		else:
-			cells[i] = TYPE_STONE
-			hp[i] = stone_hp
+		cells[i] = TYPE_DIRT
+		hp[i] = dirt_hp
+
+	var num_splats: int = rng.randi_range(1, 3)
+	for _s in num_splats:
+		var splat_r: int = rng.randi_range(2, 5)
+		var cx: int = rng.randi_range(0, CHUNK_SIZE - 1)
+		var cy: int = rng.randi_range(0, CHUNK_SIZE - 1)
+		var r2: int = splat_r * splat_r
+		for ly in CHUNK_SIZE:
+			for lx in CHUNK_SIZE:
+				var dx: int = lx - cx
+				var dy: int = ly - cy
+				if dx * dx + dy * dy > r2:
+					continue
+				var idx: int = ly * CHUNK_SIZE + lx
+				cells[idx] = TYPE_STONE
+				hp[idx] = stone_hp
+
+	var order: Array[int] = []
+	order.resize(n)
+	for i in n:
+		order[i] = i
+	for ii in range(n - 1, 0, -1):
+		var jj: int = rng.randi_range(0, ii)
+		var tmp: int = order[ii]
+		order[ii] = order[jj]
+		order[jj] = tmp
+
+	for idx_cell in order:
+		if rng.randf() >= gold_density:
+			continue
+		var t: int = int(cells[idx_cell])
+		var lx: int = idx_cell % CHUNK_SIZE
+		var ly: int = int(floor(float(idx_cell) / float(CHUNK_SIZE)))
+		if t == TYPE_DIRT:
+			cells[idx_cell] = TYPE_GOLD
+			hp[idx_cell] = gold_hp
+		elif t == TYPE_STONE:
+			cells[idx_cell] = TYPE_GOLD
+			hp[idx_cell] = gold_hp
+			var interior: bool = lx >= 1 and lx < CHUNK_SIZE - 1 and ly >= 1 and ly < CHUNK_SIZE - 1
+			if interior:
+				var entrance_i: int = rng.randi_range(0, _VEIN_NEIGHBOR_DIRS.size() - 1)
+				for ni in _VEIN_NEIGHBOR_DIRS.size():
+					var dir: Vector2i = _VEIN_NEIGHBOR_DIRS[ni]
+					var nx: int = lx + dir.x
+					var ny: int = ly + dir.y
+					var nidx: int = ny * CHUNK_SIZE + nx
+					if ni == entrance_i:
+						cells[nidx] = TYPE_DIRT
+						hp[nidx] = dirt_hp
+					else:
+						cells[nidx] = TYPE_STONE
+						hp[nidx] = stone_hp
 
 	_chunks[chunk] = {"cells": cells, "hp": hp, "revealed": revealed}
 	_apply_static_overrides_for_chunk(chunk)
@@ -148,6 +208,26 @@ func _apply_static_overrides_for_chunk(chunk: Vector2i) -> void:
 		hparr[idx] = clampi(h, 0, 255)
 
 
+## Soft terrain fill: Chebyshev radius `radius_cells` (square: ±radius on both axes). Ensures chunks.
+func stamp_dirt_chebyshev_from_world(world_pos: Vector2, radius_cells: int) -> void:
+	if radius_cells < 0:
+		return
+	var center_cell := world_pos_to_cell(world_pos)
+	var dirt_hp: int = clampi(int(TYPE_MAX_HP[TYPE_DIRT]), 0, 255)
+	for dy in range(-radius_cells, radius_cells + 1):
+		for dx in range(-radius_cells, radius_cells + 1):
+			var c := Vector2i(center_cell.x + dx, center_cell.y + dy)
+			var ch := _cell_to_chunk_coord(c)
+			_ensure_chunk(ch)
+			var data: Dictionary = _chunks[ch]
+			var cells_ba: PackedByteArray = data["cells"]
+			var hp_ba: PackedByteArray = data["hp"]
+			var idx: int = _cell_to_local_in_chunk(c, ch)
+			cells_ba[idx] = TYPE_DIRT
+			hp_ba[idx] = dirt_hp
+	_visual_dirty = true
+
+
 func _load_persisted_reveals() -> void:
 	var loaded: Dictionary = GameSession.load_stage_reveal(stage_id)
 	for k in loaded:
@@ -165,6 +245,7 @@ func _load_persisted_reveals() -> void:
 ## Mineable block types for prep UI (per-stage list; uses TYPE_MAX_HP / TYPE_MONEY).
 static func get_stage_block_type_rows() -> Array[Dictionary]:
 	return [
+		{"type_id": TYPE_DIRT, "label": "Dirt"},
 		{"type_id": TYPE_STONE, "label": "Stone"},
 		{"type_id": TYPE_GOLD, "label": "Gold"},
 	]

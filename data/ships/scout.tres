@@ -15,8 +15,8 @@ script = ExtResource("3_jr27e")
 id = &"mining_power"
 shop_display_name = "Mining Power"
 base_cost = 25
-cost_value = 1.2
-max_level = 3
+cost_value = 1.0
+max_level = 16
 effects = [SubResource("eff_mp")]
 
 [sub_resource type="Resource" id="eff_ft"]
