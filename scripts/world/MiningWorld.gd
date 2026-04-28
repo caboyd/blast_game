@@ -51,6 +51,11 @@ const _VEIN_NEIGHBOR_DIRS: Array[Vector2i] = [
 	Vector2i(-1, 1), Vector2i(0, 1), Vector2i(1, 1),
 ]
 
+## 4-way connectivity for stone “glob” flood (matches filled splats without corner-only bridges).
+const _STONE_BLOB_DIRS: Array[Vector2i] = [
+	Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0),
+]
+
 var _chunks: Dictionary = {} # Vector2i -> { cells, hp, revealed PackedByteArray }
 
 var _view_origin_cell: Vector2i = Vector2i.ZERO
@@ -168,28 +173,66 @@ func _ensure_chunk(chunk: Vector2i) -> void:
 		if rng.randf() >= gold_density:
 			continue
 		var t: int = int(cells[idx_cell])
-		var lx: int = idx_cell % CHUNK_SIZE
-		var ly: int = int(floor(float(idx_cell) / float(CHUNK_SIZE)))
 		if t == TYPE_DIRT:
 			cells[idx_cell] = TYPE_GOLD
 			hp[idx_cell] = gold_hp
 		elif t == TYPE_STONE:
-			cells[idx_cell] = TYPE_GOLD
-			hp[idx_cell] = gold_hp
-			var interior: bool = lx >= 1 and lx < CHUNK_SIZE - 1 and ly >= 1 and ly < CHUNK_SIZE - 1
-			if interior:
-				var entrance_i: int = rng.randi_range(0, _VEIN_NEIGHBOR_DIRS.size() - 1)
-				for ni in _VEIN_NEIGHBOR_DIRS.size():
-					var dir: Vector2i = _VEIN_NEIGHBOR_DIRS[ni]
-					var nx: int = lx + dir.x
-					var ny: int = ly + dir.y
+			# Replace the entire connected stone splat with gold; one-cell stone shell and one dirt entrance.
+			var inside: Array[int] = []
+			var seen_stone: PackedByteArray = PackedByteArray()
+			seen_stone.resize(n)
+			var stack: Array[int] = [idx_cell]
+			seen_stone[idx_cell] = 1
+			while not stack.is_empty():
+				var cur: int = stack.pop_back()
+				inside.append(cur)
+				var cx: int = cur % CHUNK_SIZE
+				@warning_ignore("integer_division")
+				var cy: int = cur / CHUNK_SIZE
+				for dir in _STONE_BLOB_DIRS:
+					var nx: int = cx + dir.x
+					var ny: int = cy + dir.y
+					if nx < 0 or nx >= CHUNK_SIZE or ny < 0 or ny >= CHUNK_SIZE:
+						continue
 					var nidx: int = ny * CHUNK_SIZE + nx
-					if ni == entrance_i:
-						cells[nidx] = TYPE_DIRT
-						hp[nidx] = dirt_hp
+					if seen_stone[nidx] != 0:
+						continue
+					if int(cells[nidx]) != TYPE_STONE:
+						continue
+					seen_stone[nidx] = 1
+					stack.append(nidx)
+			var inside_set: Dictionary = {}
+			for id_i in inside:
+				inside_set[id_i] = true
+			for id_i in inside:
+				cells[id_i] = TYPE_GOLD
+				hp[id_i] = gold_hp
+			var halo: Array[int] = []
+			var halo_seen: Dictionary = {}
+			for id_i in inside:
+				var ix: int = id_i % CHUNK_SIZE
+				@warning_ignore("integer_division")
+				var iy: int = id_i / CHUNK_SIZE
+				for dir in _VEIN_NEIGHBOR_DIRS:
+					var hx: int = ix + dir.x
+					var hy: int = iy + dir.y
+					if hx < 0 or hx >= CHUNK_SIZE or hy < 0 or hy >= CHUNK_SIZE:
+						continue
+					var hidx: int = hy * CHUNK_SIZE + hx
+					if inside_set.has(hidx) or halo_seen.has(hidx):
+						continue
+					halo_seen[hidx] = true
+					halo.append(hidx)
+			if not halo.is_empty():
+				var entrance_h: int = rng.randi_range(0, halo.size() - 1)
+				for hi in halo.size():
+					var hid: int = halo[hi]
+					if hi == entrance_h:
+						cells[hid] = TYPE_DIRT
+						hp[hid] = dirt_hp
 					else:
-						cells[nidx] = TYPE_STONE
-						hp[nidx] = stone_hp
+						cells[hid] = TYPE_STONE
+						hp[hid] = stone_hp
 
 	# One 2×2 fuel pickup per chunk (any tile destroyed removes the whole cluster).
 	# Skip spawn chunk so the starting area has no fuel cell.

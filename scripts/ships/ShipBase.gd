@@ -10,6 +10,7 @@ var _hull_shape: CollisionShape2D
 var _drill_shape: CollisionShape2D
 
 @export var move_speed_px_s: float = 8.0
+@export var turn_rate_rad_s: float = 9.0
 @export var vision_radius_cells: int = 3
 @export var mine_damage_per_tick: float = 1.0
 @export var mine_interval_s: float = 0.2
@@ -19,8 +20,11 @@ var mine_radius_px: float = 2.0
 @export var hull_debug_blocked_pad_px: float = 0.15
 
 var grid: MiningWorld
+## Cosmetic mission ship chain segments: no mining, fuel drain, movement, vision, or debug overlay.
+var follower_visual_only: bool = false
 var _base_mine_damage_per_tick: float = 1.0
 var _base_move_speed_px_s: float = 8.0
+var _base_turn_rate_rad_s: float = 9.0
 var _base_vision_radius_cells: int = 3
 var _fuel_out_emitted: bool = false
 var _mine_accum_time: float = 0.0
@@ -29,18 +33,23 @@ var _debug_layer: Node2D
 
 
 func _ready() -> void:
+	if follower_visual_only:
+		_ready_follower_visual_only()
+		return
 	var sd: Resource = ShipDataRegistry.get_active()
 	if sd == null:
 		push_error("ShipDataRegistry.get_active() returned null")
 		assert(false)
 		return
 	move_speed_px_s = float(sd.get("move_speed_px_s"))
+	turn_rate_rad_s = float(sd.get("turn_rate_rad_s"))
 	vision_radius_cells = int(sd.get("vision_radius_cells"))
 	mine_damage_per_tick = float(sd.get("mine_damage_per_tick"))
 	mine_interval_s = float(sd.get("mine_interval_s"))
 	fuel_drain_per_second = float(sd.get("fuel_drain_per_second"))
 	_base_mine_damage_per_tick = mine_damage_per_tick
 	_base_move_speed_px_s = move_speed_px_s
+	_base_turn_rate_rad_s = turn_rate_rad_s
 	_base_vision_radius_cells = vision_radius_cells
 	_hull_shape = _find_hull_collider()
 	_drill_shape = _find_drill_collider()
@@ -61,6 +70,20 @@ func _ready() -> void:
 	_debug_layer.add_to_group(&"mining_ship")
 
 
+func _ready_follower_visual_only() -> void:
+	set_physics_process(false)
+	_hull_shape = _find_hull_collider()
+	_drill_shape = _find_drill_collider()
+	if _hull_shape:
+		hull_radius_px = _circle_max_world_radius(_hull_shape, 8.0)
+	else:
+		push_warning("ShipBase: follower has no hull CollisionShape2D; using hull_radius_px=%s" % hull_radius_px)
+	if _drill_shape:
+		mine_radius_px = _circle_max_world_radius(_drill_shape, 2.0)
+	else:
+		push_warning("ShipBase: follower has no drill CollisionShape2D; using mine_radius_px=%s" % mine_radius_px)
+
+
 func get_effective_mine_damage_per_tick() -> float:
 	return ShipDataRegistry.apply_effects_for_stat(&"mine_damage_per_tick", _base_mine_damage_per_tick)
 
@@ -76,6 +99,13 @@ func get_effective_move_speed_px_s() -> float:
 	return ShipDataRegistry.apply_effects_for_stat(&"move_speed_px_s", _base_move_speed_px_s)
 
 
+func get_effective_turn_rate_rad_s() -> float:
+	return maxf(
+		0.0,
+		ShipDataRegistry.apply_effects_for_stat(&"turn_rate_rad_s", _base_turn_rate_rad_s)
+	)
+
+
 func carve_hull_terrain_on_spawn() -> void:
 	if grid == null:
 		return
@@ -88,9 +118,11 @@ func _physics_process(delta: float) -> void:
 	var mouse := get_global_mouse_position()
 	var dir := mouse - global_position
 	if dir.length_squared() > 0.0001:
-		rotation = dir.angle()
-		var step := dir.normalized() * get_effective_move_speed_px_s() * delta
-		_move_with_collision(step)
+		var target_rot: float = dir.angle()
+		var max_turn: float = get_effective_turn_rate_rad_s() * delta
+		rotation = rotate_toward(rotation, target_rot, max_turn)
+	var step := transform.x.normalized() * get_effective_move_speed_px_s() * delta
+	_move_with_collision(step)
 
 	_tick_mining(delta)
 

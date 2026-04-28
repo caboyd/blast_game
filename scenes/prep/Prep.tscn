@@ -132,6 +132,12 @@ theme_override_font_sizes/font_size = 16
 text = "Move Speed: 8"
 autowrap_mode = 3
 
+[node name="TurnRateLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox" unique_id=2100567050]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Turn Rate: 9.0 rad/s"
+autowrap_mode = 3
+
 [node name="MiningPowerLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox" unique_id=1560011577]
 layout_mode = 2
 theme_override_font_sizes/font_size = 16

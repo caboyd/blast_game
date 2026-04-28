@@ -9,6 +9,8 @@ extends Resource
 ## Prep line under description when locked. Shown verbatim; omit or leave empty → registry may infer from unlock chain.
 @export_multiline var unlock_requirement_text: String = ""
 @export var move_speed_px_s: float = 8.0
+## Max rotation speed toward cursor (radians per second).
+@export var turn_rate_rad_s: float = 9.0
 @export var vision_radius_cells: int = 3
 @export var mine_damage_per_tick: float = 1.0
 @export var mine_interval_s: float = 0.2
@@ -29,6 +31,8 @@ func get_base_float_for_stat(stat: StringName) -> float:
 			return float(vision_radius_cells)
 		"move_speed_px_s":
 			return move_speed_px_s
+		"turn_rate_rad_s":
+			return turn_rate_rad_s
 		"fuel_max":
 			return fuel_max_base
 		"drill_range_bonus_game_px":

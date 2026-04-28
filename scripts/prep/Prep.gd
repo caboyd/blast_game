@@ -19,6 +19,7 @@ const _SHIP_PICK_SCROLL_STEP_PX := 140
 @onready var _visibility_range_label: Label = $"Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox/VisibilityRangeLabel"
 @onready var _mining_radius_label: Label = $"Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox/MiningRadiusLabel"
 @onready var _move_speed_label: Label = $"Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox/MoveSpeedLabel"
+@onready var _turn_rate_label: Label = $"Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox/TurnRateLabel"
 @onready var _mining_power_label: Label = $"Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox/MiningPowerLabel"
 @onready var _mining_interval_label: Label = $"Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox/MiningIntervalLabel"
 @onready var _mining_power_per_sec_label: Label = $"Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox/MiningPowerPerSecLabel"
@@ -111,20 +112,65 @@ func _rebuild_preview_ship() -> void:
 		_world.remove_child(c)
 		c.free()
 	_preview_ship = null
-	var sd: Resource = ShipDataRegistry.get_active()
-	if sd == null:
+	var chain: Array[StringName] = ShipDataRegistry.get_mission_ship_chain_chain_ship_ids()
+	if chain.is_empty():
 		return
-	var ps: Variant = sd.get("ship_scene")
-	if ps == null or not (ps is PackedScene):
+	var head_sd: Resource = ShipDataRegistry.get_ship_data(chain[0])
+	if head_sd == null:
+		return
+	var head_ps: Variant = head_sd.get("ship_scene")
+	if head_ps == null or not (head_ps is PackedScene):
 		push_error("Prep: active ShipData missing ship_scene")
 		return
-	_preview_ship = (ps as PackedScene).instantiate() as Node2D
+	_preview_ship = (head_ps as PackedScene).instantiate() as Node2D
 	if _preview_ship == null or not _preview_ship.has_method("get_effective_mine_damage_per_tick"):
 		push_error("Prep: ship_scene must extend ShipBase")
+		if _preview_ship != null:
+			_preview_ship.queue_free()
+		_preview_ship = null
 		return
 	_world.add_child(_preview_ship)
-	_preview_ship.position = _PREVIEW_POS
 	_preview_ship.scale = _PREVIEW_SCALE
+	_preview_ship.position = _PREVIEW_POS
+	_preview_ship.rotation = 0.0
+	for i in range(1, chain.size()):
+		var sid: StringName = chain[i]
+		var sd: Resource = ShipDataRegistry.get_ship_data(sid)
+		if sd == null:
+			continue
+		var ps: Variant = sd.get("ship_scene")
+		if ps == null or not (ps is PackedScene):
+			continue
+		var node: Node2D = (ps as PackedScene).instantiate() as Node2D
+		if node == null or not node.has_method("get_effective_mine_damage_per_tick"):
+			if node != null:
+				node.queue_free()
+			continue
+		if node is ShipBase:
+			(node as ShipBase).follower_visual_only = true
+		node.scale = Vector2.ONE * _PREVIEW_SCALE * ShipChainLayout.FOLLOWER_SCALE
+		_world.add_child(node)
+	_layout_preview_ship_chain()
+
+
+func _layout_preview_ship_chain() -> void:
+	if _world == null or _preview_ship == null:
+		return
+	var ch := _world.get_children()
+	if ch.size() < 2:
+		return
+	var prev_nd: Node2D = ch[0] as Node2D
+	if prev_nd == null:
+		return
+	var step: float = ShipChainLayout.SEGMENT_SPACING_PX * _PREVIEW_SCALE.x
+	for j in range(1, ch.size()):
+		var tail_nd: Node2D = ch[j] as Node2D
+		if tail_nd == null:
+			continue
+		var back: Vector2 = -prev_nd.global_transform.x.normalized()
+		tail_nd.global_position = prev_nd.global_position + back * step
+		tail_nd.rotation = prev_nd.rotation
+		prev_nd = tail_nd
 
 
 func _on_ship_tab_changed(tab: int) -> void:
@@ -155,6 +201,8 @@ func _on_fuel_changed(_current: float, _max_fuel: float) -> void:
 
 func _on_upgrade_purchased(_id: StringName, _new_level: int) -> void:
 	_refresh_all()
+	# Unlock chain can grow (e.g. new ship); refresh ship chain without requiring re-select.
+	_rebuild_preview_ship()
 
 
 func _on_shop_purchase(upgrade_id: StringName) -> void:
@@ -339,6 +387,8 @@ func _refresh_ship_stats() -> void:
 		_mining_radius_label.text = "Mining Radius: %.2f" % r_rel
 	if _move_speed_label:
 		_move_speed_label.text = "Move Speed: %d" % int(roundf(ship_preview.get_effective_move_speed_px_s()))
+	if _turn_rate_label:
+		_turn_rate_label.text = "Turn Rate: %.1f rad/s" % ship_preview.get_effective_turn_rate_rad_s()
 	if _mining_power_label:
 		_mining_power_label.text = "Mining Power: %.1f" % ship_preview.get_effective_mine_damage_per_tick()
 	if _mining_interval_label:
@@ -530,7 +580,7 @@ func _shop_decimal_places_for_stat(st: StringName) -> int:
 	match String(st):
 		"mine_damage_per_tick", "drill_range_bonus_game_px":
 			return 2
-		"money_double_chance":
+		"money_double_chance", "turn_rate_rad_s":
 			return 1
 		_:
 			return 0

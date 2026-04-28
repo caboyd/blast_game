@@ -1,5 +1,13 @@
 extends Control
 
+class _ShipChainFollowerTick extends Node:
+	var host: Node
+
+	func _physics_process(delta: float) -> void:
+		if host != null:
+			host.call(&"update_mission_ship_chain_followers", delta)
+
+
 ## Pixels at bottom of window reserved for `BottomHUD`; 2D gameplay only uses area above.
 const HUD_RESERVE_PX: int = 200
 const GAME_VIEWPORT_SIZE: Vector2i = Vector2i(1280, 720 - HUD_RESERVE_PX)
@@ -12,6 +20,21 @@ const CELL_SIZE_PX: float = 8.0
 @onready var _mining_world: MiningWorld = %MiningWorld
 @onready var _ship_spawn: Node2D = %ShipSpawn
 var _ship: Node2D
+var _ship_chain_followers: Array[ShipBase] = []
+## Older positions first; tail segments sample arc length backward from live head along this polyline.
+var _ship_chain_path: Array[Vector2] = []
+var _ship_chain_follow_tick: _ShipChainFollowerTick
+
+const _MISSION_SHIP_CHAIN_FOLLOW_LERP := 16.0
+const _MISSION_SHIP_CHAIN_PATH_MAX_POINTS := 4096
+const _MISSION_SHIP_CHAIN_PATH_MIN_DIST_SQ := 1.0
+const _MISSION_SHIP_CHAIN_PATH_TANGENT_DELTA_PX := 6.0
+## Max rotation speed (rad/s) for the first chained ship; each further link is multiplied by `_MISSION_SHIP_CHAIN_TURN_RATE_LINK_FACTOR`.
+const _MISSION_SHIP_CHAIN_TAIL_TURN_RATE_RAD_S := 5.5
+## Per chain index: turn_rate *= factor^index (e.g. 0.7 → each segment turns 70% as fast as the one in front).
+const _MISSION_SHIP_CHAIN_TURN_RATE_LINK_FACTOR := 0.68
+## Floor so the last segments still steer (set 0 to allow arbitrarily slow tails).
+const _MISSION_SHIP_CHAIN_TAIL_TURN_RATE_MIN_RAD_S := 0.35
 @onready var _viewport_info: Label = %ViewportInfo
 @onready var _game_camera: Camera2D = %GameCamera2D
 @onready var _subviewport_container: SubViewportContainer = $GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer
@@ -33,6 +56,7 @@ func _ready() -> void:
 		# Hull origin at the middle of chunk (0,0) in grid/world space.
 		var spawn_world: Vector2 = MiningWorld.get_chunk_center_world(Vector2i.ZERO)
 		_ship.position = spawn_world
+		_layout_mission_ship_chain_followers_from_head()
 		_mining_world.stamp_dirt_chebyshev_from_world(spawn_world, 4)
 		_ship.carve_hull_terrain_on_spawn()
 	if _ship and not _ship.out_of_fuel.is_connected(_on_ship_out_of_fuel):
@@ -56,6 +80,8 @@ func _ready() -> void:
 func _spawn_mission_ship() -> void:
 	if _ship_spawn == null:
 		return
+	_ship_chain_followers.clear()
+	_ship_chain_path.clear()
 	for c in _ship_spawn.get_children():
 		c.queue_free()
 	_ship = null
@@ -71,8 +97,114 @@ func _spawn_mission_ship() -> void:
 	if _ship == null or not _ship.has_method("carve_hull_terrain_on_spawn"):
 		push_error("Planet1: ship_scene root must extend ShipBase")
 		return
+	if _ship is Node:
+		_ship.process_physics_priority = 1
 	_ship.position = Vector2.ZERO
 	_ship_spawn.add_child(_ship)
+	var chain: Array[StringName] = ShipDataRegistry.get_mission_ship_chain_chain_ship_ids()
+	for i in range(1, chain.size()):
+		var sid: StringName = chain[i]
+		var sdata: Resource = ShipDataRegistry.get_ship_data(sid)
+		if sdata == null:
+			continue
+		var tps: Variant = sdata.get("ship_scene")
+		if tps == null or not (tps is PackedScene):
+			continue
+		var tail: ShipBase = (tps as PackedScene).instantiate() as ShipBase
+		if tail == null:
+			continue
+		tail.follower_visual_only = true
+		tail.scale = Vector2.ONE * ShipChainLayout.FOLLOWER_SCALE
+		_ship_spawn.add_child(tail)
+		_ship_chain_followers.append(tail)
+	_ship_chain_follow_tick = _ShipChainFollowerTick.new()
+	_ship_chain_follow_tick.name = "ShipChainFollowerTick"
+	_ship_chain_follow_tick.host = self
+	_ship_chain_follow_tick.process_physics_priority = 0
+	_ship_spawn.add_child(_ship_chain_follow_tick)
+
+
+func _layout_mission_ship_chain_followers_from_head() -> void:
+	if _ship == null:
+		return
+	_ship_chain_path.clear()
+	_ship_chain_path.append(_ship.global_position)
+	var prev: Node2D = _ship
+	for tail in _ship_chain_followers:
+		var back: Vector2 = -prev.global_transform.x.normalized()
+		tail.global_position = prev.global_position + back * ShipChainLayout.SEGMENT_SPACING_PX
+		tail.rotation = prev.rotation
+		prev = tail
+
+
+func _mission_ship_chain_record_head_sample() -> void:
+	if _ship == null:
+		return
+	var p: Vector2 = _ship.global_position
+	if _ship_chain_path.is_empty():
+		_ship_chain_path.append(p)
+		return
+	if p.distance_squared_to(_ship_chain_path[_ship_chain_path.size() - 1]) < _MISSION_SHIP_CHAIN_PATH_MIN_DIST_SQ:
+		return
+	_ship_chain_path.append(p)
+	while _ship_chain_path.size() > _MISSION_SHIP_CHAIN_PATH_MAX_POINTS:
+		_ship_chain_path.pop_front()
+
+
+func _mission_ship_chain_point_at_distance_back_from_tip(dist: float) -> Vector2:
+	if _ship == null:
+		return Vector2.ZERO
+	var tip: Vector2 = _ship.global_position
+	if dist <= 0.0:
+		return tip
+	var remaining: float = dist
+	var prev: Vector2 = tip
+	var idx: int = _ship_chain_path.size() - 1
+	while idx >= 0:
+		var cur: Vector2 = _ship_chain_path[idx]
+		var seg_len: float = prev.distance_to(cur)
+		if seg_len < 1e-5:
+			prev = cur
+			idx -= 1
+			continue
+		if remaining <= seg_len:
+			return prev.lerp(cur, remaining / seg_len)
+		remaining -= seg_len
+		prev = cur
+		idx -= 1
+	return prev
+
+
+func _mission_ship_chain_path_tangent_toward_head(dist_along_path: float) -> Vector2:
+	var p_here: Vector2 = _mission_ship_chain_point_at_distance_back_from_tip(dist_along_path)
+	var p_closer: Vector2 = _mission_ship_chain_point_at_distance_back_from_tip(
+		maxf(dist_along_path - _MISSION_SHIP_CHAIN_PATH_TANGENT_DELTA_PX, 0.0)
+	)
+	return p_closer - p_here
+
+
+func update_mission_ship_chain_followers(delta: float) -> void:
+	if _ship == null or _ship_chain_followers.is_empty():
+		return
+	_mission_ship_chain_record_head_sample()
+	var t: float = clampf(_MISSION_SHIP_CHAIN_FOLLOW_LERP * delta, 0.0, 1.0)
+	var chain_i: int = 0
+	for tail in _ship_chain_followers:
+		var dist_along: float = ShipChainLayout.SEGMENT_SPACING_PX * float(chain_i + 1)
+		var target_pos: Vector2 = _mission_ship_chain_point_at_distance_back_from_tip(dist_along)
+		tail.global_position = tail.global_position.lerp(target_pos, t)
+		var tang: Vector2 = _mission_ship_chain_path_tangent_toward_head(dist_along)
+		if tang.length_squared() <= 0.25:
+			tang = target_pos - tail.global_position
+		if tang.length_squared() > 0.25:
+			var target_rot: float = tang.angle()
+			var turn_cap: float = (
+				_MISSION_SHIP_CHAIN_TAIL_TURN_RATE_RAD_S
+				* pow(_MISSION_SHIP_CHAIN_TURN_RATE_LINK_FACTOR, float(chain_i))
+			)
+			turn_cap = maxf(turn_cap, _MISSION_SHIP_CHAIN_TAIL_TURN_RATE_MIN_RAD_S)
+			tail.rotation = rotate_toward(tail.rotation, target_rot, turn_cap * delta)
+		chain_i += 1
 
 
 func _on_ship_out_of_fuel() -> void:

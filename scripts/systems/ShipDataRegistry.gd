@@ -87,6 +87,19 @@ func get_all_ship_ids_sorted() -> Array[StringName]:
 	return _ship_ids_sorted.duplicate()
 
 
+## Selected ship first, then other unlocked ships in prep order. Used by Prep preview and mission ship chain tails.
+func get_mission_ship_chain_chain_ship_ids() -> Array[StringName]:
+	var selected: StringName = GameSession.selected_ship_id
+	var out: Array[StringName] = [selected]
+	for sid in _ship_ids_sorted:
+		if sid == selected:
+			continue
+		if not is_ship_unlocked(sid):
+			continue
+		out.append(sid)
+	return out
+
+
 ## Every upgrade id defined on any ship (for save persistence and UpgradeBus).
 func get_all_upgrade_ids() -> Array[StringName]:
 	var id_set: Dictionary = {}

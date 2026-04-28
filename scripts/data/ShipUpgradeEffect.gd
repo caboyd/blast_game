@@ -7,6 +7,7 @@ extends Resource
 	"mine_damage_per_tick",
 	"vision_radius_cells",
 	"move_speed_px_s",
+	"turn_rate_rad_s",
 	"fuel_max",
 	"drill_range_bonus_game_px",
 	"money_double_chance"

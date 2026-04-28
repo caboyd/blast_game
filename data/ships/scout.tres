@@ -77,5 +77,6 @@ id = &"scout"
 display_name = "Scout"
 description = "Optimized for increased Speed. Not a very good miner."
 move_speed_px_s = 15.0
+turn_rate_rad_s = 4.0
 ship_scene = ExtResource("4_scene")
 upgrades = Array[ExtResource("3_jr27e")]([SubResource("up_mp"), SubResource("up_ft"), SubResource("up_vis"), SubResource("up_sp"), SubResource("up_dr")])

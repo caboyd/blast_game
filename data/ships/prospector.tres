@@ -42,6 +42,7 @@ display_name = "Prospector"
 prep_sort_index = 1
 description = "Specialized for prospecting more value from blocks"
 unlock_requirement_text = "Max all Scout upgrades to unlock"
+turn_rate_rad_s = 3.0
 fuel_drain_per_second = 2.0
 ship_scene = ExtResource("4_sc")
 unlock_after_ship_all_upgrades_maxed = &"scout"
