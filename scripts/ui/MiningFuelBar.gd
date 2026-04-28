@@ -1,7 +1,7 @@
 extends Control
 
-@onready var _overflow_bar: ProgressBar = $MarginContainer/BarStack/BarsVBox/OverflowProgressBar
-@onready var _bar: ProgressBar = $MarginContainer/BarStack/BarsVBox/ProgressBar
+@onready var _bar: ProgressBar = $MarginContainer/BarStack/BarTrack/GreenBar
+@onready var _overflow_bar: ProgressBar = $MarginContainer/BarStack/BarTrack/YellowBar
 @onready var _label: Label = $MarginContainer/BarStack/ValueLabel
 
 
@@ -20,9 +20,9 @@ func _sync_from_stats() -> void:
 	_bar.max_value = fm
 	_bar.value = clampf(cur, 0.0, fm)
 
+
 	_overflow_bar.max_value = maxf(ov_budget, 0.001)
 	_overflow_bar.value = clampf(overflow_amt, 0.0, ov_budget)
-	_overflow_bar.visible = overflow_amt > 0.001
 
 	if _label:
 		_label.text = "%.0f / %.0f" % [cur, fm]

@@ -7,7 +7,6 @@
 
 [sub_resource type="Resource" id="eff_mp"]
 script = ExtResource("2_1aha8")
-stat = &"mine_damage_per_tick"
 value = 0.25
 
 [sub_resource type="Resource" id="up_mp"]
@@ -17,11 +16,11 @@ shop_display_name = "Mining Power"
 base_cost = 25
 cost_value = 1.0
 max_level = 16
-effects = [SubResource("eff_mp")]
+effects = Array[ExtResource("2_1aha8")]([SubResource("eff_mp")])
 
 [sub_resource type="Resource" id="eff_ft"]
 script = ExtResource("2_1aha8")
-stat = &"fuel_max"
+stat = "fuel_max"
 value = 5.0
 
 [sub_resource type="Resource" id="up_ft"]
@@ -31,11 +30,11 @@ shop_display_name = "Fuel"
 base_cost = 5
 cost_value = 1.2
 max_level = 10
-effects = [SubResource("eff_ft")]
+effects = Array[ExtResource("2_1aha8")]([SubResource("eff_ft")])
 
 [sub_resource type="Resource" id="eff_vis"]
 script = ExtResource("2_1aha8")
-stat = &"vision_radius_cells"
+stat = "vision_radius_cells"
 value = 0.5
 
 [sub_resource type="Resource" id="up_vis"]
@@ -43,24 +42,24 @@ script = ExtResource("3_jr27e")
 id = &"visibility_range"
 shop_display_name = "Vision"
 max_level = 6
-effects = [SubResource("eff_vis")]
+effects = Array[ExtResource("2_1aha8")]([SubResource("eff_vis")])
 
 [sub_resource type="Resource" id="eff_sp"]
 script = ExtResource("2_1aha8")
-stat = &"move_speed_px_s"
+stat = "move_speed_px_s"
 value = 1.0
 
 [sub_resource type="Resource" id="up_sp"]
 script = ExtResource("3_jr27e")
-id = &"ship_speed"
+id = &"scout_speed"
 shop_display_name = "Speed"
 base_cost = 25
 max_level = 8
-effects = [SubResource("eff_sp")]
+effects = Array[ExtResource("2_1aha8")]([SubResource("eff_sp")])
 
 [sub_resource type="Resource" id="eff_dr"]
 script = ExtResource("2_1aha8")
-stat = &"drill_range_bonus_game_px"
+stat = "drill_range_bonus_game_px"
 value = 1.0
 
 [sub_resource type="Resource" id="up_dr"]
@@ -70,7 +69,7 @@ shop_display_name = "Mining Radius"
 base_cost = 15
 cost_value = 1.5
 max_level = 3
-effects = [SubResource("eff_dr")]
+effects = Array[ExtResource("2_1aha8")]([SubResource("eff_dr")])
 
 [resource]
 script = ExtResource("1_ec25b")
@@ -79,4 +78,4 @@ display_name = "Scout"
 description = "Optimized for increased Speed. Not a very good miner."
 move_speed_px_s = 15.0
 ship_scene = ExtResource("4_scene")
-upgrades = [SubResource("up_mp"), SubResource("up_ft"), SubResource("up_vis"), SubResource("up_sp"), SubResource("up_dr")]
+upgrades = Array[ExtResource("3_jr27e")]([SubResource("up_mp"), SubResource("up_ft"), SubResource("up_vis"), SubResource("up_sp"), SubResource("up_dr")])

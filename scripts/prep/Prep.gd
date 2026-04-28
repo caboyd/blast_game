@@ -463,7 +463,7 @@ func _set_shop_info_label(upgrade_id: StringName, label: Label) -> void:
 		for eff in effs_snap:
 			if eff == null:
 				continue
-			var st_snap: StringName = eff.get("stat") as StringName
+			var st_snap: StringName = ShipUpgradeEffect.normalize_effect_stat_id(eff.get("stat"))
 			var contrib: float
 			if st_snap == &"drill_range_bonus_game_px":
 				contrib = _shop_drill_radius_display_total(upgrade_id, cap_lv)

@@ -7,7 +7,7 @@
 
 [sub_resource type="Resource" id="eff_dm"]
 script = ExtResource("2_fx")
-stat = &"money_double_chance"
+stat = "money_double_chance"
 value = 1.0
 
 [sub_resource type="Resource" id="up_dm"]
@@ -16,20 +16,22 @@ id = &"prospector_double_money"
 shop_display_name = "% to 2x Block $"
 base_cost = 25
 max_level = 25
-effects = [SubResource("eff_dm")]
+effects = Array[ExtResource("2_fx")]([SubResource("eff_dm")])
 
 [sub_resource type="Resource" id="Resource_sl3d2"]
 script = ExtResource("2_fx")
-stat = &"mine_damage_per_tick"
-value = 0.5
+stat = "move_speed_px_s"
+value = 1.0
 metadata/_custom_type_script = "uid://drjo0qypkcvo3"
 
 [sub_resource type="Resource" id="Resource_hm3k6"]
 script = ExtResource("3_ud")
-id = &"prospector_mining_power"
-shop_display_name = "Mining Power"
-base_cost = 35
-max_level = 15
+id = &"prospector_speed"
+shop_display_name = "Speed"
+base_cost = 25
+cost_operation = "add"
+cost_value = 5.0
+max_level = 12
 effects = Array[ExtResource("2_fx")]([SubResource("Resource_sl3d2")])
 metadata/_custom_type_script = "uid://do1co1gh3fvgm"
 
@@ -43,4 +45,4 @@ unlock_requirement_text = "Max all Scout upgrades to unlock"
 fuel_drain_per_second = 2.0
 ship_scene = ExtResource("4_sc")
 unlock_after_ship_all_upgrades_maxed = &"scout"
-upgrades = [SubResource("up_dm")]
+upgrades = Array[ExtResource("3_ud")]([SubResource("up_dm"), SubResource("Resource_hm3k6")])
