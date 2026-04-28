@@ -18,9 +18,12 @@ uniform float highlight_mix : hint_range(0.0, 1.0) = 0.72;
 // Contour outline between differing materials / material vs empty.
 uniform vec4 edge_color : source_color = vec4(0.04, 0.04, 0.06, 1.0);
 // Width in bilinear-weight units; larger = thicker outline.
-uniform float edge_width : hint_range(0.0, 0.5) = 0.25;
+uniform float edge_width : hint_range(0.0, 0.5) = 0.15;
 // Pixel smoothing width for alpha boundary (in weight units).
 uniform float alpha_aa : hint_range(0.0, 0.5) = 0.08;
+
+// Ranking boost toward higher material indices (1..type_count-1). At 0, off. Largest index gets full +bias (×(1+bias)).
+uniform float high_index_weight_bias : hint_range(0.0, 2.0) = 1.2;
 
 // Top-left of the view texture in world cell coords; fuel uses `fuel_world_origin + p` so the
 // galaxy scroll is world-locked and does not jump when the camera pans.
@@ -43,7 +46,8 @@ CellSample sample_cell(ivec2 t, ivec2 ts, int tc1) {
 	return s;
 }
 
-// TYPE_FUEL in MiningWorld.gd (must match `TYPE_FUEL` const).
+// TYPE_* in MiningWorld.gd (must match consts).
+const int MATERIAL_DIRT = 1;
 const int MATERIAL_FUEL = 4;
 
 // `world_cell_uv`: absolute world grid position (float; matches MiningWorld cell indices + sub-texel).
@@ -166,11 +170,15 @@ void fragment() {
 	float total = w00 + w10 + w01 + w11;
 
 	// Per-material bilinear weight and weighted hp. Find top two materials.
+	// high_index_weight_bias scales ranking only (higher type id favored); hp uses raw winner weight.
+	// Outlines use best_rank/second_rank so dominance matches color.
 	int best_id = 0;
 	float best_w = -1.0;
 	float best_hp_sum = 0.0;
 	int second_id = 0;
 	float second_w = -1.0;
+	float best_rank = -1.0;
+	float second_rank = -1.0;
 
 	for (int i = 1; i < 8; i++) {
 		if (i >= type_count) {
@@ -182,13 +190,18 @@ void fragment() {
 		if (s10.mid == i) { w += w10; wh += w10 * s10.hp; }
 		if (s01.mid == i) { w += w01; wh += w01 * s01.hp; }
 		if (s11.mid == i) { w += w11; wh += w11 * s11.hp; }
-		if (w > best_w) {
+		float hi_t = float(i - 1) / max(float(type_count - 2), 1.0);
+		float rank = w * (1.0 + high_index_weight_bias * hi_t);
+		if (rank > best_rank) {
+			second_rank = best_rank;
 			second_w = best_w;
 			second_id = best_id;
+			best_rank = rank;
 			best_w = w;
 			best_id = i;
 			best_hp_sum = wh;
-		} else if (w > second_w) {
+		} else if (rank > second_rank) {
+			second_rank = rank;
 			second_w = w;
 			second_id = i;
 		}
@@ -211,8 +224,8 @@ void fragment() {
 	float damage_taken = 1.0 - hp_ratio;
 	vec4 base = type_colors[best_id];
 	vec3 rgb;
-	// Stone (id 1): lower HP = darker; damage also desaturates toward luminance (no red tint).
-	if (best_id == 1) {
+	// Dirt (TYPE_DIRT): lower HP = darker; damage also desaturates toward luminance (no red tint).
+	if (best_id == MATERIAL_DIRT) {
 		rgb = base.rgb * mix(0.3, 1.0, hp_ratio);
 		float lum = dot(rgb, vec3(0.2126, 0.7152, 0.0722));
 		rgb = mix(rgb, vec3(lum), damage_taken * 0.72);
@@ -223,14 +236,15 @@ void fragment() {
 	}
 
 	// Outline at contour between differing materials, or along outer boundary.
-	// Inner contour: best vs other-material second.
+	// Inner contour: best vs second using rank (matches color choice).
 	float inner_edge = 0.0;
-	if (second_w > 0.0 && second_id != best_id) {
-		float diff = best_w - second_w;
+	if (second_w > 0.0 && second_id != best_id && second_rank >= 0.0) {
+		float diff = best_rank - second_rank;
 		inner_edge = 1.0 - smoothstep(0.0, edge_width, diff);
 	}
-	// Outer contour: against empty (missing weight in the 2x2).
-	float outer_diff = best_w - (total - best_w);
+	// Outer contour: winning material vs all other solid mass in the 2×2 (rank for winner so bias stays consistent).
+	float other_w = total - best_w;
+	float outer_diff = best_rank - other_w;
 	float outer_edge = 1.0 - smoothstep(0.0, edge_width, outer_diff);
 	// Also draw edge where solid meets empty beyond the 2x2 footprint.
 	outer_edge = max(outer_edge, 1.0 - smoothstep(0.5, 0.5 + edge_width, coverage));
