@@ -9,10 +9,11 @@ const TYPE_DIRT := 1
 const TYPE_STONE := 2
 const TYPE_GOLD := 3
 const TYPE_FUEL := 4
-const TYPE_COUNT := 5
+const TYPE_RUBY := 5
+const TYPE_COUNT := 6
 
-static var TYPE_MAX_HP: PackedInt32Array = PackedInt32Array([0, 5, 50, 5, 1])
-static var TYPE_MONEY: PackedInt32Array = PackedInt32Array([0, 1, 2, 15, 0])
+static var TYPE_MAX_HP: PackedInt32Array = PackedInt32Array([0, 5, 50, 5, 1, 100])
+static var TYPE_MONEY: PackedInt32Array = PackedInt32Array([0, 1, 2, 15, 0, 1000])
 static var TYPE_COLOR: PackedColorArray = PackedColorArray([
 	Color(0.0, 0.0, 0.0, 0.0),
 	Color(0.42, 0.28, 0.18, 1.0),
@@ -20,10 +21,18 @@ static var TYPE_COLOR: PackedColorArray = PackedColorArray([
 	Color(1.0, 0.82, 0.2, 1.0),
 	# Shader uses dedicated fuel look; keep brown for any CPU fallbacks.
 	Color(0.22, 0.15, 0.10, 1.0),
+	Color(0.92, 0.18, 0.38, 1.0),
 ])
+
+## Planet 1 “generation monument”: hollow 5×5 (non-solid shell) + ruby center cell.
+const PLANET1_GENERATION_MONUMENT_CHUNK := Vector2i(0, 2)
+const PLANET1_GENERATION_MONUMENT_CENTER_CELL := Vector2i(20, 100)
+const PLANET1_GENERATION_MONUMENT_RADIUS_CELLS := 2
 
 const SHADER_TYPE_COLOR_MAX := 8
 const APRON_COLUMNS := 0
+
+const _GENERATION_MONUMENT_SCRIPT: GDScript = preload("res://scripts/world/GenerationMonument.gd")
 
 
 ## World-space center of the square covered by one chunk (`CHUNK_SIZE` cells per side).
@@ -72,12 +81,16 @@ var _visual_dirty: bool = true
 var _reveal_dirty_chunks: Dictionary = {} # Vector2i -> true
 var _reveal_save_accum: float = 0.0
 
+var _planet1_generation_monument: Node2D = null
+
 @onready var _world_visual: Sprite2D = $WorldVisual
 @onready var _fog_visual: Sprite2D = $FogVisual
 
 
 func _ready() -> void:
 	_init_visuals()
+	if _fog_visual:
+		_fog_visual.z_index = 2
 	_load_persisted_reveals()
 	set_process(true)
 
@@ -253,6 +266,44 @@ func _ensure_chunk(chunk: Vector2i) -> void:
 		chunk_data["fuel_anchor"] = Vector2i(fax, fay)
 	_chunks[chunk] = chunk_data
 	_apply_static_overrides_for_chunk(chunk)
+	_stamp_planet1_generation_monument_chunk(chunk)
+
+
+func _stamp_planet1_generation_monument_chunk(chunk: Vector2i) -> void:
+	if stage_id != &"planet1":
+		return
+	if chunk != PLANET1_GENERATION_MONUMENT_CHUNK:
+		return
+	var data: Dictionary = _chunks[chunk]
+	var cells: PackedByteArray = data["cells"]
+	var hparr: PackedByteArray = data["hp"]
+	var ruby_hp: int = clampi(int(TYPE_MAX_HP[TYPE_RUBY]), 0, 255)
+	var cc: Vector2i = PLANET1_GENERATION_MONUMENT_CENTER_CELL
+	for dy in range(-PLANET1_GENERATION_MONUMENT_RADIUS_CELLS, PLANET1_GENERATION_MONUMENT_RADIUS_CELLS + 1):
+		for dx in range(-PLANET1_GENERATION_MONUMENT_RADIUS_CELLS, PLANET1_GENERATION_MONUMENT_RADIUS_CELLS + 1):
+			var wc: Vector2i = Vector2i(cc.x + dx, cc.y + dy)
+			var idx: int = _cell_to_local_in_chunk(wc, chunk)
+			if dx == 0 and dy == 0:
+				cells[idx] = TYPE_RUBY
+				hparr[idx] = ruby_hp
+			else:
+				cells[idx] = TYPE_EMPTY
+				hparr[idx] = 0
+
+
+func attach_planet1_stage_content(ship: ShipBase) -> void:
+	if stage_id != &"planet1":
+		return
+	_ensure_chunk(PLANET1_GENERATION_MONUMENT_CHUNK)
+	if _planet1_generation_monument != null:
+		return
+	var cc: Vector2i = PLANET1_GENERATION_MONUMENT_CENTER_CELL
+	var cw: Vector2 = cell_top_left_world(cc) + Vector2(CELL_SIZE_PX * 0.5, CELL_SIZE_PX * 0.5)
+	var mon = _GENERATION_MONUMENT_SCRIPT.new()
+	mon.name = "GenerationMonumentChunk02"
+	mon.setup(ship, cw)
+	add_child(mon)
+	_planet1_generation_monument = mon
 
 
 func _apply_static_overrides_for_chunk(chunk: Vector2i) -> void:
@@ -312,6 +363,7 @@ static func get_stage_block_type_rows() -> Array[Dictionary]:
 		{"type_id": TYPE_STONE, "label": "Stone"},
 		{"type_id": TYPE_GOLD, "label": "Gold"},
 		{"type_id": TYPE_FUEL, "label": "Fuel cell"},
+		{"type_id": TYPE_RUBY, "label": "Ruby"},
 	]
 
 

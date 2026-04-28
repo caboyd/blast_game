@@ -53,6 +53,7 @@ func _ready() -> void:
 		_mining_world.stage_id = planet_id
 	if _ship and _mining_world:
 		_ship.grid = _mining_world
+		_mining_world.attach_planet1_stage_content(_ship)
 		# Hull origin at the middle of chunk (0,0) in grid/world space.
 		var spawn_world: Vector2 = MiningWorld.get_chunk_center_world(Vector2i.ZERO)
 		_ship.position = spawn_world
@@ -261,9 +262,26 @@ func _apply_game_viewport_layout() -> void:
 	if _game_camera != null and w > 0 and h > 0:
 		var z: float = float(mini(w, h)) / (CELL_SIZE_PX * float(CELLS_PER_HALF_VIEW * 2))
 		_game_camera.zoom = Vector2(z, z)
-	if _viewport_info != null:
-		var r := float(w) / float(h) if h != 0 else 0.0
-		_viewport_info.text = "%d×%d px  •  W:H = %.4f:1" % [w, h, r]
+	_refresh_viewport_info()
+
+
+func _refresh_viewport_info() -> void:
+	if _viewport_info == null:
+		return
+	var w: int = _vp_w
+	var h: int = _vp_h
+	var r: float = float(w) / float(h) if h != 0 else 0.0
+	var line1: String = "%d×%d px  •  W:H = %.4f:1" % [w, h, r]
+	if _mining_world != null and _ship != null:
+		var chunk: Vector2i = _mining_world.get_chunk_for_world_pos(_ship.global_position)
+		var cell: Vector2i = _mining_world.world_pos_to_cell(_ship.global_position)
+		var lx: int = cell.x - chunk.x * MiningWorld.CHUNK_SIZE
+		var ly: int = cell.y - chunk.y * MiningWorld.CHUNK_SIZE
+		_viewport_info.text = "%s\nchunk (%d, %d)  •  in-chunk (%d, %d)" % [
+			line1, chunk.x, chunk.y, lx, ly,
+		]
+	else:
+		_viewport_info.text = line1
 
 
 func _physics_process(_delta: float) -> void:
@@ -276,3 +294,4 @@ func _physics_process(_delta: float) -> void:
 	var half := Vector2(float(_vp_w) / (2.0 * z), float(_vp_h) / (2.0 * z))
 	var r := Rect2(_ship.global_position - half, half * 2.0)
 	_mining_world.set_camera_view_world_rect(r)
+	_refresh_viewport_info()
