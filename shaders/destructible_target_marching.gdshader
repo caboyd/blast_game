@@ -17,8 +17,9 @@ uniform float highlight_mix : hint_range(0.0, 1.0) = 0.72;
 
 // Contour outline between differing materials / material vs empty.
 uniform vec4 edge_color : source_color = vec4(0.04, 0.04, 0.06, 1.0);
-// Width in bilinear-weight units; larger = thicker outline.
-uniform float edge_width : hint_range(0.0, 0.5) = 0.15;
+// Width in bilinear-weight / rank-diff units for boundaries where ranks compete (bias shifts dominance).
+uniform float edge_width_between_materials : hint_range(0.0, 0.5) = 0.15;
+
 // Pixel smoothing width for alpha boundary (in weight units).
 uniform float alpha_aa : hint_range(0.0, 0.5) = 0.08;
 
@@ -240,14 +241,16 @@ void fragment() {
 	float inner_edge = 0.0;
 	if (second_w > 0.0 && second_id != best_id && second_rank >= 0.0) {
 		float diff = best_rank - second_rank;
-		inner_edge = 1.0 - smoothstep(0.0, edge_width, diff);
+		inner_edge = 1.0 - smoothstep(0.0, edge_width_between_materials, diff);
 	}
 	// Outer contour: winning material vs all other solid mass in the 2×2 (rank for winner so bias stays consistent).
 	float other_w = total - best_w;
 	float outer_diff = best_rank - other_w;
-	float outer_edge = 1.0 - smoothstep(0.0, edge_width, outer_diff);
+	float outer_edge = 1.0 - smoothstep(0.0, edge_width_between_materials, outer_diff);
 	// Also draw edge where solid meets empty beyond the 2x2 footprint.
-	outer_edge = max(outer_edge, 1.0 - smoothstep(0.5, 0.5 + edge_width, coverage));
+	// Width for solid vs empty boundary (coverage smoothstep); independent of high_index_weight_bias.
+	float edge_width_material_empty = edge_width_between_materials / (1.0 + high_index_weight_bias);
+	outer_edge = max(outer_edge, 1.0 - smoothstep(0.5, 0.5 + edge_width_material_empty, coverage));
 
 	float e = clamp(max(inner_edge, outer_edge), 0.0, 1.0);
 	rgb = mix(rgb, edge_color.rgb, e * edge_color.a);
