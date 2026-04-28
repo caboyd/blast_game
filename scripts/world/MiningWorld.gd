@@ -190,7 +190,8 @@ func _ensure_chunk(chunk: Vector2i) -> void:
 			cells[idx_cell] = TYPE_GOLD
 			hp[idx_cell] = gold_hp
 		elif t == TYPE_STONE:
-			# Replace the entire connected stone splat with gold; one-cell stone shell and one dirt entrance.
+			# Replace the entire connected stone splat with gold; stone shell around it and a 2×2 dirt mouth.
+			# The mouth may overlap halo + gold and one step beyond the halo (open dirt) so a 2×2 always fits.
 			var inside: Array[int] = []
 			var seen_stone: PackedByteArray = PackedByteArray()
 			seen_stone.resize(n)
@@ -236,14 +237,86 @@ func _ensure_chunk(chunk: Vector2i) -> void:
 						continue
 					halo_seen[hidx] = true
 					halo.append(hidx)
-			if not halo.is_empty():
-				var entrance_h: int = rng.randi_range(0, halo.size() - 1)
-				for hi in halo.size():
-					var hid: int = halo[hi]
-					if hi == entrance_h:
-						cells[hid] = TYPE_DIRT
-						hp[hid] = dirt_hp
-					else:
+			if halo.is_empty():
+				# No in-chunk neighbor to carve an opening (edge-sealed blob); leave as ordinary stone.
+				for id_i in inside:
+					cells[id_i] = TYPE_STONE
+					hp[id_i] = stone_hp
+			else:
+				var halo_set: Dictionary = {}
+				for h_i in halo:
+					halo_set[h_i] = true
+				var mouth_ok: Dictionary = {}
+				for id_i in inside_set:
+					mouth_ok[id_i] = true
+				for h_i in halo:
+					mouth_ok[h_i] = true
+				for h_i in halo:
+					var hix: int = h_i % CHUNK_SIZE
+					@warning_ignore("integer_division")
+					var hiy: int = h_i / CHUNK_SIZE
+					for dir in _STONE_BLOB_DIRS:
+						var mx: int = hix + dir.x
+						var my: int = hiy + dir.y
+						if mx < 0 or mx >= CHUNK_SIZE or my < 0 or my >= CHUNK_SIZE:
+							continue
+						var midx: int = my * CHUNK_SIZE + mx
+						if inside_set.has(midx):
+							continue
+						mouth_ok[midx] = true
+				var anchors_2x2: Array[Vector2i] = []
+				var mouth_failed: bool = false
+				while true:
+					anchors_2x2.clear()
+					for ay in CHUNK_SIZE - 1:
+						for ax in CHUNK_SIZE - 1:
+							var b00: int = ay * CHUNK_SIZE + ax
+							var b10: int = ay * CHUNK_SIZE + (ax + 1)
+							var b01: int = (ay + 1) * CHUNK_SIZE + ax
+							var b11: int = (ay + 1) * CHUNK_SIZE + (ax + 1)
+							if not mouth_ok.has(b00) or not mouth_ok.has(b10) or not mouth_ok.has(b01) or not mouth_ok.has(b11):
+								continue
+							if not halo_set.has(b00) and not halo_set.has(b10) and not halo_set.has(b01) and not halo_set.has(b11):
+								continue
+							anchors_2x2.append(Vector2i(ax, ay))
+					if not anchors_2x2.is_empty():
+						break
+					var pending: Dictionary = {}
+					for mk in mouth_ok:
+						var mix: int = mk % CHUNK_SIZE
+						@warning_ignore("integer_division")
+						var miy: int = mk / CHUNK_SIZE
+						for dir in _STONE_BLOB_DIRS:
+							var ex: int = mix + dir.x
+							var ey: int = miy + dir.y
+							if ex < 0 or ex >= CHUNK_SIZE or ey < 0 or ey >= CHUNK_SIZE:
+								continue
+							var eix: int = ey * CHUNK_SIZE + ex
+							if inside_set.has(eix) or mouth_ok.has(eix):
+								continue
+							pending[eix] = true
+					if pending.is_empty():
+						push_error("MiningWorld: gold vein has no 2×2 mouth (generation bug); reverting blob to stone.")
+						for id_i in inside:
+							cells[id_i] = TYPE_STONE
+							hp[id_i] = stone_hp
+						mouth_failed = true
+						break
+					for pk in pending:
+						mouth_ok[pk] = true
+				if not mouth_failed:
+					var pick: Vector2i = anchors_2x2[rng.randi_range(0, anchors_2x2.size() - 1)]
+					var entrance_indices: Dictionary = {}
+					for dy in 2:
+						for dx in 2:
+							var eidx: int = (pick.y + dy) * CHUNK_SIZE + (pick.x + dx)
+							entrance_indices[eidx] = true
+							cells[eidx] = TYPE_DIRT
+							hp[eidx] = dirt_hp
+					for hi in halo.size():
+						var hid: int = halo[hi]
+						if entrance_indices.has(hid):
+							continue
 						cells[hid] = TYPE_STONE
 						hp[hid] = stone_hp
 
