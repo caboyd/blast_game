@@ -1,6 +1,7 @@
 extends Node
 
-## Loads all `res://data/ships/*.tres` and the active `ShipData` for `GameSession.selected_ship_id`.
+## Loads all `res://data/ships/*.tres` and the active `ShipData` for `GameSession.selected_ship_id`
+## (may be locked — use `is_ship_unlocked` before starting a run).
 ## Upgrade *levels* are global; effects from every ship's upgrade list apply together at runtime.
 ## The Prep shop only lists upgrades for the currently selected ship.
 
@@ -41,20 +42,26 @@ func reload_all() -> void:
 		fname = dir.get_next()
 	dir.list_dir_end()
 	var keys: Array = _ships_by_id.keys()
-	var skeys: Array[String] = []
-	for k in keys:
-		skeys.append(String(k))
-	skeys.sort()
+	keys.sort_custom(
+		func(a: Variant, b: Variant) -> bool:
+			var sd_a: Resource = _ships_by_id[a] as Resource
+			var sd_b: Resource = _ships_by_id[b] as Resource
+			var ia: int = int(sd_a.get("prep_sort_index")) if sd_a != null else 0
+			var ib: int = int(sd_b.get("prep_sort_index")) if sd_b != null else 0
+			if ia != ib:
+				return ia < ib
+			return String(a) < String(b)
+	)
 	_ship_ids_sorted.clear()
-	for sk in skeys:
-		_ship_ids_sorted.append(StringName(sk))
+	for k in keys:
+		_ship_ids_sorted.append(k as StringName)
 	reload_active()
 
 
 func reload_active() -> void:
 	var sid: StringName = GameSession.selected_ship_id
-	if not _ships_by_id.has(sid) or not is_ship_unlocked(sid):
-		# Fall back to first unlocked ship (usually scout).
+	if not _ships_by_id.has(sid):
+		# Invalid id (e.g. removed ship): fall back to first unlocked ship.
 		sid = &""
 		for candidate in _ship_ids_sorted:
 			if is_ship_unlocked(candidate):
@@ -74,6 +81,7 @@ func get_ship_data(id: StringName) -> Resource:
 	return _ships_by_id.get(id)
 
 
+## Sorted by each ship's `prep_sort_index`, then id string (`ShipData`).
 func get_all_ship_ids_sorted() -> Array[StringName]:
 	return _ship_ids_sorted.duplicate()
 
@@ -136,6 +144,26 @@ func is_ship_unlocked(ship_id: StringName) -> bool:
 		if not UpgradeBus.is_maxed(uid):
 			return false
 	return true
+
+
+## Empty if unlocked or unknown ship; shown on Prep when a locked ship is selected.
+func get_ship_lock_reason(ship_id: StringName) -> String:
+	if is_ship_unlocked(ship_id):
+		return ""
+	var sd: Resource = _ships_by_id.get(ship_id)
+	if sd == null:
+		return ""
+	var authored: String = str(sd.get("unlock_requirement_text")).strip_edges()
+	if not authored.is_empty():
+		return authored
+	var prereq: StringName = sd.get("unlock_after_ship_all_upgrades_maxed") as StringName
+	if prereq == &"":
+		return "Locked."
+	var prereq_data: Resource = _ships_by_id.get(prereq)
+	var pname: String = str(prereq_data.get("display_name")).strip_edges() if prereq_data != null else ""
+	if pname.is_empty():
+		pname = String(prereq)
+	return "Unlock by maxing every upgrade on %s." % pname
 
 
 func apply_effects_for_stat(stat: StringName, base: float) -> float:

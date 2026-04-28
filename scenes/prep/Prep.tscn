@@ -194,30 +194,74 @@ theme_override_constants/separation = 4
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_font_sizes/font_size = 16
-current_tab = 1
+current_tab = 0
 
 [node name="Preview" type="VBoxContainer" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs" unique_id=2006811125]
-visible = false
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_constants/separation = 8
+theme_override_constants/separation = 10
 metadata/_tab_index = 0
+
+[node name="ShipPickerStrip" type="HBoxContainer" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview" unique_id=2100567001]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="ShipPickerPrev" type="Button" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/ShipPickerStrip" unique_id=2100567010]
+visible = false
+custom_minimum_size = Vector2(36, 36)
+layout_mode = 2
+focus_mode = 0
+text = "<"
+
+[node name="ShipPickerScroll" type="ScrollContainer" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/ShipPickerStrip" unique_id=2100567011]
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_scroll_mode = 2
+vertical_scroll_mode = 0
+
+[node name="ShipPickerHBox" type="HBoxContainer" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/ShipPickerStrip/ShipPickerScroll" unique_id=2100567012]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="ShipPickerNext" type="Button" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/ShipPickerStrip" unique_id=2100567013]
+visible = false
+custom_minimum_size = Vector2(36, 36)
+layout_mode = 2
+focus_mode = 0
+text = ">"
 
 [node name="ShipLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview" unique_id=1890885564]
 layout_mode = 2
+theme_override_font_sizes/font_size = 18
 text = "Scout"
 horizontal_alignment = 1
 
+[node name="ShipDescriptionLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview" unique_id=2100567020]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.79, 0.85, 1)
+theme_override_font_sizes/font_size = 14
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="ShipLockReasonLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview" unique_id=2100567002]
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.72, 0.45, 1)
+theme_override_font_sizes/font_size = 14
+horizontal_alignment = 1
+autowrap_mode = 3
+
 [node name="SubViewportContainer" type="SubViewportContainer" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview" unique_id=1498962718]
-custom_minimum_size = Vector2(400, 360)
+custom_minimum_size = Vector2(400, 300)
 layout_mode = 2
 size_flags_vertical = 3
 stretch = true
 
 [node name="SubViewport" type="SubViewport" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/SubViewportContainer" unique_id=71169305]
 handle_input_locally = false
-size = Vector2i(400, 360)
-render_target_update_mode = 0
+size = Vector2i(612, 378)
+render_target_update_mode = 4
 
 [node name="Camera2D" type="Camera2D" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/SubViewportContainer/SubViewport" unique_id=577357977]
 position = Vector2(200, 180)
@@ -225,6 +269,7 @@ position = Vector2(200, 180)
 [node name="World" type="Node2D" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/SubViewportContainer/SubViewport" unique_id=362404321]
 
 [node name="Stage" type="MarginContainer" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs" unique_id=2107525904]
+visible = false
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/margin_left = 4
@@ -319,22 +364,6 @@ custom_minimum_size = Vector2(96, 28)
 layout_mode = 2
 focus_mode = 0
 text = "Buy: 1x"
-
-[node name="ShipSelectRow" type="HBoxContainer" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner" unique_id=1587319152]
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="ShipPickerLabel" type="Label" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/ShipSelectRow" unique_id=353491671]
-layout_mode = 2
-text = "Ship:"
-
-[node name="ShipButtonScout" type="Button" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/ShipSelectRow" unique_id=353491672]
-layout_mode = 2
-text = "Scout"
-
-[node name="ShipButtonProspector" type="Button" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/ShipSelectRow" unique_id=353491673]
-layout_mode = 2
-text = "Prospector"
 
 [node name="ShopUpgrades" type="VBoxContainer" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner" unique_id=353491670]
 layout_mode = 2

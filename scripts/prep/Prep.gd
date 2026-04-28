@@ -6,6 +6,10 @@ const _UNKNOWN_BLOCK := "???"
 const UPGRADE_BATCH_REQUESTS: Array[int] = [1, 5, 25, 100, -1]
 const _PREVIEW_POS := Vector2(200, 180)
 const _PREVIEW_SCALE := Vector2(8, 8)
+## Disabled placeholder slots to stress-test the ship picker row (not real ships).
+const _DUMMY_SHIP_STUB_COUNT := 10
+const _STUB_SHIP_PREFIX := "_prep_stub_"
+const _SHIP_PICK_SCROLL_STEP_PX := 140
 
 @onready var _start: Button = $Margin/RootVBox/StartMission
 @onready var _career_label: Label = $"Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Progress/ProgressVBox/CareerBlocksLabel"
@@ -20,18 +24,25 @@ const _PREVIEW_SCALE := Vector2(8, 8)
 @onready var _mining_power_per_sec_label: Label = $"Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox/MiningPowerPerSecLabel"
 @onready var _world: Node2D = $Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/SubViewportContainer/SubViewport/World
 @onready var _ship_preview_label: Label = $Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/ShipLabel
-@onready var _ship_button_scout: Button = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/ShipSelectRow/ShipButtonScout
-@onready var _ship_button_prospector: Button = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/ShipSelectRow/ShipButtonProspector
+@onready var _ship_description_label: Label = $Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/ShipDescriptionLabel
+@onready var _ship_picker_prev: Button = $Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/ShipPickerStrip/ShipPickerPrev
+@onready var _ship_picker_next: Button = $Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/ShipPickerStrip/ShipPickerNext
+@onready var _ship_picker_scroll: ScrollContainer = $Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/ShipPickerStrip/ShipPickerScroll
+@onready var _ship_picker_hbox: HBoxContainer = $Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/ShipPickerStrip/ShipPickerScroll/ShipPickerHBox
+@onready var _ship_lock_reason: Label = $Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/ShipLockReasonLabel
 @onready var _ship_tabs: TabContainer = $Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs
 @onready var _stage_summary: Label = $Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Stage/StageScroll/StageVBox/StageSummaryLabel
 @onready var _stage_type_tree: Tree = $Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Stage/StageScroll/StageVBox/StageTypeTree
 @onready var _debug_reset: Button = $Margin/RootVBox/DebugRow/DebugResetProgress
 @onready var _stats_tabs: TabContainer = $Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs
 @onready var _shop_money_label: Label = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/ShopMoneyRow/ShopMoneyPanel/ShopMoneyLabel
+@onready var _shop_upgrades_label: Label = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/ShopLabel
+@onready var _shop_batch_row: HBoxContainer = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/ShopBatchRow
 @onready var _shop_batch_btn: Button = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/ShopBatchRow/ShopBatchBtn
 @onready var _shop_upgrades: VBoxContainer = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/ShopUpgrades
 
 var _upgrade_batch_index: int = 0
+var _ship_pick_buttons: Dictionary = {}  # StringName -> Button
 ## Root from `ShipData.ship_scene` (implements mining API from `ShipBase`).
 var _preview_ship: Node2D
 var _shop_row_info_labels: Array[Label] = []
@@ -54,10 +65,18 @@ func _ready() -> void:
 		_debug_reset.pressed.connect(_on_debug_reset_pressed)
 	if _shop_batch_btn:
 		_shop_batch_btn.pressed.connect(_on_shop_batch_btn_pressed)
-	if _ship_button_scout:
-		_ship_button_scout.pressed.connect(func() -> void: _select_ship(&"scout"))
-	if _ship_button_prospector:
-		_ship_button_prospector.pressed.connect(func() -> void: _select_ship(&"prospector"))
+	if _ship_picker_prev:
+		_ship_picker_prev.pressed.connect(_on_ship_picker_prev_pressed)
+	if _ship_picker_next:
+		_ship_picker_next.pressed.connect(_on_ship_picker_next_pressed)
+	if _ship_picker_scroll:
+		var hb := _ship_picker_scroll.get_h_scroll_bar()
+		if hb:
+			hb.visible = false
+			if not hb.value_changed.is_connected(_on_ship_picker_h_scroll_value_changed):
+				hb.value_changed.connect(_on_ship_picker_h_scroll_value_changed)
+		if not _ship_picker_scroll.resized.is_connected(_on_ship_picker_scroll_resized):
+			_ship_picker_scroll.resized.connect(_on_ship_picker_scroll_resized)
 	if not GameStatistics.stats_changed.is_connected(_on_stats_changed):
 		GameStatistics.stats_changed.connect(_on_stats_changed)
 	if not GameStatistics.fuel_changed.is_connected(_on_fuel_changed):
@@ -66,13 +85,13 @@ func _ready() -> void:
 		UpgradeBus.upgrade_purchased.connect(_on_upgrade_purchased)
 	ShipDataRegistry.reload_active()
 	GameStatistics.apply_active_ship_fuel_baseline()
+	_ensure_ship_picker_buttons()
 	_rebuild_preview_ship()
 	_refresh_all()
+	call_deferred("_update_ship_picker_scroll_state")
 
 
 func _select_ship(ship_id: StringName) -> void:
-	if not ShipDataRegistry.is_ship_unlocked(ship_id):
-		return
 	GameSession.selected_ship_id = ship_id
 	ShipDataRegistry.reload_active()
 	GameStatistics.apply_active_ship_fuel_baseline()
@@ -90,11 +109,7 @@ func _rebuild_preview_ship() -> void:
 	_preview_ship = null
 	var sd: Resource = ShipDataRegistry.get_active()
 	if sd == null:
-		if _ship_preview_label:
-			_ship_preview_label.text = "—"
 		return
-	if _ship_preview_label:
-		_ship_preview_label.text = str(sd.get("display_name"))
 	var ps: Variant = sd.get("ship_scene")
 	if ps == null or not (ps is PackedScene):
 		push_error("Prep: active ShipData missing ship_scene")
@@ -146,7 +161,33 @@ func _on_dynamic_shop_purchase(upgrade_id: StringName) -> void:
 	_on_shop_purchase(upgrade_id)
 
 
+func _refresh_ship_preview_banner() -> void:
+	var sid: StringName = GameSession.selected_ship_id
+	var sd: Resource = ShipDataRegistry.get_ship_data(sid)
+	var ship_unlocked: bool = ShipDataRegistry.is_ship_unlocked(sid)
+	if _start:
+		_start.disabled = not ship_unlocked
+	if _ship_preview_label:
+		if sd == null:
+			_ship_preview_label.text = "—"
+		else:
+			_ship_preview_label.text = str(sd.get("display_name")).strip_edges()
+	if _ship_description_label:
+		var desc_text: String = str(sd.get("description")).strip_edges() if sd != null else ""
+		_ship_description_label.text = desc_text
+		_ship_description_label.visible = not desc_text.is_empty()
+	if _ship_lock_reason:
+		if ship_unlocked:
+			_ship_lock_reason.visible = false
+			_ship_lock_reason.text = ""
+		else:
+			var reason: String = ShipDataRegistry.get_ship_lock_reason(sid)
+			_ship_lock_reason.text = reason
+			_ship_lock_reason.visible = not reason.is_empty()
+
+
 func _refresh_all() -> void:
+	_refresh_ship_preview_banner()
 	_refresh_ship_picker()
 	_refresh_progress()
 	_refresh_ship_stats()
@@ -155,22 +196,96 @@ func _refresh_all() -> void:
 		_refresh_stage_tab()
 
 
+func _is_stub_ship_id(ship_id: StringName) -> bool:
+	return String(ship_id).begins_with(_STUB_SHIP_PREFIX)
+
+
+func _stub_slot_index(ship_id: StringName) -> int:
+	var tail: String = String(ship_id).trim_prefix(_STUB_SHIP_PREFIX)
+	return tail.to_int()
+
+
+func _ensure_ship_picker_buttons() -> void:
+	if _ship_picker_hbox == null:
+		return
+	if not _ship_pick_buttons.is_empty():
+		return
+	var ordered_ids: Array[StringName] = []
+	ordered_ids.assign(ShipDataRegistry.get_all_ship_ids_sorted())
+	for i in range(1, _DUMMY_SHIP_STUB_COUNT + 1):
+		ordered_ids.append(StringName("%s%02d" % [_STUB_SHIP_PREFIX, i]))
+	for sid in ordered_ids:
+		var btn := Button.new()
+		btn.focus_mode = Control.FOCUS_NONE
+		btn.custom_minimum_size = Vector2(104, 34)
+		btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		if _is_stub_ship_id(sid):
+			btn.disabled = true
+			btn.mouse_default_cursor_shape = Control.CURSOR_FORBIDDEN
+		else:
+			btn.pressed.connect(_select_ship.bind(sid))
+		_ship_picker_hbox.add_child(btn)
+		_ship_pick_buttons[sid] = btn
+
+
 func _refresh_ship_picker() -> void:
-	if _ship_button_scout:
-		var cur: StringName = GameSession.selected_ship_id
-		_ship_button_scout.disabled = false
-		_ship_button_scout.text = "Scout"
-		_ship_button_scout.modulate = (
-			Color(0.5, 1.0, 0.65, 1.0) if cur == &"scout" else Color.WHITE
-		)
-	if _ship_button_prospector:
-		var unl: bool = ShipDataRegistry.is_ship_unlocked(&"prospector")
-		_ship_button_prospector.disabled = not unl
-		var cur2: StringName = GameSession.selected_ship_id
-		_ship_button_prospector.text = "Prospector" if unl else "Prospector (locked)"
-		_ship_button_prospector.modulate = (
-			Color(0.5, 1.0, 0.65, 1.0) if (unl and cur2 == &"prospector") else Color.WHITE
-		)
+	_ensure_ship_picker_buttons()
+	var cur: StringName = GameSession.selected_ship_id
+	for sid in _ship_pick_buttons:
+		var btn: Button = _ship_pick_buttons[sid] as Button
+		if btn == null:
+			continue
+		if _is_stub_ship_id(sid):
+			btn.text = "… #%02d" % _stub_slot_index(sid)
+			btn.modulate = Color(0.52, 0.52, 0.55, 1.0)
+			continue
+		var sd: Resource = ShipDataRegistry.get_ship_data(sid)
+		btn.text = str(sd.get("display_name")).strip_edges() if sd != null else String(sid)
+		btn.modulate = Color(0.5, 1.0, 0.65, 1.0) if sid == cur else Color.WHITE
+	call_deferred("_update_ship_picker_scroll_state")
+
+
+func _on_ship_picker_h_scroll_value_changed(_value: float) -> void:
+	call_deferred("_update_ship_picker_scroll_state")
+
+
+func _on_ship_picker_scroll_resized() -> void:
+	call_deferred("_update_ship_picker_scroll_state")
+
+
+func _on_ship_picker_prev_pressed() -> void:
+	if _ship_picker_scroll == null:
+		return
+	_ship_picker_scroll.scroll_horizontal = maxi(
+		0, _ship_picker_scroll.scroll_horizontal - _SHIP_PICK_SCROLL_STEP_PX
+	)
+	call_deferred("_update_ship_picker_scroll_state")
+
+
+func _on_ship_picker_next_pressed() -> void:
+	if _ship_picker_scroll == null:
+		return
+	var hbar := _ship_picker_scroll.get_h_scroll_bar()
+	var mx: int = int(hbar.max_value)
+	_ship_picker_scroll.scroll_horizontal = mini(mx, _ship_picker_scroll.scroll_horizontal + _SHIP_PICK_SCROLL_STEP_PX)
+	call_deferred("_update_ship_picker_scroll_state")
+
+
+func _update_ship_picker_scroll_state() -> void:
+	if _ship_picker_scroll == null or _ship_picker_prev == null or _ship_picker_next == null:
+		return
+	var hbar := _ship_picker_scroll.get_h_scroll_bar()
+	var overflow: bool = hbar.max_value > hbar.page + 1.0
+	_ship_picker_prev.visible = overflow
+	_ship_picker_next.visible = overflow
+	if not overflow:
+		_ship_picker_prev.disabled = true
+		_ship_picker_next.disabled = true
+		return
+	var cur: float = float(_ship_picker_scroll.scroll_horizontal)
+	var max_scroll: float = float(hbar.max_value)
+	_ship_picker_prev.disabled = cur <= 0.5
+	_ship_picker_next.disabled = cur >= max_scroll - 0.5
 
 
 func _refresh_stage_tab() -> void:
@@ -286,6 +401,15 @@ func _add_shop_row(upgrade_id: StringName) -> void:
 
 
 func _refresh_shop() -> void:
+	var ship_ok: bool = ShipDataRegistry.is_ship_unlocked(GameSession.selected_ship_id)
+	if _shop_batch_row:
+		_shop_batch_row.visible = ship_ok
+	if _shop_upgrades_label:
+		_shop_upgrades_label.visible = ship_ok
+	if _shop_upgrades:
+		_shop_upgrades.visible = ship_ok
+	if not ship_ok:
+		return
 	_refresh_shop_batch_button()
 	if _shop_upgrades:
 		# Build rows on first use or if empty / count mismatch
@@ -584,7 +708,8 @@ func get_shop_cost_display_for_test(upgrade_id: StringName) -> String:
 
 
 func _on_start_mission_pressed() -> void:
-	# `selected_ship_id` is set by the ship picker; ensure registry matches.
+	if not ShipDataRegistry.is_ship_unlocked(GameSession.selected_ship_id):
+		return
 	ShipDataRegistry.reload_active()
 	GameSession.begin_run()
 	GameSession.go_to_planet(GameSession.next_planet_scene)

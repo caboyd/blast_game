@@ -3,6 +3,11 @@ extends Resource
 
 @export var id: StringName = &""
 @export var display_name: String = "Ship"
+## Prep ship-strip order (lower = farther left). Same value → tie-break by ship `id` string.
+@export var prep_sort_index: int = 0
+@export_multiline var description: String = ""
+## Prep line under description when locked. Shown verbatim; omit or leave empty → registry may infer from unlock chain.
+@export_multiline var unlock_requirement_text: String = ""
 @export var move_speed_px_s: float = 8.0
 @export var vision_radius_cells: int = 3
 @export var mine_damage_per_tick: float = 1.0
