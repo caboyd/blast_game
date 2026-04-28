@@ -3,6 +3,17 @@ extends Node
 signal stats_changed
 signal fuel_changed(current: float, max_fuel: float)
 
+## Max fuel multiplier (absolute ceiling = fuel_max × this). Overflow band is `(mul − 1) × fuel_max` (default 50% of nominal max).
+const FUEL_ABSOLUTE_CAP_MUL := 1.5
+
+
+func fuel_hard_cap_absolute() -> float:
+	return fuel_max * FUEL_ABSOLUTE_CAP_MUL
+
+
+func fuel_overflow_budget() -> float:
+	return fuel_max * (FUEL_ABSOLUTE_CAP_MUL - 1.0)
+
 const DAMAGE_SOURCE_CLICK := &"click"
 
 const CLICK_FIRE_RATE_START_MS := 500.0
@@ -110,6 +121,14 @@ func reset_fuel_for_run() -> void:
 	stats_changed.emit()
 
 
+func apply_fuel_cell_pickup() -> void:
+	if fuel_max <= 0.0:
+		return
+	fuel = minf(fuel + fuel_max * 0.5, fuel_hard_cap_absolute())
+	fuel_changed.emit(fuel, fuel_max)
+	stats_changed.emit()
+
+
 ## After career load: full fuel at upgraded max.
 func apply_fuel_max_from_career_load() -> void:
 	var new_m: float = effective_fuel_max()
@@ -124,7 +143,8 @@ func apply_active_ship_fuel_baseline() -> void:
 	_apply_ship_fuel_base()
 	var new_m: float = effective_fuel_max()
 	fuel_max = new_m
-	fuel = minf(fuel, new_m)
+	var cap_abs: float = fuel_hard_cap_absolute()
+	fuel = minf(fuel, cap_abs)
 	fuel_changed.emit(fuel, fuel_max)
 	stats_changed.emit()
 
@@ -139,7 +159,7 @@ func _refit_fuel_tank_add_capacity_preserve_fill() -> void:
 	if is_equal_approx(old_m, new_m):
 		return
 	fuel_max = new_m
-	fuel = minf(fuel + (new_m - old_m), new_m)
+	fuel = minf(fuel + (new_m - old_m), fuel_hard_cap_absolute())
 	fuel_changed.emit(fuel, fuel_max)
 	stats_changed.emit()
 

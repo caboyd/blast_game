@@ -88,6 +88,10 @@ func _ready() -> void:
 	_ensure_ship_picker_buttons()
 	_rebuild_preview_ship()
 	_refresh_all()
+	# `GameSession._load_career` is deferred and runs after this `_ready`; it restores
+	# `selected_ship_id` and emits `stats_changed` (labels refresh) but does not rebuild
+	# the viewport. Rebuild once more after career apply so the preview matches the ship.
+	call_deferred("_rebuild_preview_ship")
 	call_deferred("_update_ship_picker_scroll_state")
 
 

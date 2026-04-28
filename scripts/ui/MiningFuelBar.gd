@@ -1,6 +1,7 @@
 extends Control
 
-@onready var _bar: ProgressBar = $MarginContainer/BarStack/ProgressBar
+@onready var _overflow_bar: ProgressBar = $MarginContainer/BarStack/BarsVBox/OverflowProgressBar
+@onready var _bar: ProgressBar = $MarginContainer/BarStack/BarsVBox/ProgressBar
 @onready var _label: Label = $MarginContainer/BarStack/ValueLabel
 
 
@@ -11,11 +12,20 @@ func _ready() -> void:
 
 
 func _sync_from_stats() -> void:
-	var mx: float = maxf(GameStatistics.fuel_max, 1.0)
-	_bar.max_value = mx
-	_bar.value = clampf(GameStatistics.fuel, 0.0, mx)
+	var fm: float = maxf(GameStatistics.fuel_max, 1.0)
+	var cur: float = GameStatistics.fuel
+	var overflow_amt: float = maxf(cur - fm, 0.0)
+	var ov_budget: float = GameStatistics.fuel_overflow_budget()
+
+	_bar.max_value = fm
+	_bar.value = clampf(cur, 0.0, fm)
+
+	_overflow_bar.max_value = maxf(ov_budget, 0.001)
+	_overflow_bar.value = clampf(overflow_amt, 0.0, ov_budget)
+	_overflow_bar.visible = overflow_amt > 0.001
+
 	if _label:
-		_label.text = "%.0f / %.0f" % [GameStatistics.fuel, GameStatistics.fuel_max]
+		_label.text = "%.0f / %.0f" % [cur, fm]
 
 
 func _on_fuel_changed(_current: float, _max_fuel: float) -> void:

@@ -8,15 +8,18 @@ const TYPE_EMPTY := 0
 const TYPE_DIRT := 1
 const TYPE_STONE := 2
 const TYPE_GOLD := 3
-const TYPE_COUNT := 4
+const TYPE_FUEL := 4
+const TYPE_COUNT := 5
 
-static var TYPE_MAX_HP: PackedInt32Array = PackedInt32Array([0, 5, 50, 5])
-static var TYPE_MONEY: PackedInt32Array = PackedInt32Array([0, 1, 2, 15])
+static var TYPE_MAX_HP: PackedInt32Array = PackedInt32Array([0, 5, 50, 5, 1])
+static var TYPE_MONEY: PackedInt32Array = PackedInt32Array([0, 1, 2, 15, 0])
 static var TYPE_COLOR: PackedColorArray = PackedColorArray([
 	Color(0.0, 0.0, 0.0, 0.0),
 	Color(0.42, 0.28, 0.18, 1.0),
 	Color(0.52, 0.52, 0.55, 1.0),
 	Color(1.0, 0.82, 0.2, 1.0),
+	# Shader uses dedicated fuel look; keep brown for any CPU fallbacks.
+	Color(0.22, 0.15, 0.10, 1.0),
 ])
 
 const SHADER_TYPE_COLOR_MAX := 8
@@ -188,7 +191,24 @@ func _ensure_chunk(chunk: Vector2i) -> void:
 						cells[nidx] = TYPE_STONE
 						hp[nidx] = stone_hp
 
-	_chunks[chunk] = {"cells": cells, "hp": hp, "revealed": revealed}
+	# One 2×2 fuel pickup per chunk (any tile destroyed removes the whole cluster).
+	# Skip spawn chunk so the starting area has no fuel cell.
+	var chunk_data: Dictionary = {
+		"cells": cells,
+		"hp": hp,
+		"revealed": revealed,
+	}
+	if chunk != Vector2i.ZERO:
+		var fax: int = rng.randi_range(0, CHUNK_SIZE - 2)
+		var fay: int = rng.randi_range(0, CHUNK_SIZE - 2)
+		var fuel_hp: int = clampi(int(TYPE_MAX_HP[TYPE_FUEL]), 0, 255)
+		for fy in 2:
+			for fx in 2:
+				var fi: int = (fay + fy) * CHUNK_SIZE + (fax + fx)
+				cells[fi] = TYPE_FUEL
+				hp[fi] = fuel_hp
+		chunk_data["fuel_anchor"] = Vector2i(fax, fay)
+	_chunks[chunk] = chunk_data
 	_apply_static_overrides_for_chunk(chunk)
 
 
@@ -248,6 +268,7 @@ static func get_stage_block_type_rows() -> Array[Dictionary]:
 		{"type_id": TYPE_DIRT, "label": "Dirt"},
 		{"type_id": TYPE_STONE, "label": "Stone"},
 		{"type_id": TYPE_GOLD, "label": "Gold"},
+		{"type_id": TYPE_FUEL, "label": "Fuel cell"},
 	]
 
 
@@ -376,6 +397,33 @@ func _cell_world_rect_overlaps_hull(cx: int, cy: int, hull_world: PackedVector2A
 	return false
 
 
+func _fuel_cluster_local_rect(data: Dictionary) -> Rect2i:
+	var anchor: Variant = data.get("fuel_anchor", null)
+	if anchor == null or not anchor is Vector2i:
+		return Rect2i()
+	var a: Vector2i = anchor as Vector2i
+	return Rect2i(a.x, a.y, 2, 2)
+
+
+func _cell_local_in_chunk_vec(cell: Vector2i, chunk: Vector2i) -> Vector2i:
+	return Vector2i(cell.x - chunk.x * CHUNK_SIZE, cell.y - chunk.y * CHUNK_SIZE)
+
+
+func _clear_fuel_cluster_if_cell_inside(
+	data: Dictionary, cells: PackedByteArray, hparr: PackedByteArray, cell_local: Vector2i
+) -> bool:
+	var rect: Rect2i = _fuel_cluster_local_rect(data)
+	if rect.size.x < 1 or not rect.has_point(cell_local):
+		return false
+	for ly in range(rect.position.y, rect.position.y + rect.size.y):
+		for lx in range(rect.position.x, rect.position.x + rect.size.x):
+			var li: int = ly * CHUNK_SIZE + lx
+			if int(cells[li]) == TYPE_FUEL:
+				cells[li] = TYPE_EMPTY
+				hparr[li] = 0
+	return true
+
+
 func _damage_cell_abs(cell: Vector2i, amount: int) -> int:
 	var ch := _cell_to_chunk_coord(cell)
 	_ensure_chunk(ch)
@@ -387,6 +435,22 @@ func _damage_cell_abs(cell: Vector2i, amount: int) -> int:
 	if t == TYPE_EMPTY or amount <= 0:
 		return 0
 	GameSession.mark_block_type_discovered(stage_id, t)
+	if t == TYPE_FUEL:
+		var cl: Vector2i = _cell_local_in_chunk_vec(cell, ch)
+		var rect: Rect2i = _fuel_cluster_local_rect(data)
+		if rect.size.x >= 1 and rect.has_point(cl):
+			var hp_f: int = int(hparr[idx])
+			var new_hp_f: int = hp_f - amount
+			if new_hp_f <= 0:
+				_clear_fuel_cluster_if_cell_inside(data, cells, hparr, cl)
+				GameStatistics.add_blocks_destroyed(1)
+				GameStatistics.apply_fuel_cell_pickup()
+				if TYPE_FUEL >= 0 and TYPE_FUEL < TYPE_MONEY.size():
+					GameStatistics.add_mined_cell_reward(int(TYPE_MONEY[TYPE_FUEL]))
+				return hp_f
+			var nh_f: int = clampi(new_hp_f, 0, 255)
+			hparr[idx] = nh_f
+			return hp_f - nh_f
 	var hp_before: int = int(hparr[idx])
 	var new_hp: int = hp_before - amount
 	if new_hp <= 0:
@@ -487,6 +551,10 @@ func _set_cell_type_empty_silent(cell: Vector2i) -> bool:
 	var idx: int = _cell_to_local_in_chunk(cell, ch)
 	if int(cells[idx]) == TYPE_EMPTY:
 		return false
+	if int(cells[idx]) == TYPE_FUEL:
+		var cl: Vector2i = _cell_local_in_chunk_vec(cell, ch)
+		if _clear_fuel_cluster_if_cell_inside(data, cells, hparr, cl):
+			return true
 	cells[idx] = TYPE_EMPTY
 	hparr[idx] = 0
 	return true
@@ -587,6 +655,7 @@ func _sync_shader_texture_params() -> void:
 		var sm: ShaderMaterial = _world_visual.material as ShaderMaterial
 		sm.set_shader_parameter("mask_tex", _mask_texture)
 		sm.set_shader_parameter("type_tex", _type_texture)
+		sm.set_shader_parameter("fuel_world_origin", Vector2(_view_origin_cell))
 	if _fog_visual != null and _fog_visual.material is ShaderMaterial:
 		(_fog_visual.material as ShaderMaterial).set_shader_parameter("reveal_tex", _reveal_texture)
 
@@ -672,4 +741,5 @@ func _rebuild_view_textures() -> void:
 	_type_texture.update(_type_image)
 	_reveal_texture.update(_reveal_image)
 
+	_sync_shader_texture_params()
 	_visual_dirty = false

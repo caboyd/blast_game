@@ -343,9 +343,11 @@ func _read_texture(d: Dictionary, key: String) -> Texture2D:
 
 func _format_mission_elapsed(sec: float) -> String:
 	var t: int = maxi(0, int(floorf(sec)))
-	var h: int = int(t / 3600)
+	@warning_ignore("integer_division")
+	var h: int = t / 3600
 	t %= 3600
-	var m: int = int(t / 60)
+	@warning_ignore("integer_division")
+	var m: int = t / 60
 	var s2: int = t % 60
 	if h > 0:
 		return "%d:%02d:%02d" % [h, m, s2]

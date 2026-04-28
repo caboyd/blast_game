@@ -18,7 +18,7 @@ extends Resource
 @export var ship_scene: PackedScene
 ## When set, this ship is playable only when every upgrade on the prerequisite ship is maxed.
 @export var unlock_after_ship_all_upgrades_maxed: StringName = &""
-@export var upgrades: Array = []
+@export var upgrades: Array[ShipUpgradeData] = []
 
 
 func get_base_float_for_stat(stat: StringName) -> float:

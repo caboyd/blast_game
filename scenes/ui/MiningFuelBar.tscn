@@ -1,4 +1,4 @@
-[gd_scene load_steps=4 format=3 uid="uid://miningfuelbar01"]
+[gd_scene load_steps=6 format=3 uid="uid://miningfuelbar01"]
 
 [ext_resource type="Script" path="res://scripts/ui/MiningFuelBar.gd" id="1"]
 
@@ -21,11 +21,30 @@ corner_radius_top_right = 2
 corner_radius_bottom_right = 2
 corner_radius_bottom_left = 2
 
+[sub_resource type="StyleBoxFlat" id="StyleOverflowBg"]
+bg_color = Color(0.09, 0.08, 0.06, 0.9)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.55, 0.45, 0.22, 0.92)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleOverflowFill"]
+bg_color = Color(0.93, 0.72, 0.28, 1)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+
 [node name="TopFuelBar" type="Control"]
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
-offset_bottom = 48.0
+offset_bottom = 52.0
 grow_horizontal = 2
 grow_vertical = 0
 mouse_filter = 2
@@ -45,17 +64,32 @@ theme_override_constants/margin_top = 10
 theme_override_constants/margin_bottom = 10
 
 [node name="BarStack" type="Control" parent="MarginContainer"]
-custom_minimum_size = Vector2(0, 22)
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="ProgressBar" type="ProgressBar" parent="MarginContainer/BarStack"]
+[node name="BarsVBox" type="VBoxContainer" parent="MarginContainer/BarStack"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_constants/separation = 4
+
+[node name="OverflowProgressBar" type="ProgressBar" parent="MarginContainer/BarStack/BarsVBox"]
+custom_minimum_size = Vector2(0, 11)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/background = SubResource("StyleOverflowBg")
+theme_override_styles/fill = SubResource("StyleOverflowFill")
+max_value = 100.0
+show_percentage = false
+
+[node name="ProgressBar" type="ProgressBar" parent="MarginContainer/BarStack/BarsVBox"]
+custom_minimum_size = Vector2(0, 17)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
 theme_override_styles/background = SubResource("StyleBarBg")
 theme_override_styles/fill = SubResource("StyleBarFill")
 max_value = 100.0

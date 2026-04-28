@@ -22,6 +22,10 @@ uniform float edge_width : hint_range(0.0, 0.5) = 0.25;
 // Pixel smoothing width for alpha boundary (in weight units).
 uniform float alpha_aa : hint_range(0.0, 0.5) = 0.08;
 
+// Top-left of the view texture in world cell coords; fuel uses `fuel_world_origin + p` so the
+// galaxy scroll is world-locked and does not jump when the camera pans.
+uniform vec2 fuel_world_origin = vec2(0.0, 0.0);
+
 struct CellSample {
 	int mid;
 	float hp;
@@ -37,6 +41,102 @@ CellSample sample_cell(ivec2 t, ivec2 ts, int tc1) {
 	s.present = (m >= 0.5 && td.g > 0.01) ? 1.0 : 0.0;
 	s.mid = int(clamp(round(td.r * 255.0), 0.0, float(tc1)));
 	return s;
+}
+
+// TYPE_FUEL in MiningWorld.gd (must match `TYPE_FUEL` const).
+const int MATERIAL_FUEL = 4;
+
+// `world_cell_uv`: absolute world grid position (float; matches MiningWorld cell indices + sub-texel).
+vec3 fuel_cell_rgb(vec2 world_cell_uv, float hp_ratio, float time_sec) {
+	// ========== Fuel tunables (edit these) ==========
+	vec2 scroll_dir_raw = vec2(1.0, 0.38);
+	vec2 world_bias = vec2(0.416, 0.203);
+	float drift_far = 0.0036;
+	float drift_mid = 0.0068;
+	float drift_near = 0.0108;
+	float scale_far = 0.263;
+	float scale_mid = 0.417;
+	float scale_near = 0.683;
+	float far_kx = 1.85;
+	float far_ky_in = 1.45;
+	float far_ky = 1.65;
+	float far_kx_in = 1.15;
+	vec2 mid_dot = vec2(1.55, 0.98);
+	float mid_len_k = 1.25;
+	float mid_len_w = 2.75;
+	float near_kx = 2.35;
+	float near_ky = 2.05;
+	vec3 col_void = vec3(0.065, 0.04, 0.024);
+	vec3 col_dust = vec3(0.13, 0.085, 0.052);
+	vec3 col_neb = vec3(0.21, 0.135, 0.082);
+	vec3 col_ember = vec3(0.36, 0.24, 0.13);
+	float mix_neb_lo = 0.22;
+	float mix_neb_hi = 0.9;
+	float mix_neb_amt = 0.52;
+	float mix_emb_lo = 0.52;
+	float mix_emb_hi = 0.94;
+	float mix_emb_amt = 0.38;
+	float hp_damage_mul = 0.87;
+	float spark_scale = 8.513;
+	vec2 spark_origin = vec2(1.718, 0.427);
+	float drift_spark = 0.152;
+	// Constant spec-field drift (UV units per second); monotonic, same direction over time.
+	vec2 spec_drift_vel = vec2(0.411, -0.238);
+	float spark_j_mul = 0.6;
+	float star_rad_in = 0.22;
+	float star_rad_out = 0.44;
+	float star_pick_lo = 0.84;
+	float star_pick_hi = 0.93;
+	vec3 col_star = vec3(0.92, 0.84, 0.62);
+	float star_bright = 0.85;
+	vec2 phase_world = vec2(0.107, 0.091);
+	float phase_world_scale = 2.15;
+	vec2 phase_spark = vec2(0.67, 0.59);
+	float phase_spark_scale = 0.92;
+	float pulse_rate = 2.95;
+	float pulse_dim = 0.0;
+	float pulse_bright = 0.4;
+	// ========== end tunables ==========
+
+	float t = time_sec;
+	vec2 scroll_dir = normalize(scroll_dir_raw);
+	vec2 u = world_cell_uv + world_bias;
+	vec2 drift = t * scroll_dir;
+
+	vec2 far_p = u * scale_far + drift * drift_far;
+	float far_n = sin(far_p.x * far_kx + sin(far_p.y * far_ky_in)) * sin(far_p.y * far_ky + sin(far_p.x * far_kx_in));
+	far_n = far_n * 0.5 + 0.5;
+
+	vec2 mid_p = u * scale_mid + drift * drift_mid;
+	float mid_n = sin(dot(mid_p, mid_dot) + sin(length(mid_p * mid_len_k) * mid_len_w));
+	mid_n = mid_n * 0.5 + 0.5;
+
+	vec2 near_p = u * scale_near + drift * drift_near;
+	float near_n = sin(near_p.x * near_kx) * cos(near_p.y * near_ky);
+	near_n = near_n * 0.5 + 0.5;
+
+	vec3 body = mix(col_void, col_dust, far_n);
+	body = mix(body, col_neb, smoothstep(mix_neb_lo, mix_neb_hi, mid_n) * mix_neb_amt);
+	body = mix(body, col_ember, smoothstep(mix_emb_lo, mix_emb_hi, mid_n * near_n) * mix_emb_amt);
+	body = mix(body * hp_damage_mul, body, hp_ratio);
+
+	vec2 spec_drift = t * spec_drift_vel;
+	vec2 sp_p = u * spark_scale + spark_origin + drift * drift_spark + spec_drift;
+	vec2 sp_id = floor(sp_p);
+	vec2 sp_f = fract(sp_p) - vec2(0.5);
+	float sp_h = fract(sin(dot(sp_id, vec2(127.1, 311.7))) * 43758.5453);
+	vec2 sp_j = vec2(fract(sp_h * 17.0), fract(sp_h * 47.3)) - vec2(0.5);
+	float d_star = length(sp_f - sp_j * spark_j_mul);
+	float star_core = 1.0 - smoothstep(star_rad_in, star_rad_out, d_star);
+	float star_mask = smoothstep(star_pick_lo, star_pick_hi, sp_h) * star_core;
+	vec3 star_c = col_star * star_mask * star_bright;
+
+	float ph_base = dot(world_cell_uv, phase_world) * phase_world_scale;
+	float ph_star = ph_base + dot(sp_id, phase_spark) * phase_spark_scale;
+	float b = sin(t * pulse_rate + ph_star) * 0.5 + 0.5;
+	float breathe_star = mix(pulse_dim, pulse_bright, b * b);
+
+	return body + star_c * breathe_star;
 }
 
 void fragment() {
@@ -116,6 +216,8 @@ void fragment() {
 		rgb = base.rgb * mix(0.3, 1.0, hp_ratio);
 		float lum = dot(rgb, vec3(0.2126, 0.7152, 0.0722));
 		rgb = mix(rgb, vec3(lum), damage_taken * 0.72);
+	} else if (best_id == MATERIAL_FUEL) {
+		rgb = fuel_cell_rgb(fuel_world_origin + p, hp_ratio, TIME);
 	} else {
 		rgb = base.rgb * mix(0.45, 1.0, hp_ratio);
 	}

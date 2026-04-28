@@ -9,4 +9,4 @@ extends Resource
 @export var cost_value: float = 1.1
 ## Inclusive max stored level; use -1 for unlimited (subject to money).
 @export var max_level: int = -1
-@export var effects: Array = []
+@export var effects: Array[ShipUpgradeEffect] = []
