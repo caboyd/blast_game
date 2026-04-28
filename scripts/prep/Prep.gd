@@ -4,6 +4,8 @@ const _STAGE_TAB_INDEX := 1
 const _STAGE_BLOCK_CATALOG_ID: StringName = &"planet1"
 const _UNKNOWN_BLOCK := "???"
 const UPGRADE_BATCH_REQUESTS: Array[int] = [1, 5, 25, 100, -1]
+const _PREVIEW_POS := Vector2(200, 180)
+const _PREVIEW_SCALE := Vector2(8, 8)
 
 @onready var _start: Button = $Margin/RootVBox/StartMission
 @onready var _career_label: Label = $"Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Progress/ProgressVBox/CareerBlocksLabel"
@@ -16,7 +18,10 @@ const UPGRADE_BATCH_REQUESTS: Array[int] = [1, 5, 25, 100, -1]
 @onready var _mining_power_label: Label = $"Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox/MiningPowerLabel"
 @onready var _mining_interval_label: Label = $"Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox/MiningIntervalLabel"
 @onready var _mining_power_per_sec_label: Label = $"Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox/MiningPowerPerSecLabel"
-@onready var _ship: Scout = $Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/SubViewportContainer/SubViewport/World/Scout
+@onready var _world: Node2D = $Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/SubViewportContainer/SubViewport/World
+@onready var _ship_preview_label: Label = $Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/ShipLabel
+@onready var _ship_button_scout: Button = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/ShipSelectRow/ShipButtonScout
+@onready var _ship_button_prospector: Button = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/ShipSelectRow/ShipButtonProspector
 @onready var _ship_tabs: TabContainer = $Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs
 @onready var _stage_summary: Label = $Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Stage/StageScroll/StageVBox/StageSummaryLabel
 @onready var _stage_type_tree: Tree = $Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Stage/StageScroll/StageVBox/StageTypeTree
@@ -24,28 +29,12 @@ const UPGRADE_BATCH_REQUESTS: Array[int] = [1, 5, 25, 100, -1]
 @onready var _stats_tabs: TabContainer = $Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs
 @onready var _shop_money_label: Label = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/ShopMoneyRow/ShopMoneyPanel/ShopMoneyLabel
 @onready var _shop_batch_btn: Button = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/ShopBatchRow/ShopBatchBtn
-@onready var _shop_mining_tier: Label = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/MiningRow/MiningBuyRow/MiningTierStack/MiningTierLabel
-@onready var _shop_mining_tier_bar: ProgressBar = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/MiningRow/MiningBuyRow/MiningTierStack/MiningTierProgress
-@onready var _shop_mining_btn: Button = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/MiningRow/MiningBuyRow/MiningBtn
-@onready var _shop_fuel_tier: Label = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/FuelRow/FuelBuyRow/FuelTierStack/FuelTierLabel
-@onready var _shop_fuel_tier_bar: ProgressBar = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/FuelRow/FuelBuyRow/FuelTierStack/FuelTierProgress
-@onready var _shop_fuel_btn: Button = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/FuelRow/FuelBuyRow/FuelBtn
-@onready var _shop_visibility_tier: Label = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/VisibilityRow/VisibilityBuyRow/VisibilityTierStack/VisibilityTierLabel
-@onready var _shop_visibility_tier_bar: ProgressBar = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/VisibilityRow/VisibilityBuyRow/VisibilityTierStack/VisibilityTierProgress
-@onready var _shop_visibility_btn: Button = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/VisibilityRow/VisibilityBuyRow/VisibilityBtn
-@onready var _shop_speed_tier: Label = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/SpeedRow/SpeedBuyRow/SpeedTierStack/SpeedTierLabel
-@onready var _shop_speed_tier_bar: ProgressBar = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/SpeedRow/SpeedBuyRow/SpeedTierStack/SpeedTierProgress
-@onready var _shop_speed_btn: Button = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/SpeedRow/SpeedBuyRow/SpeedBtn
-@onready var _shop_drill_range_tier: Label = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/DrillRangeRow/DrillRangeBuyRow/DrillRangeTierStack/DrillRangeTierLabel
-@onready var _shop_drill_range_tier_bar: ProgressBar = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/DrillRangeRow/DrillRangeBuyRow/DrillRangeTierStack/DrillRangeTierProgress
-@onready var _shop_drill_range_btn: Button = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/DrillRangeRow/DrillRangeBuyRow/DrillRangeBtn
-@onready var _shop_mining_info: Label = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/MiningRow/MiningInfo
-@onready var _shop_fuel_info: Label = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/FuelRow/FuelInfo
-@onready var _shop_visibility_info: Label = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/VisibilityRow/VisibilityInfo
-@onready var _shop_speed_info: Label = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/SpeedRow/SpeedInfo
-@onready var _shop_drill_info: Label = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/DrillRangeRow/DrillRangeInfo
+@onready var _shop_upgrades: VBoxContainer = $Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/ShopUpgrades
 
 var _upgrade_batch_index: int = 0
+## Root from `ShipData.ship_scene` (implements mining API from `ShipBase`).
+var _preview_ship: Node2D
+var _shop_row_info_labels: Array[Label] = []
 
 
 func _ready() -> void:
@@ -65,23 +54,58 @@ func _ready() -> void:
 		_debug_reset.pressed.connect(_on_debug_reset_pressed)
 	if _shop_batch_btn:
 		_shop_batch_btn.pressed.connect(_on_shop_batch_btn_pressed)
+	if _ship_button_scout:
+		_ship_button_scout.pressed.connect(func() -> void: _select_ship(&"scout"))
+	if _ship_button_prospector:
+		_ship_button_prospector.pressed.connect(func() -> void: _select_ship(&"prospector"))
 	if not GameStatistics.stats_changed.is_connected(_on_stats_changed):
 		GameStatistics.stats_changed.connect(_on_stats_changed)
 	if not GameStatistics.fuel_changed.is_connected(_on_fuel_changed):
 		GameStatistics.fuel_changed.connect(_on_fuel_changed)
 	if not UpgradeBus.upgrade_purchased.is_connected(_on_upgrade_purchased):
 		UpgradeBus.upgrade_purchased.connect(_on_upgrade_purchased)
-	if _shop_mining_btn:
-		_shop_mining_btn.pressed.connect(func() -> void: _on_shop_purchase(&"mining_power"))
-	if _shop_fuel_btn:
-		_shop_fuel_btn.pressed.connect(func() -> void: _on_shop_purchase(&"fuel_tank"))
-	if _shop_visibility_btn:
-		_shop_visibility_btn.pressed.connect(func() -> void: _on_shop_purchase(&"visibility_range"))
-	if _shop_speed_btn:
-		_shop_speed_btn.pressed.connect(func() -> void: _on_shop_purchase(&"ship_speed"))
-	if _shop_drill_range_btn:
-		_shop_drill_range_btn.pressed.connect(func() -> void: _on_shop_purchase(&"drill_range"))
+	ShipDataRegistry.reload_active()
+	GameStatistics.apply_active_ship_fuel_baseline()
+	_rebuild_preview_ship()
 	_refresh_all()
+
+
+func _select_ship(ship_id: StringName) -> void:
+	if not ShipDataRegistry.is_ship_unlocked(ship_id):
+		return
+	GameSession.selected_ship_id = ship_id
+	ShipDataRegistry.reload_active()
+	GameStatistics.apply_active_ship_fuel_baseline()
+	_rebuild_preview_ship()
+	GameSession.save_career()
+	_refresh_all()
+
+
+func _rebuild_preview_ship() -> void:
+	if _world == null:
+		return
+	for c in _world.get_children():
+		_world.remove_child(c)
+		c.free()
+	_preview_ship = null
+	var sd: Resource = ShipDataRegistry.get_active()
+	if sd == null:
+		if _ship_preview_label:
+			_ship_preview_label.text = "—"
+		return
+	if _ship_preview_label:
+		_ship_preview_label.text = str(sd.get("display_name"))
+	var ps: Variant = sd.get("ship_scene")
+	if ps == null or not (ps is PackedScene):
+		push_error("Prep: active ShipData missing ship_scene")
+		return
+	_preview_ship = (ps as PackedScene).instantiate() as Node2D
+	if _preview_ship == null or not _preview_ship.has_method("get_effective_mine_damage_per_tick"):
+		push_error("Prep: ship_scene must extend ShipBase")
+		return
+	_world.add_child(_preview_ship)
+	_preview_ship.position = _PREVIEW_POS
+	_preview_ship.scale = _PREVIEW_SCALE
 
 
 func _on_ship_tab_changed(tab: int) -> void:
@@ -91,6 +115,8 @@ func _on_ship_tab_changed(tab: int) -> void:
 
 func _on_debug_reset_pressed() -> void:
 	GameSession.reset_all_progress()
+	ShipDataRegistry.reload_active()
+	_rebuild_preview_ship()
 	_refresh_all()
 
 
@@ -116,12 +142,35 @@ func _on_shop_purchase(upgrade_id: StringName) -> void:
 	UpgradeBus.try_purchase_count(upgrade_id, _current_upgrade_batch_request())
 
 
+func _on_dynamic_shop_purchase(upgrade_id: StringName) -> void:
+	_on_shop_purchase(upgrade_id)
+
+
 func _refresh_all() -> void:
+	_refresh_ship_picker()
 	_refresh_progress()
 	_refresh_ship_stats()
 	_refresh_shop()
 	if _ship_tabs and _ship_tabs.current_tab == _STAGE_TAB_INDEX:
 		_refresh_stage_tab()
+
+
+func _refresh_ship_picker() -> void:
+	if _ship_button_scout:
+		var cur: StringName = GameSession.selected_ship_id
+		_ship_button_scout.disabled = false
+		_ship_button_scout.text = "Scout"
+		_ship_button_scout.modulate = (
+			Color(0.5, 1.0, 0.65, 1.0) if cur == &"scout" else Color.WHITE
+		)
+	if _ship_button_prospector:
+		var unl: bool = ShipDataRegistry.is_ship_unlocked(&"prospector")
+		_ship_button_prospector.disabled = not unl
+		var cur2: StringName = GameSession.selected_ship_id
+		_ship_button_prospector.text = "Prospector" if unl else "Prospector (locked)"
+		_ship_button_prospector.modulate = (
+			Color(0.5, 1.0, 0.65, 1.0) if (unl and cur2 == &"prospector") else Color.WHITE
+		)
 
 
 func _refresh_stage_tab() -> void:
@@ -159,57 +208,117 @@ func _refresh_progress() -> void:
 func _refresh_ship_stats() -> void:
 	if _ship_fuel_label:
 		_ship_fuel_label.text = "Fuel: %d / %d" % [int(floorf(GameStatistics.fuel)), int(floorf(GameStatistics.fuel_max))]
-	if _ship == null:
+	if _preview_ship == null:
 		return
+	var ship_preview = _preview_ship
 	if _visibility_range_label:
-		_visibility_range_label.text = "Visibility Range: %d cells" % _ship.get_effective_vision_radius_cells()
+		_visibility_range_label.text = "Visibility Range: %d cells" % ship_preview.get_effective_vision_radius_cells()
 	if _mining_radius_label:
 		var half_cell: float = MiningWorld.CELL_SIZE_PX * 0.5
-		var world_r: float = _ship.get_effective_drill_game_radius_px()
+		var world_r: float = ship_preview.get_effective_drill_game_radius_px()
 		var r_rel: float = world_r / half_cell if half_cell > 0.0 else 0.0
 		_mining_radius_label.text = "Mining Radius: %.2f" % r_rel
 	if _move_speed_label:
-		_move_speed_label.text = "Move Speed: %d" % int(roundf(_ship.get_effective_move_speed_px_s()))
+		_move_speed_label.text = "Move Speed: %d" % int(roundf(ship_preview.get_effective_move_speed_px_s()))
 	if _mining_power_label:
-		_mining_power_label.text = "Mining Power: %.1f" % _ship.get_effective_mine_damage_per_tick()
+		_mining_power_label.text = "Mining Power: %.1f" % ship_preview.get_effective_mine_damage_per_tick()
 	if _mining_interval_label:
-		_mining_interval_label.text = "Mining Interval: %.1f" % _ship.mine_interval_s
+		_mining_interval_label.text = "Mining Interval: %.1f" % ship_preview.mine_interval_s
 	if _mining_power_per_sec_label:
-		var dt: float = _ship.mine_interval_s
+		var dt: float = ship_preview.mine_interval_s
 		if dt > 0.0:
-			var dps: float = _ship.get_effective_mine_damage_per_tick() / dt
+			var dps: float = ship_preview.get_effective_mine_damage_per_tick() / dt
 			_mining_power_per_sec_label.text = "Mining Power / s: %.1f" % dps
 		else:
 			_mining_power_per_sec_label.text = "Mining Power / s: —"
 
 
+func _clear_shop_upgrades() -> void:
+	_shop_row_info_labels.clear()
+	if _shop_upgrades == null:
+		return
+	for i in range(_shop_upgrades.get_child_count() - 1, -1, -1):
+		var c: Node = _shop_upgrades.get_child(i)
+		_shop_upgrades.remove_child(c)
+		c.free()
+
+
+func _add_shop_row(upgrade_id: StringName) -> void:
+	if _shop_upgrades == null:
+		return
+	var row := VBoxContainer.new()
+	row.set_meta("upgrade_id", upgrade_id)
+	row.add_theme_constant_override("separation", 2)
+	var info := Label.new()
+	_shop_row_info_labels.append(info)
+	row.add_child(info)
+	var buy_row := HBoxContainer.new()
+	buy_row.add_theme_constant_override("separation", 8)
+	var tier_stack := Control.new()
+	tier_stack.custom_minimum_size = Vector2(0, 32)
+	tier_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var bar := ProgressBar.new()
+	bar.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	bar.max_value = 10.0
+	bar.show_percentage = false
+	tier_stack.add_child(bar)
+	var tier_lbl := Label.new()
+	tier_lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	tier_lbl.add_theme_font_size_override("font_size", 14)
+	tier_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	tier_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	tier_stack.add_child(tier_lbl)
+	var btn := Button.new()
+	btn.custom_minimum_size = Vector2(96, 32)
+	btn.pressed.connect(_on_dynamic_shop_purchase.bind(upgrade_id))
+	buy_row.add_child(tier_stack)
+	buy_row.add_child(btn)
+	row.add_child(buy_row)
+	_shop_upgrades.add_child(row)
+	# Stash for refresh
+	row.set_meta("info", info)
+	row.set_meta("bar", bar)
+	row.set_meta("tier_lbl", tier_lbl)
+	row.set_meta("btn", btn)
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+
 func _refresh_shop() -> void:
 	_refresh_shop_batch_button()
-	_set_shop_tier_label(&"mining_power", _shop_mining_tier)
-	_set_shop_tier_label(&"fuel_tank", _shop_fuel_tier)
-	_set_shop_tier_label(&"visibility_range", _shop_visibility_tier)
-	_set_shop_tier_label(&"ship_speed", _shop_speed_tier)
-	_set_shop_tier_label(&"drill_range", _shop_drill_range_tier)
-	_set_shop_tier_progress(&"mining_power", _shop_mining_tier_bar)
-	_set_shop_tier_progress(&"fuel_tank", _shop_fuel_tier_bar)
-	_set_shop_tier_progress(&"visibility_range", _shop_visibility_tier_bar)
-	_set_shop_tier_progress(&"ship_speed", _shop_speed_tier_bar)
-	_set_shop_tier_progress(&"drill_range", _shop_drill_range_tier_bar)
-	if _shop_mining_btn:
-		_set_shop_button(&"mining_power", _shop_mining_btn)
-	if _shop_fuel_btn:
-		_set_shop_button(&"fuel_tank", _shop_fuel_btn)
-	if _shop_visibility_btn:
-		_set_shop_button(&"visibility_range", _shop_visibility_btn)
-	if _shop_speed_btn:
-		_set_shop_button(&"ship_speed", _shop_speed_btn)
-	if _shop_drill_range_btn:
-		_set_shop_button(&"drill_range", _shop_drill_range_btn)
-	_set_shop_info_label(&"mining_power", _shop_mining_info)
-	_set_shop_info_label(&"fuel_tank", _shop_fuel_info)
-	_set_shop_info_label(&"visibility_range", _shop_visibility_info)
-	_set_shop_info_label(&"ship_speed", _shop_speed_info)
-	_set_shop_info_label(&"drill_range", _shop_drill_info)
+	if _shop_upgrades:
+		# Build rows on first use or if empty / count mismatch
+		var up_ids: Array[StringName] = []
+		for u in ShipDataRegistry.get_active_ship_upgrades():
+			if u != null:
+				up_ids.append(u.get("id") as StringName)
+		if _shop_upgrades.get_child_count() != up_ids.size():
+			_clear_shop_upgrades()
+			for ui in up_ids:
+				_add_shop_row(ui)
+		# If still empty (e.g. no data), try building once
+		if _shop_upgrades.get_child_count() == 0 and not up_ids.is_empty():
+			for ui in up_ids:
+				_add_shop_row(ui)
+		_shop_row_info_labels.clear()
+		for i in _shop_upgrades.get_child_count():
+			var row: VBoxContainer = _shop_upgrades.get_child(i) as VBoxContainer
+			if row == null:
+				continue
+			var upgrade_id: StringName = row.get_meta("upgrade_id") as StringName
+			var info: Label = row.get_meta("info") as Label
+			var bar: ProgressBar = row.get_meta("bar") as ProgressBar
+			var tier_lbl: Label = row.get_meta("tier_lbl") as Label
+			var btn: Button = row.get_meta("btn") as Button
+			if info:
+				_shop_row_info_labels.append(info)
+			_set_shop_tier_label(upgrade_id, tier_lbl)
+			_set_shop_tier_progress(upgrade_id, bar)
+			if btn:
+				_set_shop_button(upgrade_id, btn)
+			if info:
+				_set_shop_info_label(upgrade_id, info)
 
 
 func _set_shop_info_label(upgrade_id: StringName, label: Label) -> void:
@@ -219,7 +328,27 @@ func _set_shop_info_label(upgrade_id: StringName, label: Label) -> void:
 		label.text = ""
 		return
 	if UpgradeBus.is_maxed(upgrade_id):
-		label.text = "Fully upgraded"
+		var cap_lv: int = UpgradeBus.get_max_level(upgrade_id)
+		var ud_snap: Resource = ShipDataRegistry.get_upgrade(upgrade_id)
+		var effs_snap: Array = ud_snap.get("effects") as Array
+		var snap_parts: Array[String] = []
+		for eff in effs_snap:
+			if eff == null:
+				continue
+			var st_snap: StringName = eff.get("stat") as StringName
+			var contrib: float
+			if st_snap == &"drill_range_bonus_game_px":
+				contrib = _shop_drill_radius_display_total(upgrade_id, cap_lv)
+				contrib -= _shop_drill_radius_display_total(upgrade_id, 0)
+			else:
+				contrib = ShipDataRegistry.preview_effective_stat(
+					st_snap, upgrade_id, cap_lv
+				)
+				contrib -= ShipDataRegistry.preview_effective_stat(st_snap, upgrade_id, 0)
+			var snap_line: String = _shop_format_snapshot_line(ud_snap, st_snap, contrib)
+			if not snap_line.is_empty():
+				snap_parts.append(snap_line)
+		label.text = " · ".join(snap_parts)
 		return
 	var req: int = _current_upgrade_batch_request()
 	var n_afford: int = UpgradeBus.get_purchase_count_for_request(
@@ -247,7 +376,9 @@ func _set_shop_info_label(upgrade_id: StringName, label: Label) -> void:
 
 func _shop_drill_radius_display_total(upgrade_id: StringName, drill_level: int) -> float:
 	var h: float = MiningWorld.CELL_SIZE_PX * 0.5
-	var base: float = _ship.get_drill_game_radius_px()
+	if _preview_ship == null:
+		return 0.0
+	var base: float = _preview_ship.get_drill_game_radius_px()
 	var bonus: float = ShipDataRegistry.preview_effective_stat(
 		&"drill_range_bonus_game_px", upgrade_id, drill_level
 	)
@@ -259,35 +390,81 @@ func _shop_format_stat_delta_line(e: Dictionary, upgrade_id: StringName, n_disp:
 	var delta: float = float(e["delta"])
 	var after: float = float(e["after"])
 	if st == &"drill_range_bonus_game_px":
-		if _ship == null:
+		if _preview_ship == null:
 			return ""
 		var cur: int = UpgradeBus.get_level(upgrade_id)
 		var before_u: float = _shop_drill_radius_display_total(upgrade_id, cur)
 		var after_u: float = _shop_drill_radius_display_total(upgrade_id, cur + n_disp)
 		delta = after_u - before_u
 		after = after_u
-	return _shop_format_line_for_stat(st, delta, after)
+	return _shop_format_line_for_stat(e, delta, after)
 
 
-func _shop_format_line_for_stat(st: StringName, delta: float, after: float) -> String:
+func _shop_decimal_places_for_stat(st: StringName) -> int:
+	match String(st):
+		"mine_damage_per_tick", "drill_range_bonus_game_px":
+			return 2
+		"money_double_chance":
+			return 1
+		_:
+			return 0
+
+
+func _shop_format_stat_value(v: float, st: StringName) -> String:
+	return _shop_format_number_plain(v, _shop_decimal_places_for_stat(st))
+
+
+func _shop_upgrade_display_name(ud: Resource) -> String:
+	if ud == null:
+		return ""
+	return str(ud.get("shop_display_name")).strip_edges()
+
+
+func _shop_format_number_plain(v: float, decimal_places: int) -> String:
+	if decimal_places <= 0:
+		return "%d" % int(round(v))
+	if decimal_places == 1:
+		return "%.1f" % v
+	if decimal_places == 2:
+		return "%.2f" % v
+	if decimal_places == 3:
+		return "%.3f" % v
+	return ("%." + str(decimal_places) + "f") % v
+
+
+## Max-tier snapshot: +value + display name from ShipUpgradeData.
+func _shop_format_snapshot_line(ud: Resource, st_snap: StringName, contrib: float) -> String:
+	if ud == null or absf(contrib) < 1e-5:
+		return ""
+	var label := _shop_upgrade_display_name(ud)
+	if label.is_empty():
+		return ""
+	return "+%s %s" % [_shop_format_stat_value(contrib, st_snap), label]
+
+
+func _shop_format_line_for_stat(e: Dictionary, delta: float, after: float) -> String:
 	if absf(delta) < 1e-5:
 		return ""
-	match String(st):
-		"mine_damage_per_tick":
-			return "+%.2f dmg/tick (→ %.2f)" % [delta, after]
-		"fuel_max":
-			return "+%d fuel max (→ %d)" % [int(round(delta)), int(round(after))]
-		"vision_radius_cells":
-			return "+%d vision cells (→ %d)" % [
-				int(round(delta)),
-				maxi(1, int(round(after))),
-			]
-		"move_speed_px_s":
-			return "+%d speed (→ %d)" % [int(round(delta)), int(round(after))]
-		"drill_range_bonus_game_px":
-			return "+%.2f mining radius (→ %.2f)" % [delta, after]
-		_:
-			return "+%.2f (→ %.2f)" % [delta, after]
+	var st: StringName = e["stat"] as StringName
+	var label := str(e.get("shop_display_name")).strip_edges()
+	if label.is_empty():
+		push_warning("Missing shop_display_name for stat: %s" % st)
+		label = "[Missing shop_display_name: %s]" % st
+
+	var after_u: float = after
+	if st == &"vision_radius_cells":
+		after_u = float(maxi(1, int(round(after))))
+
+	var space := ""
+	if not label.begins_with("%"):
+		space = " "
+
+	return "+%s%s%s (→ %s)" % [
+		_shop_format_stat_value(delta, st),
+		space,
+		label,
+		_shop_format_stat_value(after_u, st),
+	]
 
 
 func _set_shop_tier_label(upgrade_id: StringName, label: Label) -> void:
@@ -328,7 +505,7 @@ func _set_shop_button(upgrade_id: StringName, btn: Button) -> void:
 		btn.modulate = Color.WHITE
 		return
 	if UpgradeBus.is_maxed(upgrade_id):
-		btn.text = "—"
+		btn.text = "MAX"
 		btn.disabled = true
 		btn.modulate = Color.WHITE
 		return
@@ -407,6 +584,7 @@ func get_shop_cost_display_for_test(upgrade_id: StringName) -> String:
 
 
 func _on_start_mission_pressed() -> void:
-	GameSession.selected_ship_id = &"scout"
+	# `selected_ship_id` is set by the ship picker; ensure registry matches.
+	ShipDataRegistry.reload_active()
 	GameSession.begin_run()
 	GameSession.go_to_planet(GameSession.next_planet_scene)

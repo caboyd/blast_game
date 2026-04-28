@@ -45,12 +45,7 @@ func _apply_ship_fuel_base() -> void:
 func _on_upgrade_purchased(id: StringName, _new_level: int) -> void:
 	if id == &"fuel_tank":
 		_refit_fuel_tank_add_capacity_preserve_fill()
-	elif (
-		id == &"mining_power"
-		or id == &"visibility_range"
-		or id == &"ship_speed"
-		or id == &"drill_range"
-	):
+	elif ShipDataRegistry.has_upgrade(id):
 		stats_changed.emit()
 
 
@@ -76,6 +71,18 @@ func add_money(amount: int) -> void:
 	money += amount
 	stats_changed.emit()
 	GameSession.save_career()
+
+
+## Mined blocks only: may apply `money_double_chance` from ship upgrades, then `add_money`.
+func add_mined_cell_reward(base_amount: int) -> void:
+	if base_amount <= 0:
+		return
+	var amt: int = base_amount
+	var chance: float = ShipDataRegistry.apply_effects_for_stat(&"money_double_chance", 0.0)
+	chance = clampf(chance, 0.0, 100.0)
+	if chance > 0.0 and randf() * 100.0 < chance:
+		amt *= 2
+	add_money(amt)
 
 
 func spend_money(amount: int, persist_career: bool = true) -> bool:
@@ -108,6 +115,16 @@ func apply_fuel_max_from_career_load() -> void:
 	var new_m: float = effective_fuel_max()
 	fuel_max = new_m
 	fuel = new_m
+	fuel_changed.emit(fuel, fuel_max)
+	stats_changed.emit()
+
+
+## Call when `GameSession.selected_ship_id` changes (Prep): re-base fuel max on the new ship, clamp fill.
+func apply_active_ship_fuel_baseline() -> void:
+	_apply_ship_fuel_base()
+	var new_m: float = effective_fuel_max()
+	fuel_max = new_m
+	fuel = minf(fuel, new_m)
 	fuel_changed.emit(fuel, fuel_max)
 	stats_changed.emit()
 

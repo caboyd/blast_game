@@ -6,6 +6,7 @@ const _CAREER_SAVE_PATH := "user://career.cfg"
 const _CAREER_SECTION := "career"
 const _CAREER_KEY_BLOCKS := "total_blocks_destroyed"
 const _CAREER_KEY_MONEY := "money"
+const _CAREER_KEY_SELECTED_SHIP := "selected_ship_id"
 
 const _STAGE_REVEAL_MAGIC := 0x52455631
 const _MINING_CHUNK_BYTES := 40 * 40
@@ -54,6 +55,11 @@ func _load_career() -> void:
 		return
 	career_blocks_destroyed = int(c.get_value(_CAREER_SECTION, _CAREER_KEY_BLOCKS, 0))
 	GameStatistics.money = maxi(0, int(c.get_value(_CAREER_SECTION, _CAREER_KEY_MONEY, 0)))
+	selected_ship_id = StringName(
+		str(c.get_value(_CAREER_SECTION, _CAREER_KEY_SELECTED_SHIP, "scout"))
+	)
+	if ShipDataRegistry:
+		ShipDataRegistry.reload_active()
 	UpgradeBus.read_from_career_config(c)
 	GameStatistics.apply_fuel_max_from_career_load()
 	_load_block_discovery_from_config(c)
@@ -76,6 +82,7 @@ func _write_career_to_disk() -> void:
 	var c := ConfigFile.new()
 	c.set_value(_CAREER_SECTION, _CAREER_KEY_BLOCKS, career_blocks_destroyed)
 	c.set_value(_CAREER_SECTION, _CAREER_KEY_MONEY, GameStatistics.money)
+	c.set_value(_CAREER_SECTION, _CAREER_KEY_SELECTED_SHIP, String(selected_ship_id))
 	UpgradeBus.write_to_career_config(c)
 	_write_block_discovery_to_config(c)
 	var err := c.save(_CAREER_SAVE_PATH)
@@ -215,12 +222,14 @@ func save_stage_reveal(stage_id: StringName, reveals: Dictionary) -> void:
 ## Debug: wipe career save, money, upgrades, derived combat stats, and stage reveal files.
 func reset_all_progress() -> void:
 	career_blocks_destroyed = 0
+	selected_ship_id = &"scout"
 	GameStatistics.money = 0
 	GameStatistics.total_blocks_destroyed = 0
 	GameStatistics._blocks_destroyed_run_baseline = 0
 	GameStatistics.furthest_depth_cells = 0
-	GameStatistics._apply_ship_fuel_base()
 	UpgradeBus._levels.clear()
+	ShipDataRegistry.reload_all()
+	GameStatistics._apply_ship_fuel_base()
 	GameStatistics.fuel_max = GameStatistics.effective_fuel_max()
 	GameStatistics.fuel = GameStatistics.fuel_max
 	_stage_block_types_found.clear()

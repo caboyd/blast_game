@@ -2,6 +2,8 @@ class_name ShipUpgradeData
 extends Resource
 
 @export var id: StringName = &""
+## Prep shop text after the +value, e.g. "fuel max", "dmg/tick".
+@export var shop_display_name: String = ""
 @export var base_cost: int = 10
 @export_enum("add", "multiply") var cost_operation: String = "multiply"
 @export var cost_value: float = 1.1

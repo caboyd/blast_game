@@ -3,16 +3,20 @@
 [ext_resource type="Script" uid="uid://ckf5j26sfj41a" path="res://scripts/data/ShipData.gd" id="1_ec25b"]
 [ext_resource type="Script" uid="uid://drjo0qypkcvo3" path="res://scripts/data/ShipUpgradeEffect.gd" id="2_1aha8"]
 [ext_resource type="Script" uid="uid://do1co1gh3fvgm" path="res://scripts/data/ShipUpgradeData.gd" id="3_jr27e"]
+[ext_resource type="PackedScene" uid="uid://c3ujct1udqxw7" path="res://scenes/ships/Scout.tscn" id="4_scene"]
 
 [sub_resource type="Resource" id="eff_mp"]
 script = ExtResource("2_1aha8")
 stat = &"mine_damage_per_tick"
-value = 0.15
+value = 0.25
 
 [sub_resource type="Resource" id="up_mp"]
 script = ExtResource("3_jr27e")
 id = &"mining_power"
-max_level = 20
+shop_display_name = "Mining Power"
+base_cost = 25
+cost_value = 1.2
+max_level = 3
 effects = [SubResource("eff_mp")]
 
 [sub_resource type="Resource" id="eff_ft"]
@@ -23,18 +27,22 @@ value = 5.0
 [sub_resource type="Resource" id="up_ft"]
 script = ExtResource("3_jr27e")
 id = &"fuel_tank"
-max_level = 1000
+shop_display_name = "Fuel"
+base_cost = 5
+cost_value = 1.2
+max_level = 10
 effects = [SubResource("eff_ft")]
 
 [sub_resource type="Resource" id="eff_vis"]
 script = ExtResource("2_1aha8")
 stat = &"vision_radius_cells"
-value = 1.0
+value = 0.5
 
 [sub_resource type="Resource" id="up_vis"]
 script = ExtResource("3_jr27e")
 id = &"visibility_range"
-max_level = 10
+shop_display_name = "Vision"
+max_level = 6
 effects = [SubResource("eff_vis")]
 
 [sub_resource type="Resource" id="eff_sp"]
@@ -45,7 +53,9 @@ value = 1.0
 [sub_resource type="Resource" id="up_sp"]
 script = ExtResource("3_jr27e")
 id = &"ship_speed"
-max_level = 100
+shop_display_name = "Speed"
+base_cost = 25
+max_level = 8
 effects = [SubResource("eff_sp")]
 
 [sub_resource type="Resource" id="eff_dr"]
@@ -56,11 +66,16 @@ value = 1.0
 [sub_resource type="Resource" id="up_dr"]
 script = ExtResource("3_jr27e")
 id = &"drill_range"
-base_cost = 5
-max_level = 10
+shop_display_name = "Mining Radius"
+base_cost = 15
+cost_value = 1.5
+max_level = 3
 effects = [SubResource("eff_dr")]
 
 [resource]
 script = ExtResource("1_ec25b")
+id = &"scout"
 display_name = "Scout"
+move_speed_px_s = 15.0
+ship_scene = ExtResource("4_scene")
 upgrades = [SubResource("up_mp"), SubResource("up_ft"), SubResource("up_vis"), SubResource("up_sp"), SubResource("up_dr")]

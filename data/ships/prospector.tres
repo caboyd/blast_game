@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="ShipData" format=3 uid="uid://bpn65d7jbmgeq"]
+
+[ext_resource type="Script" uid="uid://ckf5j26sfj41a" path="res://scripts/data/ShipData.gd" id="1_sd"]
+[ext_resource type="Script" uid="uid://drjo0qypkcvo3" path="res://scripts/data/ShipUpgradeEffect.gd" id="2_fx"]
+[ext_resource type="Script" uid="uid://do1co1gh3fvgm" path="res://scripts/data/ShipUpgradeData.gd" id="3_ud"]
+[ext_resource type="PackedScene" uid="uid://ckkcuopr688ih" path="res://scenes/ships/Prospector.tscn" id="4_sc"]
+
+[sub_resource type="Resource" id="eff_dm"]
+script = ExtResource("2_fx")
+stat = &"money_double_chance"
+value = 1.0
+
+[sub_resource type="Resource" id="up_dm"]
+script = ExtResource("3_ud")
+id = &"prospector_double_money"
+shop_display_name = "% to 2x Block $"
+base_cost = 25
+max_level = 25
+effects = [SubResource("eff_dm")]
+
+[resource]
+script = ExtResource("1_sd")
+id = &"prospector"
+display_name = "Prospector"
+fuel_drain_per_second = 2.0
+ship_scene = ExtResource("4_sc")
+unlock_after_ship_all_upgrades_maxed = &"scout"
+upgrades = [SubResource("up_dm")]

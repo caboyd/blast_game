@@ -313,7 +313,7 @@ func _damage_cell_abs(cell: Vector2i, amount: int) -> int:
 		hparr[idx] = 0
 		GameStatistics.add_blocks_destroyed(1)
 		if t >= 0 and t < TYPE_MONEY.size():
-			GameStatistics.add_money(int(TYPE_MONEY[t]))
+			GameStatistics.add_mined_cell_reward(int(TYPE_MONEY[t]))
 		return hp_before
 	var nh: int = clampi(new_hp, 0, 255)
 	hparr[idx] = nh

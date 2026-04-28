@@ -2,7 +2,6 @@
 
 [ext_resource type="Script" uid="uid://conweb5pvayjf" path="res://scripts/planets/Planet1.gd" id="1"]
 [ext_resource type="PackedScene" uid="uid://wfvva5w2yqqq" path="res://scenes/world/MiningWorld.tscn" id="2"]
-[ext_resource type="PackedScene" uid="uid://c3ujct1udqxw7" path="res://scenes/ships/Scout.tscn" id="3"]
 [ext_resource type="PackedScene" uid="uid://s27h7pw54ab5" path="res://scenes/ui/BottomHUD.tscn" id="4"]
 [ext_resource type="PackedScene" path="res://scenes/ui/DebugOverlay.tscn" id="5"]
 
@@ -61,10 +60,9 @@ unique_name_in_owner = true
 [node name="MiningWorld" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport/World2D" unique_id=1384592697 instance=ExtResource("2")]
 unique_name_in_owner = true
 
-[node name="Ship" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport/World2D" unique_id=945517021 instance=ExtResource("3")]
+[node name="ShipSpawn" type="Node2D" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport/World2D" unique_id=945517021]
 unique_name_in_owner = true
-position = Vector2(160, 160)
-mine_interval_s = 0.01
+position = Vector2(0, 0)
 
 [node name="Border" type="ReferenceRect" parent="GameplayBlock/AspectRatioContainer/ViewportFrame" unique_id=216972038]
 layout_mode = 1

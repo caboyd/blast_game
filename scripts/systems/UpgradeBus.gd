@@ -157,12 +157,8 @@ func _all_persisted_upgrade_ids() -> Array[StringName]:
 	var id_set: Dictionary = {}
 	for k in LEGACY_UPGRADE_DEFS:
 		id_set[k] = true
-	var vd: Resource = ShipDataRegistry.get_active()
-	if vd != null:
-		var ups: Array = vd.get("upgrades") as Array
-		for u in ups:
-			if u != null:
-				id_set[u.get("id")] = true
+	for uid in ShipDataRegistry.get_all_upgrade_ids():
+		id_set[uid] = true
 	for k in _levels:
 		id_set[k] = true
 	var out: Array[StringName] = []

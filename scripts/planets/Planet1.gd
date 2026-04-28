@@ -10,7 +10,8 @@ const CELL_SIZE_PX: float = 8.0
 @export var planet_id: StringName = &"planet1"
 
 @onready var _mining_world: MiningWorld = %MiningWorld
-@onready var _ship: Scout = %Ship
+@onready var _ship_spawn: Node2D = %ShipSpawn
+var _ship: Node2D
 @onready var _viewport_info: Label = %ViewportInfo
 @onready var _game_camera: Camera2D = %GameCamera2D
 @onready var _subviewport_container: SubViewportContainer = $GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer
@@ -24,12 +25,13 @@ func _ready() -> void:
 	MiningMissionUI.attach_fuel_bar_for_mining_host(self)
 	GameSession.start_mission_timer()
 	_apply_game_viewport_layout()
+	_spawn_mission_ship()
 	if _mining_world:
 		_mining_world.stage_id = planet_id
 	if _ship and _mining_world:
 		_ship.grid = _mining_world
 		# Hull origin at the middle of chunk (0,0) in grid/world space.
-		_ship.position = _mining_world.get_chunk_center_world(Vector2i.ZERO)
+		_ship.position = MiningWorld.get_chunk_center_world(Vector2i.ZERO)
 		_ship.carve_hull_terrain_on_spawn()
 	if _ship and not _ship.out_of_fuel.is_connected(_on_ship_out_of_fuel):
 		_ship.out_of_fuel.connect(_on_ship_out_of_fuel)
@@ -47,6 +49,28 @@ func _ready() -> void:
 	if not get_viewport().size_changed.is_connected(_on_main_resized_for_viewport):
 		get_viewport().size_changed.connect(_on_main_resized_for_viewport)
 	call_deferred("_apply_game_viewport_layout")
+
+
+func _spawn_mission_ship() -> void:
+	if _ship_spawn == null:
+		return
+	for c in _ship_spawn.get_children():
+		c.queue_free()
+	_ship = null
+	var sd: Resource = ShipDataRegistry.get_active()
+	if sd == null:
+		push_error("Planet1: no active ShipData")
+		return
+	var ps: Variant = sd.get("ship_scene")
+	if ps == null or not (ps is PackedScene):
+		push_error("Planet1: ShipData missing ship_scene")
+		return
+	_ship = (ps as PackedScene).instantiate() as Node2D
+	if _ship == null or not _ship.has_method("carve_hull_terrain_on_spawn"):
+		push_error("Planet1: ship_scene root must extend ShipBase")
+		return
+	_ship.position = Vector2.ZERO
+	_ship_spawn.add_child(_ship)
 
 
 func _on_ship_out_of_fuel() -> void:

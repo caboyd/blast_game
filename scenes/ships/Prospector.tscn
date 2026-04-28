@@ -1,0 +1,30 @@
+[gd_scene format=3 uid="uid://ckkcuopr688ih"]
+
+[ext_resource type="Script" uid="uid://cw75kam5jsm6e" path="res://scripts/ships/ShipBase.gd" id="1_base"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_yiq1f"]
+radius = 3.0000005
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_iwkxr"]
+radius = 3.0
+
+[node name="Prospector" type="Node2D" unique_id=1100789382]
+script = ExtResource("1_base")
+
+[node name="Drill" type="Polygon2D" parent="." unique_id=500210448]
+position = Vector2(0.99999994, 2.646978e-23)
+scale = Vector2(0.99999994, 0.99999994)
+color = Color(1, 0.72, 0.35, 1)
+polygon = PackedVector2Array(5.9604645e-08, 4, 5.9604645e-08, -4, 5, 0)
+
+[node name="DrillCollider" type="CollisionShape2D" parent="Drill" unique_id=1467381388]
+position = Vector2(4, -2.646978e-23)
+shape = SubResource("CircleShape2D_yiq1f")
+
+[node name="Hull" type="Polygon2D" parent="." unique_id=1828735210]
+scale = Vector2(1.0999999, 1.020408)
+color = Color(0.95, 0.55, 0.2, 1)
+polygon = PackedVector2Array(-4, -4, 4, -4, 4, 4, -4, 4)
+
+[node name="HullCollider" type="CollisionShape2D" parent="Hull" unique_id=1768726885]
+shape = SubResource("CircleShape2D_iwkxr")

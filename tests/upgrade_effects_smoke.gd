@@ -4,6 +4,7 @@ const ScoutShipScene := preload("res://scenes/ships/Scout.tscn")
 const BottomHUDScene := preload("res://scenes/ui/BottomHUD.tscn")
 const PrepScene := preload("res://scenes/prep/Prep.tscn")
 const ScoutShipData := preload("res://data/ships/scout.tres")
+const ProspectorShipData := preload("res://data/ships/prospector.tres")
 const ShipUpgradeDataScript := preload("res://scripts/data/ShipUpgradeData.gd")
 const ShipUpgradeMathScript := preload("res://scripts/data/ShipUpgradeMath.gd")
 
@@ -91,6 +92,46 @@ func _ready() -> void:
 	prep.queue_free()
 
 	ship.queue_free()
+
+	var prospector: Resource = ProspectorShipData as Resource
+	_assert_true(prospector != null, "prospector resource loads")
+	_assert_eq(String(prospector.get("id")), "prospector", "prospector id")
+	_assert_approx(float(prospector.get("fuel_drain_per_second")), 2.0, "prospector fuel drain")
+	GameSession.selected_ship_id = &"scout"
+	ShipDataRegistry.reload_active()
+	_assert_true(not ShipDataRegistry.is_ship_unlocked(&"prospector"), "prospector locked before scout max")
+	for u in (ScoutShipData as Resource).get("upgrades") as Array:
+		if u != null:
+			UpgradeBus._levels[u.get("id") as StringName] = int(u.get("max_level"))
+	_assert_true(ShipDataRegistry.is_ship_unlocked(&"prospector"), "prospector unlocked when scout maxed")
+
+	GameSession.selected_ship_id = &"scout"
+	ShipDataRegistry.reload_active()
+	UpgradeBus._levels.clear()
+	UpgradeBus._levels[&"mining_power"] = 3
+	UpgradeBus._levels[&"prospector_double_money"] = 5
+	var ship2 := ScoutShipScene.instantiate() as Scout
+	add_child(ship2)
+	await get_tree().process_frame
+	_assert_approx(
+		ship2.get_effective_mine_damage_per_tick(),
+		ship2._base_mine_damage_per_tick + 0.15 * 3.0,
+		"mining upgrade applies with scout selected"
+	)
+	GameSession.selected_ship_id = &"prospector"
+	ShipDataRegistry.reload_active()
+	var ship3 := ScoutShipScene.instantiate() as Scout
+	add_child(ship3)
+	await get_tree().process_frame
+	_assert_approx(
+		ship3.get_effective_mine_damage_per_tick(),
+		ship3._base_mine_damage_per_tick + 0.15 * 3.0,
+		"mining upgrade applies with prospector selected (global levels)"
+	)
+	ship2.queue_free()
+	ship3.queue_free()
+
+	UpgradeBus._levels.clear()
 	get_tree().quit(0)
 
 
