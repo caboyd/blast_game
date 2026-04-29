@@ -62,7 +62,6 @@ unique_name_in_owner = true
 
 [node name="ShipSpawn" type="Node2D" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport/World2D" unique_id=945517021]
 unique_name_in_owner = true
-position = Vector2(0, 0)
 
 [node name="Border" type="ReferenceRect" parent="GameplayBlock/AspectRatioContainer/ViewportFrame" unique_id=216972038]
 layout_mode = 1

@@ -4,7 +4,7 @@
 
 [node name="Blob" type="Polygon2D" parent="." unique_id=724591013]
 position = Vector2(-4, 0)
-color = Color(0.95, 0.55, 0.22, 1)
+color = Color(0.8980392, 0.16078432, 0.16862746, 1)
 polygon = PackedVector2Array(0, 0, 4, 0, 4, 4, 0, 4)
 
 [node name="Line2D" type="Line2D" parent="Blob" unique_id=1536126000]

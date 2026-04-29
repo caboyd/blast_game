@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://dr7td61b7wsqq"]
 
 [ext_resource type="Script" uid="uid://dy8m3p7vxk01q" path="res://scripts/prep/Prep.gd" id="1"]
+[ext_resource type="PackedScene" path="res://scenes/prep/PrepPartIconTemplate.tscn" id="2"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_shop_money_yellow"]
 content_margin_left = 10.0
@@ -21,6 +22,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1")
+prep_part_icon_template = ExtResource("2")
 
 [node name="Background" type="ColorRect" parent="." unique_id=1398068514]
 layout_mode = 1

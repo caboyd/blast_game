@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="GlobalPartData" format=3]
+[gd_resource type="Resource" script_class="GlobalPartData" format=3 uid="uid://cgsfus4nescvl"]
 
 [ext_resource type="Script" uid="uid://b8431vs7scjj6" path="res://scripts/data/GlobalPartData.gd" id="1"]
 [ext_resource type="Script" uid="uid://mf14x1dbtowp" path="res://scripts/data/GlobalPartEffect.gd" id="2"]
@@ -8,14 +8,13 @@
 [sub_resource type="Resource" id="eff_sp"]
 script = ExtResource("2")
 stat = "move_speed_px_s"
-operation = "multiply"
-value = 1.0
 
 [resource]
 script = ExtResource("1")
 id = &"dilapidated_treads"
 part_type = "treads"
-display_name = "Dilapidated Treads"
-ship_scene = ExtResource("3")
+display_name = "Dilapidated"
 ground_scene = ExtResource("4")
+ship_scene = ExtResource("3")
 effects = Array[ExtResource("2")]([SubResource("eff_sp")])
+allowed_mine_type_ids = null

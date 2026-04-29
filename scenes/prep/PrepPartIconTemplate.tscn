@@ -1,0 +1,89 @@
+[gd_scene format=3 uid="uid://bdax8wt0en6r6"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_prep_part_icon_template"]
+bg_color = Color(0.08, 0.11, 0.15, 0.9)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.54, 0.72, 0.9, 0.38)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[node name="PrepPartIconTemplate" type="PanelContainer" unique_id=1096682403]
+custom_minimum_size = Vector2(150, 64)
+offset_right = 150.0
+offset_bottom = 64.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_prep_part_icon_template")
+
+[node name="Col" type="VBoxContainer" parent="." unique_id=552245003]
+layout_mode = 2
+
+[node name="Row" type="HBoxContainer" parent="Col" unique_id=1523674964]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="Icon" type="SubViewportContainer" parent="Col/Row" unique_id=1392992179]
+custom_minimum_size = Vector2(42, 42)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+stretch = true
+
+[node name="SubViewport" type="SubViewport" parent="Col/Row/Icon" unique_id=1747384432]
+transparent_bg = true
+handle_input_locally = false
+size = Vector2i(42, 42)
+render_target_update_mode = 4
+
+[node name="IconRoot" type="Node2D" parent="Col/Row/Icon/SubViewport" unique_id=1312867489]
+position = Vector2(21, 21)
+
+[node name="MissingIconLabel" type="Label" parent="Col/Row/Icon" unique_id=748762659]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.66, 0.74, 0.83, 1)
+theme_override_font_sizes/font_size = 24
+text = "?"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="TextCol" type="VBoxContainer" parent="Col/Row" unique_id=1403472720]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_constants/separation = 2
+
+[node name="Spacer" type="Control" parent="Col/Row/TextCol" unique_id=1483863255]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="NameLabel" type="Label" parent="Col/Row/TextCol" unique_id=1028921727]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.94, 0.97, 1, 1)
+theme_override_font_sizes/font_size = 13
+text = "Missing Part"
+vertical_alignment = 1
+autowrap_mode = 3
+text_overrun_behavior = 3
+max_lines_visible = 2
+
+[node name="Spacer2" type="Control" parent="Col/Row/TextCol" unique_id=1125607201]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Row2" type="HBoxContainer" parent="Col" unique_id=478923335]
+layout_mode = 2
+size_flags_vertical = 8
+
+[node name="TypeLabel" type="Label" parent="Col/Row2" unique_id=1892289347]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.66, 0.74, 0.83, 1)
+theme_override_font_sizes/font_size = 10
+text = "Missing Part Type"
+horizontal_alignment = 1

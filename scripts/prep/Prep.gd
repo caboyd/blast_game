@@ -16,15 +16,10 @@ const _SHIP_PICK_SCROLL_STEP_PX := 140
 @export var prep_parts_overlay_height: float = 80.0
 @export var prep_part_chip_min_size := Vector2(150.0, 64.0)
 @export var prep_part_chip_spacing: int = 10
-@export var prep_part_chip_bg_color := Color(0.08, 0.11, 0.15, 0.9)
-@export var prep_part_chip_border_color := Color(0.54, 0.72, 0.9, 0.38)
-@export var prep_part_chip_text_color := Color(0.94, 0.97, 1.0, 1.0)
-@export var prep_part_chip_type_color := Color(0.66, 0.74, 0.83, 1.0)
-@export var prep_part_name_font_size: int = 13
-@export var prep_part_type_font_size: int = 11
 @export var prep_part_icon_size := Vector2(42.0, 42.0)
 @export var prep_part_icon_scale: float = 3.0
 @export var prep_part_icon_offset := Vector2.ZERO
+@export var prep_part_icon_template: PackedScene
 @export var prep_part_show_type_label: bool = true
 
 @onready var _start: Button = $Margin/RootVBox/StartMission
@@ -192,22 +187,6 @@ func _rebuild_preview_ship() -> void:
 	_rebuild_global_parts_strip()
 
 
-func _prep_part_slot_style() -> StyleBoxFlat:
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = prep_part_chip_bg_color
-	sb.border_color = prep_part_chip_border_color
-	sb.set_border_width_all(1)
-	sb.set_corner_radius_all(12)
-	sb.shadow_color = Color(0.0, 0.0, 0.0, 0.38)
-	sb.shadow_size = 6
-	sb.shadow_offset = Vector2(0, 2)
-	sb.content_margin_left = 8
-	sb.content_margin_top = 6
-	sb.content_margin_right = 10
-	sb.content_margin_bottom = 6
-	return sb
-
-
 func _apply_prep_parts_overlay_layout() -> void:
 	if _prep_parts_strip:
 		_prep_parts_strip.set_anchor(SIDE_LEFT, 0.0)
@@ -231,95 +210,55 @@ func _prep_type_display_name(type_key: StringName) -> String:
 	return String(type_key).replace("_", " ").capitalize()
 
 
-func _prep_make_part_icon(pd: GlobalPartData) -> Control:
-	var ps: PackedScene
-	if pd != null:
-		ps = pd.prep_icon_scene if pd.prep_icon_scene != null else pd.ship_scene
-	if ps == null:
-		var fallback := Label.new()
-		fallback.custom_minimum_size = prep_part_icon_size
-		fallback.text = "?"
-		fallback.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		fallback.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		fallback.add_theme_font_size_override(&"font_size", 24)
-		fallback.add_theme_color_override(&"font_color", prep_part_chip_type_color)
-		fallback.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		fallback.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-		return fallback
-
-	var viewport_container := SubViewportContainer.new()
-	viewport_container.custom_minimum_size = prep_part_icon_size
-	viewport_container.stretch = true
-	viewport_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	viewport_container.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-
-	var viewport := SubViewport.new()
-	viewport.size = Vector2i(
-		int(maxf(1.0, prep_part_icon_size.x)),
-		int(maxf(1.0, prep_part_icon_size.y))
-	)
-	viewport.transparent_bg = true
-	viewport.handle_input_locally = false
-	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	viewport_container.add_child(viewport)
-
-	var icon_root := Node2D.new()
-	icon_root.position = Vector2(viewport.size) * 0.5 + prep_part_icon_offset
-	viewport.add_child(icon_root)
-
-	var icon_node := ps.instantiate() as Node2D
-	if icon_node != null:
-		icon_node.scale = Vector2.ONE * prep_part_icon_scale
-		icon_root.add_child(icon_node)
-
-	return viewport_container
-
-
 func _prep_make_part_chip(type_key: StringName, part_id: StringName) -> Control:
 	var pd: GlobalPartData = GlobalPartRegistry.get_part_data(part_id)
 	var name_txt: String = "Empty"
 	var type_txt: String = _prep_type_display_name(type_key)
+	var icon_scene: PackedScene
 	if pd != null:
 		name_txt = pd.display_name
 		type_txt = String(pd.part_type).replace("_", " ").capitalize()
-	var panel := PanelContainer.new()
-	panel.custom_minimum_size = prep_part_chip_min_size
-	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	panel.add_theme_stylebox_override(&"panel", _prep_part_slot_style())
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override(&"separation", 8)
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	panel.add_child(row)
-	row.add_child(_prep_make_part_icon(pd))
-	var text_col := VBoxContainer.new()
-	text_col.add_theme_constant_override(&"separation", 2)
-	text_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	text_col.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	text_col.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(text_col)
-	var name_lbl := Label.new()
-	name_lbl.text = name_txt
-	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	name_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	name_lbl.add_theme_font_size_override(&"font_size", prep_part_name_font_size)
-	name_lbl.add_theme_color_override(&"font_color", prep_part_chip_text_color)
-	name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	name_lbl.max_lines_visible = 2
-	name_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	text_col.add_child(name_lbl)
-	var type_lbl := Label.new()
-	type_lbl.text = type_txt
-	type_lbl.visible = prep_part_show_type_label
-	type_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	type_lbl.add_theme_font_size_override(&"font_size", prep_part_type_font_size)
-	type_lbl.add_theme_color_override(&"font_color", prep_part_chip_type_color)
-	type_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	text_col.add_child(type_lbl)
-	return panel
+		icon_scene = pd.prep_icon_scene if pd.prep_icon_scene != null else pd.ship_scene
+
+	var chip := Control.new()
+	if prep_part_icon_template != null:
+		chip = prep_part_icon_template.instantiate() as Control
+	if chip == null:
+		chip = Control.new()
+	chip.custom_minimum_size = prep_part_chip_min_size
+	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	chip.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+
+	var name_lbl := chip.get_node_or_null("Col/Row/TextCol/NameLabel") as Label
+	if name_lbl != null:
+		name_lbl.text = name_txt
+	var type_lbl := chip.get_node_or_null("Col/Row2/TypeLabel") as Label
+	if type_lbl != null:
+		type_lbl.text = type_txt
+		type_lbl.visible = prep_part_show_type_label
+
+	var icon := chip.get_node_or_null("Row/Icon") as Control
+	if icon != null:
+		icon.custom_minimum_size = prep_part_icon_size
+	var viewport := chip.get_node_or_null("Col/Row/Icon/SubViewport") as SubViewport
+	if viewport != null:
+		viewport.size = Vector2i(int(maxf(1.0, prep_part_icon_size.x)), int(maxf(1.0, prep_part_icon_size.y)))
+	var missing_icon_lbl := chip.get_node_or_null("Col/Row/Icon/MissingIconLabel") as Label
+	if missing_icon_lbl != null:
+		missing_icon_lbl.visible = icon_scene == null
+	var icon_root := chip.get_node_or_null("Col/Row/Icon/SubViewport/IconRoot") as Node2D
+	if icon_root != null:
+		var icon_position := prep_part_icon_offset
+		if viewport != null:
+			icon_position = Vector2(viewport.size) * 0.5 + prep_part_icon_offset
+		icon_root.position = icon_position
+		if icon_scene != null:
+			var icon_node := icon_scene.instantiate() as Node2D
+			if icon_node != null:
+				icon_node.scale = Vector2.ONE * prep_part_icon_scale
+				icon_root.add_child(icon_node)
+
+	return chip
 
 
 func _rebuild_global_parts_strip() -> void:
