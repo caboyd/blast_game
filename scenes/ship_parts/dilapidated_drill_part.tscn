@@ -1,0 +1,9 @@
+[gd_scene format=3 uid="uid://uhwa18fyqred"]
+
+[node name="DilapidatedDrillPart" type="Node2D" unique_id=155945927]
+z_index = -2
+position = Vector2(4, 0)
+
+[node name="Bit" type="Polygon2D" parent="." unique_id=174938999]
+color = Color(0.62, 0.82, 0.92, 1)
+polygon = PackedVector2Array(-2, -3, 6, 0, -2, 3)

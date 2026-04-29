@@ -1,0 +1,9 @@
+[gd_scene format=3 uid="uid://dhfr4u06mdoje"]
+
+[node name="CrackedDrillPart" type="Node2D" unique_id=1154518272]
+z_index = -2
+position = Vector2(4, 0)
+
+[node name="Bit" type="Polygon2D" parent="." unique_id=1883839176]
+color = Color(0.72, 0.72, 0.78, 1)
+polygon = PackedVector2Array(-2, -3, 6, 0, -2, 3)

@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="GlobalPartData" format=3]
+
+[ext_resource type="Script" uid="uid://b8431vs7scjj6" path="res://scripts/data/GlobalPartData.gd" id="1"]
+[ext_resource type="Script" uid="uid://mf14x1dbtowp" path="res://scripts/data/GlobalPartEffect.gd" id="2"]
+[ext_resource type="PackedScene" uid="uid://div80xfq6s8go" path="res://scenes/ship_parts/cracked_tank_part.tscn" id="3"]
+
+[sub_resource type="Resource" id="eff_fm"]
+script = ExtResource("2")
+stat = "fuel_max"
+operation = "multiply"
+value = 0.5
+
+[sub_resource type="Resource" id="eff_fd"]
+script = ExtResource("2")
+stat = "fuel_drain_per_second"
+operation = "multiply"
+value = 2.0
+
+[resource]
+script = ExtResource("1")
+id = &"cracked_tank"
+part_type = "fuel_tank"
+display_name = "Cracked Tank"
+ship_scene = ExtResource("3")
+effects = Array[ExtResource("2")]([SubResource("eff_fm"), SubResource("eff_fd")])

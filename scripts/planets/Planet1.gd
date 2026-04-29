@@ -57,9 +57,14 @@ func _ready() -> void:
 		# Hull origin at the middle of chunk (0,0) in grid/world space.
 		var spawn_world: Vector2 = MiningWorld.get_chunk_center_world(Vector2i.ZERO)
 		_ship.position = spawn_world
+		_ship.add_to_group(&"leading_mining_ship")
 		_layout_mission_ship_chain_followers_from_head()
+		GlobalPartVisuals.attach_to_ship(_ship)
+		for tail in _ship_chain_followers:
+			GlobalPartVisuals.attach_to_ship(tail)
 		_mining_world.stamp_dirt_chebyshev_from_world(spawn_world, 4)
 		_ship.carve_hull_terrain_on_spawn()
+		_mining_world.spawn_planet1_global_part_pickups(spawn_world)
 	if _ship and not _ship.out_of_fuel.is_connected(_on_ship_out_of_fuel):
 		_ship.out_of_fuel.connect(_on_ship_out_of_fuel)
 	if _subviewport_container != null and not _subviewport_container.resized.is_connected(_on_subviewport_container_resized):

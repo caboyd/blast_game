@@ -12,6 +12,7 @@ radius = 3.0
 script = ExtResource("1_jv3lx")
 
 [node name="Drill" type="Polygon2D" parent="." unique_id=712383373]
+visible = false
 position = Vector2(0.99999994, 2.646978e-23)
 scale = Vector2(0.99999994, 0.99999994)
 color = Color(0.55, 0.92, 1, 1)

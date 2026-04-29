@@ -258,21 +258,29 @@ theme_override_font_sizes/font_size = 14
 horizontal_alignment = 1
 autowrap_mode = 3
 
-[node name="SubViewportContainer" type="SubViewportContainer" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview" unique_id=1498962718]
+[node name="ShipPreviewStack" type="Control" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview" unique_id=2100575999]
 custom_minimum_size = Vector2(400, 300)
 layout_mode = 2
 size_flags_vertical = 3
+
+[node name="SubViewportContainer" type="SubViewportContainer" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/ShipPreviewStack" unique_id=1498962718]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 stretch = true
 
-[node name="SubViewport" type="SubViewport" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/SubViewportContainer" unique_id=71169305]
+[node name="SubViewport" type="SubViewport" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/ShipPreviewStack/SubViewportContainer" unique_id=71169305]
 handle_input_locally = false
 size = Vector2i(612, 378)
 render_target_update_mode = 4
 
-[node name="Camera2D" type="Camera2D" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/SubViewportContainer/SubViewport" unique_id=577357977]
+[node name="Camera2D" type="Camera2D" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/ShipPreviewStack/SubViewportContainer/SubViewport" unique_id=577357977]
 position = Vector2(200, 180)
 
-[node name="World" type="Node2D" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/SubViewportContainer/SubViewport" unique_id=362404321]
+[node name="World" type="Node2D" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/ShipPreviewStack/SubViewportContainer/SubViewport" unique_id=362404321]
 
 [node name="Stage" type="MarginContainer" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs" unique_id=2107525904]
 visible = false

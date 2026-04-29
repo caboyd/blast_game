@@ -41,6 +41,8 @@ func _ready() -> void:
 	_apply_ship_fuel_base()
 	if not UpgradeBus.upgrade_purchased.is_connected(_on_upgrade_purchased):
 		UpgradeBus.upgrade_purchased.connect(_on_upgrade_purchased)
+	if not GlobalPartRegistry.parts_changed.is_connected(_on_global_parts_changed):
+		GlobalPartRegistry.parts_changed.connect(_on_global_parts_changed)
 
 
 func _apply_ship_fuel_base() -> void:
@@ -150,7 +152,24 @@ func apply_active_ship_fuel_baseline() -> void:
 
 
 func effective_fuel_max() -> float:
-	return ShipDataRegistry.apply_effects_for_stat(&"fuel_max", _base_fuel_max)
+	var upgraded: float = ShipDataRegistry.apply_effects_for_stat(&"fuel_max", _base_fuel_max)
+	return GlobalPartRegistry.apply_effects_for_stat(&"fuel_max", upgraded)
+
+
+func _on_global_parts_changed() -> void:
+	refit_fuel_from_global_parts()
+
+
+func refit_fuel_from_global_parts() -> void:
+	var old_m: float = fuel_max
+	var new_m: float = effective_fuel_max()
+	if is_equal_approx(old_m, new_m):
+		return
+	var frac: float = fuel / old_m if old_m > 0.0 else 1.0
+	fuel_max = new_m
+	fuel = minf(new_m * frac, fuel_hard_cap_absolute())
+	fuel_changed.emit(fuel, fuel_max)
+	stats_changed.emit()
 
 
 func _refit_fuel_tank_add_capacity_preserve_fill() -> void:

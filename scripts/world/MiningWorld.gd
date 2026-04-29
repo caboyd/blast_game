@@ -34,6 +34,12 @@ const APRON_COLUMNS := 0
 
 const _GENERATION_MONUMENT_SCRIPT: GDScript = preload("res://scripts/world/GenerationMonument.gd")
 
+const _PLANET1_DILAPIDATED_DEFS: Array[Dictionary] = [
+	{"pickup_id": &"planet1_dilapidated_tank", "scene": preload("res://scenes/ship_parts/ship_ground_parts/dilapidated_tank_ground.tscn")},
+	{"pickup_id": &"planet1_dilapidated_drill", "scene": preload("res://scenes/ship_parts/ship_ground_parts/dilapidated_drill_ground.tscn")},
+	{"pickup_id": &"planet1_dilapidated_treads", "scene": preload("res://scenes/ship_parts/ship_ground_parts/dilapidated_treads_ground.tscn")},
+]
+
 
 ## World-space center of the square covered by one chunk (`CHUNK_SIZE` cells per side).
 static func get_chunk_center_world(chunk: Vector2i) -> Vector2:
@@ -466,6 +472,18 @@ func cell_top_left_world(cell: Vector2i) -> Vector2:
 	return Vector2(float(cell.x) * CELL_SIZE_PX, float(cell.y) * CELL_SIZE_PX)
 
 
+func cell_center_world(cell: Vector2i) -> Vector2:
+	return Vector2((float(cell.x) + 0.5) * CELL_SIZE_PX, (float(cell.y) + 0.5) * CELL_SIZE_PX)
+
+
+func _peek_cell_type(cell: Vector2i) -> int:
+	var ch := _cell_to_chunk_coord(cell)
+	_ensure_chunk(ch)
+	var data: Dictionary = _chunks[ch]
+	var idx: int = _cell_to_local_in_chunk(cell, ch)
+	return int(data["cells"][idx])
+
+
 func is_solid_world(world: Vector2) -> bool:
 	var c := world_pos_to_cell(world)
 	return _is_cell_solid(c)
@@ -676,7 +694,13 @@ func has_solid_overlapping_circle_world(center_world: Vector2, radius_world: flo
 
 
 ## Applies `damage` to every solid cell whose AABB hits the world circle. Returns total HP removed.
-func mine_solid_in_circle_world(center_world: Vector2, radius_world: float, damage: int) -> int:
+## If `allowed_cell_types` is non-empty, only cells whose material id is listed are mined.
+func mine_solid_in_circle_world(
+	center_world: Vector2,
+	radius_world: float,
+	damage: int,
+	allowed_cell_types: PackedInt32Array = PackedInt32Array(),
+) -> int:
 	if damage <= 0 or radius_world <= 0.0:
 		return 0
 	var cs: float = CELL_SIZE_PX
@@ -686,11 +710,22 @@ func mine_solid_in_circle_world(center_world: Vector2, radius_world: float, dama
 	var cy0: int = int(floor((center_world.y - r) / cs))
 	var cy1: int = int(floor((center_world.y + r) / cs))
 	var hp_total: int = 0
+	var filter: bool = allowed_cell_types.size() > 0
 	for cy in range(cy0, cy1 + 1):
 		for cx in range(cx0, cx1 + 1):
 			if not _circle_overlaps_cell_aabb_world(center_world, r, cx, cy):
 				continue
-			hp_total += _damage_cell_abs(Vector2i(cx, cy), damage)
+			var cell_v := Vector2i(cx, cy)
+			if filter:
+				var ct: int = _peek_cell_type(cell_v)
+				var allowed := false
+				for i in allowed_cell_types.size():
+					if int(allowed_cell_types[i]) == ct:
+						allowed = true
+						break
+				if not allowed:
+					continue
+			hp_total += _damage_cell_abs(cell_v, damage)
 	if hp_total > 0:
 		_visual_dirty = true
 	return hp_total
@@ -911,3 +946,43 @@ func _rebuild_view_textures() -> void:
 
 	_sync_shader_texture_params()
 	_visual_dirty = false
+
+
+## Spawns Dilapidated ground pickups on the Chebyshev-8 ring around `spawn_world` (Planet 1 only).
+func spawn_planet1_global_part_pickups(spawn_world: Vector2) -> void:
+	if stage_id != &"planet1":
+		return
+	var to_place: Array[Dictionary] = []
+	for d in _PLANET1_DILAPIDATED_DEFS:
+		var pid: StringName = d["pickup_id"] as StringName
+		if GlobalPartRegistry.is_pickup_collected(pid):
+			continue
+		to_place.append(d)
+	if to_place.is_empty():
+		return
+	var origin_cell := world_pos_to_cell(spawn_world)
+	var ring: Array[Vector2i] = []
+	for dy in range(-8, 9):
+		for dx in range(-8, 9):
+			if maxi(abs(dx), abs(dy)) != 8:
+				continue
+			ring.append(origin_cell + Vector2i(dx, dy))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(Vector3i(_stage_seed_effective(), 771001, 42))
+	for ii in range(ring.size() - 1, 0, -1):
+		var jj: int = rng.randi_range(0, ii)
+		var swap: Vector2i = ring[ii]
+		ring[ii] = ring[jj]
+		ring[jj] = swap
+	var n: int = mini(to_place.size(), ring.size())
+	for i in n:
+		var cw: Vector2 = cell_center_world(ring[i])
+		clear_solid_in_circle_world(cw, 14.0)
+		var ps: PackedScene = to_place[i]["scene"] as PackedScene
+		if ps == null:
+			continue
+		var node: Node2D = ps.instantiate() as Node2D
+		if node == null:
+			continue
+		node.global_position = cw
+		add_child(node)

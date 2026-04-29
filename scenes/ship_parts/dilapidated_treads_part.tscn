@@ -1,0 +1,14 @@
+[gd_scene format=3 uid="uid://bdrdono5r2i5f"]
+
+[node name="DilapidatedTreadsPart" type="Node2D" unique_id=753111176]
+z_index = -1
+
+[node name="Left" type="Polygon2D" parent="." unique_id=1366138787]
+position = Vector2(0, 3.5)
+color = Color(0.55, 0.52, 0.48, 1)
+polygon = PackedVector2Array(-3.5, -2, 4, -2, 4, 2, -3.5, 2)
+
+[node name="Right" type="Polygon2D" parent="." unique_id=824052445]
+position = Vector2(0, -3.5)
+color = Color(0.55, 0.52, 0.48, 1)
+polygon = PackedVector2Array(-3.5, -2, 4, -2, 4, 2, -3.5, 2)

@@ -31,6 +31,9 @@ var _mine_accum_time: float = 0.0
 var _mine_pending_damage: float = 0.0
 var _debug_layer: Node2D
 
+var _tread_cycle_t: float = 0.0
+var _tread_stopping: bool = false
+
 
 func _ready() -> void:
 	if follower_visual_only:
@@ -85,7 +88,10 @@ func _ready_follower_visual_only() -> void:
 
 
 func get_effective_mine_damage_per_tick() -> float:
-	return ShipDataRegistry.apply_effects_for_stat(&"mine_damage_per_tick", _base_mine_damage_per_tick)
+	var v: float = ShipDataRegistry.apply_effects_for_stat(
+		&"mine_damage_per_tick", _base_mine_damage_per_tick
+	)
+	return GlobalPartRegistry.apply_effects_for_stat(&"mine_damage_per_tick", v)
 
 
 func get_effective_vision_radius_cells() -> int:
@@ -96,7 +102,12 @@ func get_effective_vision_radius_cells() -> int:
 
 
 func get_effective_move_speed_px_s() -> float:
-	return ShipDataRegistry.apply_effects_for_stat(&"move_speed_px_s", _base_move_speed_px_s)
+	var v: float = ShipDataRegistry.apply_effects_for_stat(&"move_speed_px_s", _base_move_speed_px_s)
+	return GlobalPartRegistry.apply_effects_for_stat(&"move_speed_px_s", v)
+
+
+func get_effective_fuel_drain_per_second() -> float:
+	return GlobalPartRegistry.apply_effects_for_stat(&"fuel_drain_per_second", fuel_drain_per_second)
 
 
 func get_effective_turn_rate_rad_s() -> float:
@@ -121,12 +132,30 @@ func _physics_process(delta: float) -> void:
 		var target_rot: float = dir.angle()
 		var max_turn: float = get_effective_turn_rate_rad_s() * delta
 		rotation = rotate_toward(rotation, target_rot, max_turn)
+	var move_blocked := false
+	if not follower_visual_only:
+		var tm: Vector2 = GlobalPartRegistry.treads_movement_stop_timing()
+		var ev: float = tm.x
+		var du: float = tm.y
+		if ev > 0.0 and du > 0.0:
+			_tread_cycle_t += delta
+			if not _tread_stopping:
+				if _tread_cycle_t >= ev:
+					_tread_stopping = true
+					_tread_cycle_t = 0.0
+			else:
+				move_blocked = true
+				if _tread_cycle_t >= du:
+					_tread_stopping = false
+					_tread_cycle_t = 0.0
 	var step := transform.x.normalized() * get_effective_move_speed_px_s() * delta
+	if move_blocked:
+		step = Vector2.ZERO
 	_move_with_collision(step)
 
 	_tick_mining(delta)
 
-	GameStatistics.consume_fuel(fuel_drain_per_second * delta)
+	GameStatistics.consume_fuel(get_effective_fuel_drain_per_second() * delta)
 
 	grid.update_vision(_front_world(), get_effective_vision_radius_cells())
 
@@ -388,7 +417,8 @@ func _tick_mining(delta: float) -> void:
 		_mine_pending_damage -= float(whole)
 		drill_c = _drill_center_world()
 		drill_r = get_effective_drill_world_radius_px()
-		grid.mine_solid_in_circle_world(drill_c, drill_r, whole)
+		var allowed := GlobalPartRegistry.get_drill_allowed_mine_type_ids()
+		grid.mine_solid_in_circle_world(drill_c, drill_r, whole, allowed)
 
 
 class _MiningDebugLayer extends Node2D:

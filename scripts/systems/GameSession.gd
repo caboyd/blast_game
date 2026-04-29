@@ -51,6 +51,7 @@ func _load_career() -> void:
 	if c.load(_CAREER_SAVE_PATH) != OK:
 		# First launch: no save yet — still apply ship-derived fuel max (and empty upgrade levels).
 		UpgradeBus._levels.clear()
+		GlobalPartRegistry.reset_to_cracked_defaults()
 		GameStatistics.apply_fuel_max_from_career_load()
 		return
 	career_blocks_destroyed = int(c.get_value(_CAREER_SECTION, _CAREER_KEY_BLOCKS, 0))
@@ -61,6 +62,7 @@ func _load_career() -> void:
 	if ShipDataRegistry:
 		ShipDataRegistry.reload_active()
 	UpgradeBus.read_from_career_config(c)
+	GlobalPartRegistry.load_from_config_file(c)
 	GameStatistics.apply_fuel_max_from_career_load()
 	_load_block_discovery_from_config(c)
 
@@ -84,6 +86,7 @@ func _write_career_to_disk() -> void:
 	c.set_value(_CAREER_SECTION, _CAREER_KEY_MONEY, GameStatistics.money)
 	c.set_value(_CAREER_SECTION, _CAREER_KEY_SELECTED_SHIP, String(selected_ship_id))
 	UpgradeBus.write_to_career_config(c)
+	GlobalPartRegistry.write_to_config_file(c)
 	_write_block_discovery_to_config(c)
 	var err := c.save(_CAREER_SAVE_PATH)
 	if err != OK:
@@ -228,6 +231,7 @@ func reset_all_progress() -> void:
 	GameStatistics._blocks_destroyed_run_baseline = 0
 	GameStatistics.furthest_depth_cells = 0
 	UpgradeBus._levels.clear()
+	GlobalPartRegistry.reset_to_cracked_defaults()
 	ShipDataRegistry.reload_all()
 	GameStatistics._apply_ship_fuel_base()
 	GameStatistics.fuel_max = GameStatistics.effective_fuel_max()

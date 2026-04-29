@@ -23,7 +23,8 @@ const _SHIP_PICK_SCROLL_STEP_PX := 140
 @onready var _mining_power_label: Label = $"Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox/MiningPowerLabel"
 @onready var _mining_interval_label: Label = $"Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox/MiningIntervalLabel"
 @onready var _mining_power_per_sec_label: Label = $"Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox/MiningPowerPerSecLabel"
-@onready var _world: Node2D = $Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/SubViewportContainer/SubViewport/World
+@onready var _world: Node2D = $"Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/ShipPreviewStack/SubViewportContainer/SubViewport/World"
+@onready var _ship_prep_subviewport: SubViewport = $"Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/ShipPreviewStack/SubViewportContainer/SubViewport"
 @onready var _ship_preview_label: Label = $Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/ShipLabel
 @onready var _ship_description_label: Label = $Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/ShipDescriptionLabel
 @onready var _ship_picker_prev: Button = $Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/ShipPickerStrip/ShipPickerPrev
@@ -47,6 +48,8 @@ var _ship_pick_buttons: Dictionary = {}  # StringName -> Button
 ## Root from `ShipData.ship_scene` (implements mining API from `ShipBase`).
 var _preview_ship: Node2D
 var _shop_row_info_labels: Array[Label] = []
+var _prep_parts_ui_layer: CanvasLayer
+var _prep_parts_hbox: HBoxContainer
 
 
 func _ready() -> void:
@@ -84,6 +87,8 @@ func _ready() -> void:
 		GameStatistics.fuel_changed.connect(_on_fuel_changed)
 	if not UpgradeBus.upgrade_purchased.is_connected(_on_upgrade_purchased):
 		UpgradeBus.upgrade_purchased.connect(_on_upgrade_purchased)
+	if not GlobalPartRegistry.parts_changed.is_connected(_on_global_parts_changed):
+		GlobalPartRegistry.parts_changed.connect(_on_global_parts_changed)
 	ShipDataRegistry.reload_active()
 	GameStatistics.apply_active_ship_fuel_baseline()
 	_ensure_ship_picker_buttons()
@@ -94,6 +99,7 @@ func _ready() -> void:
 	# the viewport. Rebuild once more after career apply so the preview matches the ship.
 	call_deferred("_rebuild_preview_ship")
 	call_deferred("_update_ship_picker_scroll_state")
+	call_deferred("_rebuild_global_parts_strip")
 
 
 func _select_ship(ship_id: StringName) -> void:
@@ -114,13 +120,16 @@ func _rebuild_preview_ship() -> void:
 	_preview_ship = null
 	var chain: Array[StringName] = ShipDataRegistry.get_mission_ship_chain_ship_ids()
 	if chain.is_empty():
+		_rebuild_global_parts_strip()
 		return
 	var head_sd: Resource = ShipDataRegistry.get_ship_data(chain[0])
 	if head_sd == null:
+		_rebuild_global_parts_strip()
 		return
 	var head_ps: Variant = head_sd.get("ship_scene")
 	if head_ps == null or not (head_ps is PackedScene):
 		push_error("Prep: active ShipData missing ship_scene")
+		_rebuild_global_parts_strip()
 		return
 	_preview_ship = (head_ps as PackedScene).instantiate() as Node2D
 	if _preview_ship == null or not _preview_ship.has_method("get_effective_mine_damage_per_tick"):
@@ -128,6 +137,7 @@ func _rebuild_preview_ship() -> void:
 		if _preview_ship != null:
 			_preview_ship.queue_free()
 		_preview_ship = null
+		_rebuild_global_parts_strip()
 		return
 	_world.add_child(_preview_ship)
 	_preview_ship.scale = _PREVIEW_SCALE
@@ -151,6 +161,109 @@ func _rebuild_preview_ship() -> void:
 		node.scale = Vector2.ONE * _PREVIEW_SCALE * ShipChainLayout.FOLLOWER_SCALE
 		_world.add_child(node)
 	_layout_preview_ship_chain()
+	for p in _world.get_children():
+		var n2 := p as Node2D
+		if n2:
+			GlobalPartVisuals.attach_to_ship(n2)
+	_rebuild_global_parts_strip()
+
+
+func _ensure_prep_parts_viewport_ui() -> void:
+	if _ship_prep_subviewport == null:
+		return
+	if _prep_parts_ui_layer != null and is_instance_valid(_prep_parts_ui_layer):
+		return
+	var cl := CanvasLayer.new()
+	cl.layer = 32
+	_ship_prep_subviewport.add_child(cl)
+	_prep_parts_ui_layer = cl
+	var root := Control.new()
+	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cl.add_child(root)
+	var margin := MarginContainer.new()
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	margin.add_theme_constant_override(&"margin_left", 10)
+	margin.add_theme_constant_override(&"margin_right", 10)
+	margin.add_theme_constant_override(&"margin_bottom", 10)
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(margin)
+	var outer := VBoxContainer.new()
+	outer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	outer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	margin.add_child(outer)
+	var spacer := Control.new()
+	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	outer.add_child(spacer)
+	var hbox := HBoxContainer.new()
+	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	hbox.add_theme_constant_override(&"separation", 12)
+	outer.add_child(hbox)
+	_prep_parts_hbox = hbox
+
+
+func _prep_part_slot_style() -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.14, 0.17, 0.21, 0.96)
+	sb.set_corner_radius_all(12)
+	sb.content_margin_left = 10
+	sb.content_margin_top = 8
+	sb.content_margin_right = 10
+	sb.content_margin_bottom = 8
+	return sb
+
+
+func _prep_make_part_chip(part_id: StringName) -> Control:
+	var pd: GlobalPartData = GlobalPartRegistry.get_part_data(part_id)
+	var name_txt: String = "?"
+	var type_txt: String = ""
+	if pd != null:
+		name_txt = pd.display_name
+		type_txt = String(pd.part_type).replace("_", " ").capitalize()
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override(&"separation", 6)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(108, 0)
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_theme_stylebox_override(&"panel", _prep_part_slot_style())
+	var name_lbl := Label.new()
+	name_lbl.text = name_txt
+	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name_lbl.add_theme_font_size_override(&"font_size", 13)
+	name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(name_lbl)
+	var type_lbl := Label.new()
+	type_lbl.text = type_txt
+	type_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	type_lbl.add_theme_font_size_override(&"font_size", 11)
+	type_lbl.add_theme_color_override(&"font_color", Color(0.72, 0.76, 0.82))
+	type_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(panel)
+	col.add_child(type_lbl)
+	return col
+
+
+func _rebuild_global_parts_strip() -> void:
+	_ensure_prep_parts_viewport_ui()
+	if _prep_parts_hbox == null:
+		return
+	for c in _prep_parts_hbox.get_children():
+		_prep_parts_hbox.remove_child(c)
+		c.queue_free()
+	var order: Array[StringName] = [&"fuel_tank", &"drill", &"treads"]
+	for type_key in order:
+		var pid: StringName = GlobalPartRegistry.get_equipped_for_type_key(type_key)
+		_prep_parts_hbox.add_child(_prep_make_part_chip(pid))
+
+
+func _on_global_parts_changed() -> void:
+	_rebuild_global_parts_strip()
+	call_deferred("_rebuild_preview_ship")
 
 
 func _layout_preview_ship_chain() -> void:

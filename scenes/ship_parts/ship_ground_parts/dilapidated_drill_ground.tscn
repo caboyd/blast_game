@@ -1,0 +1,23 @@
+[gd_scene format=3 uid="uid://df8wrxxuq2de4"]
+
+[ext_resource type="Script" uid="uid://dmcexuntivfxv" path="res://scripts/world/GlobalPartGroundPickup.gd" id="1"]
+[ext_resource type="PackedScene" uid="uid://uhwa18fyqred" path="res://scenes/ship_parts/dilapidated_drill_part.tscn" id="2_fsnxx"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_pick"]
+radius = 10.45
+
+[node name="DilapidatedDrillGround" type="Area2D" unique_id=1439334774]
+scale = Vector2(0.5, 0.5)
+collision_layer = 0
+collision_mask = 0
+script = ExtResource("1")
+pickup_id = &"planet1_dilapidated_drill"
+part_id = &"dilapidated_drill"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1782784130]
+shape = SubResource("CircleShape2D_pick")
+
+[node name="DilapidatedDrillPart" parent="." unique_id=155945927 instance=ExtResource("2_fsnxx")]
+position = Vector2(-0.91, 0)
+rotation = 0.29147
+scale = Vector2(1.9, 1.9)

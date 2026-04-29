@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="GlobalPartData" format=3]
+
+[ext_resource type="Script" uid="uid://b8431vs7scjj6" path="res://scripts/data/GlobalPartData.gd" id="1"]
+[ext_resource type="Script" uid="uid://mf14x1dbtowp" path="res://scripts/data/GlobalPartEffect.gd" id="2"]
+[ext_resource type="PackedScene" uid="uid://dhfr4u06mdoje" path="res://scenes/ship_parts/cracked_drill_part.tscn" id="3"]
+
+[sub_resource type="Resource" id="eff_md"]
+script = ExtResource("2")
+stat = "mine_damage_per_tick"
+operation = "multiply"
+value = 0.75
+
+[resource]
+script = ExtResource("1")
+id = &"cracked_drill"
+part_type = "drill"
+display_name = "Cracked Drill"
+ship_scene = ExtResource("3")
+effects = Array[ExtResource("2")]([SubResource("eff_md")])
+allowed_mine_type_ids = PackedInt32Array(1)
