@@ -12,13 +12,8 @@ signal upgrade_purchased(id: StringName, new_level: int)
 var _levels: Dictionary = {}  # StringName -> int
 
 
-func has_def(id: StringName) -> bool:
-	return ShipDataRegistry.has_upgrade(id)
-
-
 func get_level(id: StringName) -> int:
 	return int(_levels.get(id, 0))
-
 
 
 ## Returns inclusive max level, or -1 if unlimited.
@@ -36,7 +31,7 @@ func is_maxed(id: StringName) -> bool:
 
 
 func can_upgrade(id: StringName) -> bool:
-	return has_def(id) and not is_maxed(id)
+	return ShipDataRegistry.has_upgrade(id) and not is_maxed(id)
 
 
 func _cost_at_level(id: StringName, level: int) -> int:
@@ -47,7 +42,7 @@ func _cost_at_level(id: StringName, level: int) -> int:
 
 
 func get_purchase_count_for_request(id: StringName, requested_count: int) -> int:
-	if not has_def(id) or requested_count == 0 or is_maxed(id):
+	if not ShipDataRegistry.has_upgrade(id) or requested_count == 0 or is_maxed(id):
 		return 0
 	var desired: int = requested_count
 	if requested_count < 0:
@@ -71,7 +66,7 @@ func get_purchase_count_for_request(id: StringName, requested_count: int) -> int
 
 
 func get_purchase_cost_for_count(id: StringName, count: int) -> int:
-	if not has_def(id) or count <= 0 or is_maxed(id):
+	if not ShipDataRegistry.has_upgrade(id) or count <= 0 or is_maxed(id):
 		return 0
 	var cap: int = get_max_level(id)
 	var level: int = get_level(id)

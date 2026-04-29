@@ -112,7 +112,7 @@ func _rebuild_preview_ship() -> void:
 		_world.remove_child(c)
 		c.free()
 	_preview_ship = null
-	var chain: Array[StringName] = ShipDataRegistry.get_mission_ship_chain_chain_ship_ids()
+	var chain: Array[StringName] = ShipDataRegistry.get_mission_ship_chain_ship_ids()
 	if chain.is_empty():
 		return
 	var head_sd: Resource = ShipDataRegistry.get_ship_data(chain[0])
@@ -502,7 +502,7 @@ func _refresh_shop() -> void:
 func _set_shop_info_label(upgrade_id: StringName, label: Label) -> void:
 	if label == null:
 		return
-	if not UpgradeBus.has_def(upgrade_id) or not ShipDataRegistry.has_upgrade(upgrade_id):
+	if not ShipDataRegistry.has_upgrade(upgrade_id):
 		label.text = ""
 		return
 	if UpgradeBus.is_maxed(upgrade_id):
@@ -646,7 +646,7 @@ func _shop_format_line_for_stat(e: Dictionary, delta: float, after: float) -> St
 func _set_shop_tier_label(upgrade_id: StringName, label: Label) -> void:
 	if label == null:
 		return
-	if not UpgradeBus.has_def(upgrade_id):
+	if not ShipDataRegistry.has_upgrade(upgrade_id):
 		label.text = ""
 		return
 	var cap: int = UpgradeBus.get_max_level(upgrade_id)
@@ -660,7 +660,7 @@ func _set_shop_tier_label(upgrade_id: StringName, label: Label) -> void:
 func _set_shop_tier_progress(upgrade_id: StringName, bar: ProgressBar) -> void:
 	if bar == null:
 		return
-	if not UpgradeBus.has_def(upgrade_id):
+	if not ShipDataRegistry.has_upgrade(upgrade_id):
 		bar.visible = false
 		return
 	var cap: int = UpgradeBus.get_max_level(upgrade_id)
@@ -675,7 +675,7 @@ func _set_shop_tier_progress(upgrade_id: StringName, bar: ProgressBar) -> void:
 
 
 func _set_shop_button(upgrade_id: StringName, btn: Button) -> void:
-	if not UpgradeBus.has_def(upgrade_id):
+	if not ShipDataRegistry.has_upgrade(upgrade_id):
 		btn.text = "—"
 		btn.disabled = true
 		btn.modulate = Color.WHITE

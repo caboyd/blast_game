@@ -102,7 +102,7 @@ func _spawn_mission_ship() -> void:
 		_ship.process_physics_priority = 1
 	_ship.position = Vector2.ZERO
 	_ship_spawn.add_child(_ship)
-	var chain: Array[StringName] = ShipDataRegistry.get_mission_ship_chain_chain_ship_ids()
+	var chain: Array[StringName] = ShipDataRegistry.get_mission_ship_chain_ship_ids()
 	for i in range(1, chain.size()):
 		var sid: StringName = chain[i]
 		var sdata: Resource = ShipDataRegistry.get_ship_data(sid)

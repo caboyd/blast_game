@@ -14,6 +14,8 @@ const _SHIPS_DIR := "res://data/ships/"
 var _active: Resource
 var _ships_by_id: Dictionary = {}  # StringName -> ShipData Resource
 var _ship_ids_sorted: Array[StringName] = []
+## First definition per `prep_sort_index` order (matches former `get_upgrade` scan).
+var _upgrade_by_id: Dictionary = {}  # StringName -> upgrade resource
 
 
 func _ready() -> void:
@@ -23,6 +25,7 @@ func _ready() -> void:
 func reload_all() -> void:
 	_ships_by_id.clear()
 	_ship_ids_sorted.clear()
+	_upgrade_by_id.clear()
 	var dir := DirAccess.open(_SHIPS_DIR)
 	if dir == null:
 		push_error("ShipDataRegistry: cannot open %s" % _SHIPS_DIR)
@@ -56,7 +59,23 @@ func reload_all() -> void:
 	_ship_ids_sorted.clear()
 	for k in keys:
 		_ship_ids_sorted.append(k as StringName)
+	_rebuild_upgrade_index()
 	reload_active()
+
+
+func _rebuild_upgrade_index() -> void:
+	_upgrade_by_id.clear()
+	for sid in _ship_ids_sorted:
+		var sd: Resource = _ships_by_id.get(sid)
+		if sd == null:
+			continue
+		var ups: Array = sd.get("upgrades") as Array
+		for u in ups:
+			if u == null:
+				continue
+			var uid: StringName = u.get("id") as StringName
+			if not _upgrade_by_id.has(uid):
+				_upgrade_by_id[uid] = u
 
 
 func reload_active() -> void:
@@ -88,7 +107,7 @@ func get_all_ship_ids_sorted() -> Array[StringName]:
 
 
 ## Selected ship first, then other unlocked ships in prep order. Used by Prep preview and mission ship chain tails.
-func get_mission_ship_chain_chain_ship_ids() -> Array[StringName]:
+func get_mission_ship_chain_ship_ids() -> Array[StringName]:
 	var selected: StringName = GameSession.selected_ship_id
 	var out: Array[StringName] = [selected]
 	for sid in _ship_ids_sorted:
@@ -102,34 +121,22 @@ func get_mission_ship_chain_chain_ship_ids() -> Array[StringName]:
 
 ## Every upgrade id defined on any ship (for save persistence and UpgradeBus).
 func get_all_upgrade_ids() -> Array[StringName]:
-	var id_set: Dictionary = {}
-	for sid in _ship_ids_sorted:
-		var sd: Resource = _ships_by_id.get(sid)
-		if sd == null:
-			continue
-		var ups: Array = sd.get("upgrades") as Array
-		for u in ups:
-			if u != null:
-				id_set[u.get("id")] = true
 	var out: Array[StringName] = []
-	for k in id_set:
-		out.append(k)
+	for k in _upgrade_by_id:
+		out.append(k as StringName)
 	return out
 
 
 func get_upgrade(upgrade_id: StringName) -> Resource:
 	if upgrade_id == &"":
 		return null
-	for sid in _ship_ids_sorted:
-		var ups: Array = _ships_by_id[sid].get("upgrades") as Array
-		for u in ups:
-			if u != null and u.get("id") == upgrade_id:
-				return u
-	return null
+	return _upgrade_by_id.get(upgrade_id)
 
 
 func has_upgrade(upgrade_id: StringName) -> bool:
-	return get_upgrade(upgrade_id) != null
+	if upgrade_id == &"":
+		return false
+	return _upgrade_by_id.has(upgrade_id)
 
 
 ## Upgrades shown in the shop for the currently active ship.
