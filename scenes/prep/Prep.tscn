@@ -282,6 +282,27 @@ position = Vector2(200, 180)
 
 [node name="World" type="Node2D" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/ShipPreviewStack/SubViewportContainer/SubViewport" unique_id=362404321]
 
+[node name="PrepPartsStrip" type="MarginContainer" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/ShipPreviewStack" unique_id=2100576001]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = -94.0
+offset_right = -16.0
+offset_bottom = -14.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+
+[node name="GlobalPartsHBox" type="HBoxContainer" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/ShipPreviewStack/PrepPartsStrip" unique_id=2100576002]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+alignment = 1
+mouse_filter = 2
+
 [node name="Stage" type="MarginContainer" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs" unique_id=2107525904]
 visible = false
 layout_mode = 2
