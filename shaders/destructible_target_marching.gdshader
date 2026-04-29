@@ -18,13 +18,13 @@ uniform float highlight_mix : hint_range(0.0, 1.0) = 0.72;
 // Contour outline between differing materials / material vs empty.
 uniform vec4 edge_color : source_color = vec4(0.04, 0.04, 0.06, 1.0);
 // Width in bilinear-weight / rank-diff units for boundaries where ranks compete (bias shifts dominance).
-uniform float edge_width_between_materials : hint_range(0.0, 0.5) = 0.15;
+uniform float edge_width_between_materials : hint_range(0.0, 0.5) = 0.12;
 
 // Pixel smoothing width for alpha boundary (in weight units).
 uniform float alpha_aa : hint_range(0.0, 0.5) = 0.08;
 
 // Ranking boost toward higher material indices (1..type_count-1). At 0, off. Largest index gets full +bias (×(1+bias)).
-uniform float high_index_weight_bias : hint_range(0.0, 2.0) = 1.2;
+uniform float high_index_weight_bias : hint_range(0.0, 2.0) = 1.0;
 
 // Top-left of the view texture in world cell coords; fuel uses `fuel_world_origin + p` so the
 // galaxy scroll is world-locked and does not jump when the camera pans.
@@ -225,12 +225,8 @@ void fragment() {
 	float damage_taken = 1.0 - hp_ratio;
 	vec4 base = type_colors[best_id];
 	vec3 rgb;
-	// Dirt (TYPE_DIRT): lower HP = darker; damage also desaturates toward luminance (no red tint).
-	if (best_id == MATERIAL_DIRT) {
-		rgb = base.rgb * mix(0.3, 1.0, hp_ratio);
-		float lum = dot(rgb, vec3(0.2126, 0.7152, 0.0722));
-		rgb = mix(rgb, vec3(lum), damage_taken * 0.72);
-	} else if (best_id == MATERIAL_FUEL) {
+	
+	if (best_id == MATERIAL_FUEL) {
 		rgb = fuel_cell_rgb(fuel_world_origin + p, hp_ratio, TIME);
 	} else {
 		rgb = base.rgb * mix(0.45, 1.0, hp_ratio);
