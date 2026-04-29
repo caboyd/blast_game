@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://dr7td61b7wsqq"]
 
 [ext_resource type="Script" uid="uid://dy8m3p7vxk01q" path="res://scripts/prep/Prep.gd" id="1"]
-[ext_resource type="PackedScene" path="res://scenes/prep/PrepPartIconTemplate.tscn" id="2"]
+[ext_resource type="PackedScene" uid="uid://bdax8wt0en6r6" path="res://scenes/prep/PrepPartIconTemplate.tscn" id="2"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_shop_money_yellow"]
 content_margin_left = 10.0
@@ -93,6 +93,7 @@ text = "Stats"
 horizontal_alignment = 1
 
 [node name="StatsTabs" type="TabContainer" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter" unique_id=554083702]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 current_tab = 0
@@ -110,49 +111,57 @@ metadata/_tab_index = 0
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="ShipFuelLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox" unique_id=570433817]
+[node name="PrepShipFuelLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox" unique_id=570433817]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
 text = "Fuel: 0"
 autowrap_mode = 3
 
-[node name="VisibilityRangeLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox" unique_id=1677405545]
+[node name="PrepShipVisibilityLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox" unique_id=1677405545]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
 text = "Visibility Range: 3 cells"
 autowrap_mode = 3
 
-[node name="MiningRadiusLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox" unique_id=127091633]
+[node name="PrepShipMiningRadiusLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox" unique_id=127091633]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
 text = "Mining Radius: 1.00"
 autowrap_mode = 3
 
-[node name="MoveSpeedLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox" unique_id=1484864996]
+[node name="PrepShipMoveSpeedLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox" unique_id=1484864996]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
 text = "Move Speed: 8"
 autowrap_mode = 3
 
-[node name="TurnRateLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox" unique_id=2100567050]
+[node name="PrepShipTurnRateLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox" unique_id=2100567050]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
 text = "Turn Rate: 9.0 rad/s"
 autowrap_mode = 3
 
-[node name="MiningPowerLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox" unique_id=1560011577]
+[node name="PrepShipMiningPowerLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox" unique_id=1560011577]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
 text = "Mining Power: 1.0"
 autowrap_mode = 3
 
-[node name="MiningIntervalLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox" unique_id=54666752]
+[node name="PrepShipMiningIntervalLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox" unique_id=54666752]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
 text = "Mining Interval: 0.2"
 autowrap_mode = 3
 
-[node name="MiningPowerPerSecLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox" unique_id=1959943120]
+[node name="PrepShipMiningDpsLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Ship/ShipVBox" unique_id=1959943120]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
 text = "Mining Power / s: 5.0"
@@ -172,19 +181,22 @@ metadata/_tab_index = 1
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="CareerBlocksLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Progress/ProgressVBox" unique_id=417420215]
+[node name="PrepCareerBlocksLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Progress/ProgressVBox" unique_id=417420215]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
 text = "Blocks destroyed (all time): 0"
 autowrap_mode = 3
 
-[node name="MoneyLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Progress/ProgressVBox" unique_id=176120160]
+[node name="PrepProgressMoneyLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Progress/ProgressVBox" unique_id=176120160]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
 text = "Money: 0"
 autowrap_mode = 3
 
-[node name="DepthLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Progress/ProgressVBox" unique_id=1968221354]
+[node name="PrepFurthestDepthLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/StatsPanel/StatsMargin/StatsOuter/StatsTabs/Progress/ProgressVBox" unique_id=1968221354]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
 text = "Furthest depth: 0 cells"
@@ -199,73 +211,67 @@ size_flags_stretch_ratio = 1.4
 theme_override_constants/separation = 4
 
 [node name="ShipTabs" type="TabContainer" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn" unique_id=1437096350]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_font_sizes/font_size = 16
 current_tab = 0
 
-[node name="Preview" type="VBoxContainer" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs" unique_id=2006811125]
+[node name="Preview" type="Control" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs" unique_id=101163978]
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_constants/separation = 10
 metadata/_tab_index = 0
 
-[node name="ShipPickerStrip" type="HBoxContainer" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview" unique_id=2100567001]
+[node name="VBoxContainer" type="VBoxContainer" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview" unique_id=2138058261]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ShipPickerStrip" type="HBoxContainer" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/VBoxContainer" unique_id=2100567001]
+custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="ShipPickerPrev" type="Button" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/ShipPickerStrip" unique_id=2100567010]
+[node name="PrepShipPickerPrevBtn" type="Button" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/VBoxContainer/ShipPickerStrip" unique_id=2100567010]
+unique_name_in_owner = true
 visible = false
 custom_minimum_size = Vector2(36, 36)
 layout_mode = 2
 focus_mode = 0
 text = "<"
 
-[node name="ShipPickerScroll" type="ScrollContainer" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/ShipPickerStrip" unique_id=2100567011]
+[node name="PrepShipPickerScroll" type="ScrollContainer" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/VBoxContainer/ShipPickerStrip" unique_id=2100567011]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 horizontal_scroll_mode = 2
 vertical_scroll_mode = 0
 
-[node name="ShipPickerHBox" type="HBoxContainer" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/ShipPickerStrip/ShipPickerScroll" unique_id=2100567012]
+[node name="PrepShipPickerHBox" type="HBoxContainer" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/VBoxContainer/ShipPickerStrip/PrepShipPickerScroll" unique_id=2100567012]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/separation = 6
 
-[node name="ShipPickerNext" type="Button" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/ShipPickerStrip" unique_id=2100567013]
+[node name="PrepShipPickerNextBtn" type="Button" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/VBoxContainer/ShipPickerStrip" unique_id=2100567013]
+unique_name_in_owner = true
 visible = false
 custom_minimum_size = Vector2(36, 36)
 layout_mode = 2
 focus_mode = 0
 text = ">"
 
-[node name="ShipLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview" unique_id=1890885564]
-layout_mode = 2
-theme_override_font_sizes/font_size = 18
-text = "Scout"
-horizontal_alignment = 1
-
-[node name="ShipDescriptionLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview" unique_id=2100567020]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.75, 0.79, 0.85, 1)
-theme_override_font_sizes/font_size = 14
-horizontal_alignment = 1
-autowrap_mode = 3
-
-[node name="ShipLockReasonLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview" unique_id=2100567002]
-visible = false
-layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.72, 0.45, 1)
-theme_override_font_sizes/font_size = 14
-horizontal_alignment = 1
-autowrap_mode = 3
-
-[node name="ShipPreviewStack" type="Control" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview" unique_id=2100575999]
+[node name="PrepShipPreviewStack" type="Control" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/VBoxContainer" unique_id=2100575999]
+unique_name_in_owner = true
+clip_contents = true
 custom_minimum_size = Vector2(400, 300)
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="SubViewportContainer" type="SubViewportContainer" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/ShipPreviewStack" unique_id=1498962718]
+[node name="SubViewportContainer" type="SubViewportContainer" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/VBoxContainer/PrepShipPreviewStack" unique_id=1498962718]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -274,17 +280,19 @@ grow_horizontal = 2
 grow_vertical = 2
 stretch = true
 
-[node name="SubViewport" type="SubViewport" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/ShipPreviewStack/SubViewportContainer" unique_id=71169305]
+[node name="SubViewport" type="SubViewport" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/VBoxContainer/PrepShipPreviewStack/SubViewportContainer" unique_id=71169305]
 handle_input_locally = false
-size = Vector2i(612, 378)
+size = Vector2i(612, 416)
 render_target_update_mode = 4
 
-[node name="Camera2D" type="Camera2D" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/ShipPreviewStack/SubViewportContainer/SubViewport" unique_id=577357977]
+[node name="Camera2D" type="Camera2D" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/VBoxContainer/PrepShipPreviewStack/SubViewportContainer/SubViewport" unique_id=577357977]
 position = Vector2(200, 180)
 
-[node name="World" type="Node2D" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/ShipPreviewStack/SubViewportContainer/SubViewport" unique_id=362404321]
+[node name="PrepShipPreviewWorld" type="Node2D" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/VBoxContainer/PrepShipPreviewStack/SubViewportContainer/SubViewport" unique_id=362404321]
+unique_name_in_owner = true
 
-[node name="PrepPartsStrip" type="MarginContainer" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/ShipPreviewStack" unique_id=2100576001]
+[node name="PrepPartsOverlayStrip" type="MarginContainer" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/VBoxContainer/PrepShipPreviewStack" unique_id=2100576001]
+unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 12
 anchor_top = 1.0
@@ -298,12 +306,56 @@ grow_horizontal = 2
 grow_vertical = 0
 mouse_filter = 2
 
-[node name="GlobalPartsHBox" type="HBoxContainer" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/ShipPreviewStack/PrepPartsStrip" unique_id=2100576002]
+[node name="PrepGlobalPartsHBox" type="HBoxContainer" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/VBoxContainer/PrepShipPreviewStack/PrepPartsOverlayStrip" unique_id=2100576002]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
+mouse_filter = 2
 theme_override_constants/separation = 10
 alignment = 1
-mouse_filter = 2
+
+[node name="ShipPreviewOverlay" type="Control" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview" unique_id=1509690689]
+anchors_preset = 0
+offset_top = 45.42
+offset_right = 612.0
+offset_bottom = 157.42
+size_flags_vertical = 3
+
+[node name="Wrapper" type="PanelContainer" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/ShipPreviewOverlay" unique_id=1348762859]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 82.0
+grow_horizontal = 2
+
+[node name="ShipLabelContainer" type="VBoxContainer" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/ShipPreviewOverlay/Wrapper" unique_id=798184253]
+layout_mode = 2
+size_flags_vertical = 0
+
+[node name="ShipPreviewLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/ShipPreviewOverlay/Wrapper/ShipLabelContainer" unique_id=1890885564]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Scout"
+horizontal_alignment = 1
+
+[node name="ShipPreviewDescriptionLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/ShipPreviewOverlay/Wrapper/ShipLabelContainer" unique_id=2100567020]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.79, 0.85, 1)
+theme_override_font_sizes/font_size = 14
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="ShipPreviewLockReasonLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Preview/ShipPreviewOverlay/Wrapper/ShipLabelContainer" unique_id=2100567002]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.72, 0.45, 1)
+theme_override_font_sizes/font_size = 14
+horizontal_alignment = 1
+autowrap_mode = 3
 
 [node name="Stage" type="MarginContainer" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs" unique_id=2107525904]
 visible = false
@@ -326,7 +378,8 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 6
 
-[node name="StageSummaryLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Stage/StageScroll/StageVBox" unique_id=738306154]
+[node name="PrepStageSummaryLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Stage/StageScroll/StageVBox" unique_id=738306154]
+unique_name_in_owner = true
 layout_mode = 2
 text = "Stage: planet1"
 autowrap_mode = 3
@@ -336,7 +389,8 @@ layout_mode = 2
 text = "Planet with basic resources"
 autowrap_mode = 3
 
-[node name="StageTypeTree" type="Tree" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Stage/StageScroll/StageVBox" unique_id=318527422]
+[node name="PrepStageBlockTypesTree" type="Tree" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Stage/StageScroll/StageVBox" unique_id=318527422]
+unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 100)
 layout_mode = 2
 size_flags_vertical = 3
@@ -378,36 +432,42 @@ layout_mode = 2
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_shop_money_yellow")
 
-[node name="ShopMoneyLabel" type="Label" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/ShopMoneyRow/ShopMoneyPanel" unique_id=1806844309]
+[node name="PrepShopMoneyLabel" type="Label" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/ShopMoneyRow/ShopMoneyPanel" unique_id=1806844309]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0, 0, 0, 1)
 theme_override_font_sizes/font_size = 16
 text = "Money: 0"
 horizontal_alignment = 1
 
-[node name="ShopLabel" type="Label" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner" unique_id=1468793434]
+[node name="PrepShopSectionTitleLabel" type="Label" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner" unique_id=1468793434]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 18
 text = "Upgrades"
 horizontal_alignment = 1
 
-[node name="ShopBatchRow" type="HBoxContainer" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner" unique_id=340891043]
+[node name="PrepShopBatchRow" type="HBoxContainer" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner" unique_id=340891043]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 6
 alignment = 2
 
-[node name="ShopBatchBtn" type="Button" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/ShopBatchRow" unique_id=1581972107]
+[node name="PrepShopBatchBtn" type="Button" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/PrepShopBatchRow" unique_id=1581972107]
+unique_name_in_owner = true
 custom_minimum_size = Vector2(96, 28)
 layout_mode = 2
 focus_mode = 0
 text = "Buy: 1x"
 
-[node name="ShopUpgrades" type="VBoxContainer" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner" unique_id=353491670]
+[node name="PrepShopUpgradesList" type="VBoxContainer" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner" unique_id=353491670]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/separation = 8
 
-[node name="StartMission" type="Button" parent="Margin/RootVBox" unique_id=368516084]
+[node name="PrepStartMissionBtn" type="Button" parent="Margin/RootVBox" unique_id=368516084]
+unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 48)
 layout_mode = 2
 text = "Start Mission"
@@ -416,7 +476,8 @@ text = "Start Mission"
 layout_mode = 2
 alignment = 2
 
-[node name="DebugResetProgress" type="Button" parent="Margin/RootVBox/DebugRow" unique_id=541474577]
+[node name="PrepDebugResetProgressBtn" type="Button" parent="Margin/RootVBox/DebugRow" unique_id=541474577]
+unique_name_in_owner = true
 custom_minimum_size = Vector2(220, 32)
 layout_mode = 2
 text = "DEBUG: Reset All Progress"

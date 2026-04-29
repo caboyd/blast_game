@@ -28,12 +28,13 @@ mouse_filter = 2
 theme_override_constants/separation = 8
 alignment = 1
 
+[node name="Spacer" type="Control" parent="Col/Row" unique_id=1843760067]
+layout_mode = 2
+
 [node name="Icon" type="SubViewportContainer" parent="Col/Row" unique_id=1392992179]
 custom_minimum_size = Vector2(42, 42)
 layout_mode = 2
-size_flags_vertical = 4
 mouse_filter = 2
-stretch = true
 
 [node name="SubViewport" type="SubViewport" parent="Col/Row/Icon" unique_id=1747384432]
 transparent_bg = true
@@ -67,6 +68,7 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.94, 0.97, 1, 1)
 theme_override_font_sizes/font_size = 13
 text = "Missing Part"
+horizontal_alignment = 1
 vertical_alignment = 1
 autowrap_mode = 3
 text_overrun_behavior = 3
@@ -75,6 +77,9 @@ max_lines_visible = 2
 [node name="Spacer2" type="Control" parent="Col/Row/TextCol" unique_id=1125607201]
 layout_mode = 2
 size_flags_vertical = 3
+
+[node name="Spacer2" type="Control" parent="Col/Row" unique_id=981261515]
+layout_mode = 2
 
 [node name="Row2" type="HBoxContainer" parent="Col" unique_id=478923335]
 layout_mode = 2
