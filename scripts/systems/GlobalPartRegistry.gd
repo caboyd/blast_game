@@ -35,6 +35,8 @@ const _LEGACY_PART_IDS := {
 
 const _SHIP_UPGRADE_MATH = preload("res://scripts/data/ShipUpgradeMath.gd")
 const _GlobalPartDataScript = preload("res://scripts/data/GlobalPartData.gd")
+const _GlobalPartStatEffect = preload("res://scripts/data/GlobalPartStatEffect.gd")
+const _GlobalPartMovementPenaltyEffect = preload("res://scripts/data/GlobalPartMovementPenaltyEffect.gd")
 
 var _parts_by_id: Dictionary = {} # StringName -> GlobalPartData
 
@@ -127,6 +129,9 @@ func load_from_config_file(c: ConfigFile) -> void:
 			var lv: int = int(raw) if raw != null else 1
 			var pid: StringName = _normalize_part_id(StringName(str(k)))
 			lv = maxi(1, lv)
+			var pd_lv: GlobalPartData = get_part_data(pid)
+			if pd_lv != null:
+				lv = mini(lv, pd_lv.get_max_level())
 			if _part_levels.has(pid):
 				_part_levels[pid] = maxi(_part_levels[pid], lv)
 			else:
@@ -177,14 +182,18 @@ func _slot_key_for_part_data(pd: GlobalPartData) -> StringName:
 
 func get_part_level(part_id: StringName) -> int:
 	part_id = _normalize_part_id(part_id)
-	return maxi(1, int(_part_levels.get(part_id, 1)))
+	var lv: int = maxi(1, int(_part_levels.get(part_id, 1)))
+	var pd: GlobalPartData = get_part_data(part_id)
+	if pd != null:
+		lv = mini(lv, pd.get_max_level())
+	return lv
 
 
 func get_part_max_level(part_id: StringName) -> int:
 	var pd: GlobalPartData = get_part_data(part_id)
 	if pd == null:
 		return 1
-	return maxi(1, int(pd.max_level))
+	return pd.get_max_level()
 
 
 func is_part_max_level(part_id: StringName) -> bool:
@@ -244,15 +253,14 @@ func apply_effects_for_stat(stat: StringName, base: float) -> float:
 		if pd == null:
 			continue
 		var level: int = get_part_level(pid)
-		for eff in pd.effects:
-			if eff == null:
+		for eff in pd.get_effects_for_level(level):
+			if eff == null or not (eff is _GlobalPartStatEffect):
 				continue
-			var est := GlobalPartEffect.normalize_stat_id(eff.stat)
-			if est == &"movement_stop":
-				continue
+			var se := eff as _GlobalPartStatEffect
+			var est := GlobalPartEffect.normalize_stat_id(se.stat)
 			if est != st:
 				continue
-			v = _SHIP_UPGRADE_MATH.apply_effect(v, level, eff)
+			v = _SHIP_UPGRADE_MATH.apply_effect(v, 1, se)
 	return v
 
 
@@ -269,15 +277,15 @@ func treads_movement_effect_timing() -> PackedFloat32Array:
 	var pd: GlobalPartData = get_part_data(equipped_treads_id)
 	if pd == null:
 		return PackedFloat32Array([0.0, 0.0, 0.0])
-	for eff in pd.effects:
-		if eff == null:
+	var lv: int = get_part_level(equipped_treads_id)
+	for eff in pd.get_effects_for_level(lv):
+		if eff == null or not (eff is _GlobalPartMovementPenaltyEffect):
 			continue
-		if GlobalPartEffect.normalize_stat_id(eff.stat) != &"movement_stop":
-			continue
-		var ev: float = float(eff.movement_stop_every_s)
-		var du: float = float(eff.movement_stop_duration_s)
+		var mpe := eff as _GlobalPartMovementPenaltyEffect
+		var ev: float = float(mpe.every_s)
+		var du: float = float(mpe.duration_s)
 		if ev > 0.0 and du > 0.0:
-			var mult: float = clampf(float(eff.movement_stop_speed_multiplier), 0.0, 1.0)
+			var mult: float = clampf(float(mpe.speed_multiplier), 0.0, 1.0)
 			return PackedFloat32Array([ev, du, mult])
 	return PackedFloat32Array([0.0, 0.0, 0.0])
 

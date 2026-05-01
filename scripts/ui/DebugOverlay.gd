@@ -5,6 +5,9 @@ var _gold_give: Button
 var _return_to_prep: Button
 var _debug_visuals: CheckButton
 var _disable_fog: CheckButton
+var _zoom_out: Button
+var _zoom_in: Button
+var _zoom_value: Label
 var _viewport_info: Label
 
 
@@ -14,6 +17,9 @@ func _ready() -> void:
 	_return_to_prep = get_node_or_null("Panel/VBox/ReturnToPrep") as Button
 	_debug_visuals = get_node_or_null("Panel/VBox/DebugVisuals") as CheckButton
 	_disable_fog = get_node_or_null("Panel/VBox/DisableFog") as CheckButton
+	_zoom_out = get_node_or_null("Panel/VBox/ZoomRow/ZoomOut") as Button
+	_zoom_in = get_node_or_null("Panel/VBox/ZoomRow/ZoomIn") as Button
+	_zoom_value = get_node_or_null("Panel/VBox/ZoomRow/ZoomValue") as Label
 	_viewport_info = get_node_or_null("../../GameplayBlock/AspectRatioContainer/ViewportFrame/ViewportInfo") as Label
 
 	if _gold_give:
@@ -25,8 +31,13 @@ func _ready() -> void:
 	if _disable_fog:
 		_disable_fog.button_pressed = GameStatistics.debug_fog_disabled
 		_disable_fog.toggled.connect(_on_disable_fog_toggled)
+	if _zoom_out:
+		_zoom_out.pressed.connect(_on_zoom_out_pressed)
+	if _zoom_in:
+		_zoom_in.pressed.connect(_on_zoom_in_pressed)
 	var on: bool = _debug_visuals.button_pressed if _debug_visuals else false
 	_apply_debug_visuals(on)
+	_refresh_zoom_value()
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -52,6 +63,14 @@ func _on_disable_fog_toggled(pressed: bool) -> void:
 	GameStatistics.set_debug_fog_disabled(pressed)
 
 
+func _on_zoom_out_pressed() -> void:
+	_adjust_debug_zoom(-1)
+
+
+func _on_zoom_in_pressed() -> void:
+	_adjust_debug_zoom(1)
+
+
 func _on_active_target_changed(_new_target: Node2D) -> void:
 	if _debug_visuals:
 		_apply_debug_visuals(_debug_visuals.button_pressed)
@@ -69,3 +88,27 @@ func _apply_debug_visuals(on: bool) -> void:
 		for n in get_tree().get_nodes_in_group(&"pickup_debug_redraw"):
 			if n is CanvasItem:
 				(n as CanvasItem).queue_redraw()
+
+
+func _adjust_debug_zoom(step_delta: int) -> void:
+	var host := _debug_host()
+	if host != null and host.has_method(&"adjust_debug_camera_zoom"):
+		host.call(&"adjust_debug_camera_zoom", step_delta)
+	_refresh_zoom_value()
+
+
+func _refresh_zoom_value() -> void:
+	if _zoom_value == null:
+		return
+	var zoom_multiplier: float = 1.0
+	var host := _debug_host()
+	if host != null and host.has_method(&"get_debug_camera_zoom_multiplier"):
+		zoom_multiplier = float(host.call(&"get_debug_camera_zoom_multiplier"))
+	_zoom_value.text = "%d%%" % int(roundf(zoom_multiplier * 100.0))
+
+
+func _debug_host() -> Node:
+	var p := get_parent()
+	if p == null:
+		return null
+	return p.get_parent()

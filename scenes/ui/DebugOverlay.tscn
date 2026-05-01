@@ -60,3 +60,24 @@ text = "Show Debug Visuals"
 [node name="DisableFog" type="CheckButton" parent="Panel/VBox"]
 layout_mode = 2
 text = "Hide fog overlay"
+
+[node name="ZoomRow" type="HBoxContainer" parent="Panel/VBox"]
+layout_mode = 2
+
+[node name="ZoomLabel" type="Label" parent="Panel/VBox/ZoomRow"]
+layout_mode = 2
+text = "Zoom"
+
+[node name="ZoomOut" type="Button" parent="Panel/VBox/ZoomRow"]
+layout_mode = 2
+text = "-"
+
+[node name="ZoomValue" type="Label" parent="Panel/VBox/ZoomRow"]
+custom_minimum_size = Vector2(48, 0)
+layout_mode = 2
+horizontal_alignment = 1
+text = "100%"
+
+[node name="ZoomIn" type="Button" parent="Panel/VBox/ZoomRow"]
+layout_mode = 2
+text = "+"

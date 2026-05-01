@@ -3,7 +3,7 @@ extends Area2D
 
 @export var pickup_id: StringName = &""
 @export var part_id: StringName = &""
-## Which tier-up pickup this is for this part (`0` … `GlobalPartData.max_level - 1`).
+## Which tier-up pickup this is for this part (`0` … `GlobalPartData.get_max_level() - 1`).
 @export var pickup_index: int = 0
 ## See `GlobalPartRegistry.PICKUP_PERSISTENCE_*`.
 @export var persistence: StringName = &"once"

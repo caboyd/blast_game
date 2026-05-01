@@ -1,13 +1,30 @@
 [gd_resource type="Resource" script_class="GlobalPartData" format=3 uid="uid://cm56b8f7t472d"]
 
 [ext_resource type="Script" uid="uid://b8431vs7scjj6" path="res://scripts/data/GlobalPartData.gd" id="1"]
-[ext_resource type="Script" uid="uid://mf14x1dbtowp" path="res://scripts/data/GlobalPartEffect.gd" id="2"]
+[ext_resource type="Script" path="res://scripts/data/GlobalPartEffectSet.gd" id="1_lv3kd"]
+[ext_resource type="Script" uid="uid://b8k3n2m9st4t01" path="res://scripts/data/GlobalPartStatEffect.gd" id="2"]
 [ext_resource type="PackedScene" uid="uid://uhwa18fyqred" path="res://scenes/ship_parts/drill/part_drill_t1.tscn" id="3"]
 [ext_resource type="Script" uid="uid://dbmf6jiisv031" path="res://scripts/data/GlobalPartVisualData.gd" id="4_vis"]
 [ext_resource type="PackedScene" uid="uid://df8wrxxuq2de4" path="res://scenes/ship_parts/drill/ground/part_drill_t1_ground.tscn" id="5_grnd"]
 
-[sub_resource type="Resource" id="eff_md"]
+[sub_resource type="Resource" id="Resource_5rk36"]
 script = ExtResource("2")
+metadata/_custom_type_script = "uid://b8k3n2m9st4t01"
+
+[sub_resource type="Resource" id="Resource_031rk"]
+script = ExtResource("1_lv3kd")
+effects = Array[ExtResource("2")]([SubResource("Resource_5rk36")])
+metadata/_custom_type_script = "uid://b2fxsetlvl01u"
+
+[sub_resource type="Resource" id="Resource_k81up"]
+script = ExtResource("2")
+value = 1.5
+metadata/_custom_type_script = "uid://b8k3n2m9st4t01"
+
+[sub_resource type="Resource" id="Resource_w588u"]
+script = ExtResource("1_lv3kd")
+effects = Array[ExtResource("2")]([SubResource("Resource_k81up")])
+metadata/_custom_type_script = "uid://b2fxsetlvl01u"
 
 [sub_resource type="Resource" id="visuals_inline"]
 script = ExtResource("4_vis")
@@ -19,8 +36,7 @@ script = ExtResource("1")
 id = &"part_drill_t1"
 part_type = "drill"
 display_name = "Dilapidated"
-max_level = 2
 tier = 1
 visuals = SubResource("visuals_inline")
-effects = Array[ExtResource("2")]([SubResource("eff_md")])
+effect_sets_by_level = Array[ExtResource("1_lv3kd")]([SubResource("Resource_031rk"), SubResource("Resource_w588u")])
 allowed_mine_type_ids = null

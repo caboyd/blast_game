@@ -1,5 +1,8 @@
 extends PanelContainer
 
+const _GlobalPartStatEffect = preload("res://scripts/data/GlobalPartStatEffect.gd")
+const _GlobalPartMovementPenaltyEffect = preload("res://scripts/data/GlobalPartMovementPenaltyEffect.gd")
+
 
 func setup_from_equipped_slot(type_key: StringName, part_id: StringName) -> void:
 	var pd: GlobalPartData = GlobalPartRegistry.get_part_data(part_id)
@@ -51,34 +54,43 @@ func _effects_summary_text(part_id: StringName) -> String:
 		return ""
 	var lvl: int = GlobalPartRegistry.get_part_level(part_id)
 	var rows: PackedStringArray = PackedStringArray()
-	for eff in pd.effects:
+	for eff in pd.get_effects_for_level(lvl):
 		if eff == null:
 			continue
-		var est := GlobalPartEffect.normalize_stat_id(eff.stat)
-		if est == &"movement_effect":
-			var evs: float = float(eff.movement_effect_every_s)
-			var dus: float = float(eff.movement_effect_duration_s)
-			var msm: float = clampf(float(eff.movement_effect_speed_multiplier), 0.0, 1.0)
+		if eff is _GlobalPartMovementPenaltyEffect:
+			var mpe := eff as _GlobalPartMovementPenaltyEffect
+			var evs: float = float(mpe.every_s)
+			var dus: float = float(mpe.duration_s)
+			var msm: float = clampf(float(mpe.speed_multiplier), 0.0, 1.0)
 			if evs > 0.0 and dus > 0.0:
 				rows.append(
 					(
-						"Movement stutter [lvl %s]: every %.2fs for %.2fs → speed × %.0f%%"
+						"Movement stutter (level %d): every %.2fs for %.2fs → speed × %.0f%%"
 						% [lvl, evs, dus, msm * 100.0]
 					)
 				)
 			continue
+		if not (eff is _GlobalPartStatEffect):
+			continue
+		var se := eff as _GlobalPartStatEffect
+		var est := GlobalPartEffect.normalize_stat_id(se.stat)
 		var stat_nm: String = String(est).replace("_", " ")
-		var op: String = String(eff.operation)
-		var val: float = float(eff.value)
+		var op: String = String(se.operation)
+		var val: float = float(se.value)
 		var op_word: String = "mult" if op == "multiply" else "add"
-		rows.append("%s [%s lvl %s] %s" % [stat_nm, op_word, lvl, _format_effect_value(val, op)])
+		rows.append(
+			"%s (level %d, %s) %s" % [stat_nm, lvl, op_word, _format_effect_value(val, op)]
+		)
 
 	var acc := ""
 	for i in rows.size():
 		if i > 0:
 			acc += "\n"
 		acc += rows[i]
-	return acc
+	var hdr := ""
+	if pd.get_max_level() > 1 and rows.size() > 0:
+		hdr = "[b]Level %d effects[/b]\n" % lvl
+	return hdr + acc
 
 
 func _format_effect_value(val: float, operation: String) -> String:
