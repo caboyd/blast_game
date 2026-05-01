@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://b8431vs7scjj6" path="res://scripts/data/GlobalPartData.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/data/GlobalPartEffectSet.gd" id="1_0cvbw"]
-[ext_resource type="Script" uid="uid://b8k3n2m9st4t01" path="res://scripts/data/GlobalPartStatEffect.gd" id="2"]
+[ext_resource type="Script" uid="uid://drjo0qypkcvo3" path="res://scripts/data/ShipUpgradeEffect.gd" id="2"]
 [ext_resource type="PackedScene" uid="uid://c2aagd7togt5k" path="res://scenes/ship_parts/fuel_tank/ground/part_fuel_tank_t1_ground.tscn" id="3_sixo0"]
 [ext_resource type="PackedScene" uid="uid://cvisrv50hnhs5" path="res://scenes/ship_parts/fuel_tank/part_fuel_tank_t1.tscn" id="4_l5fcr"]
 [ext_resource type="Script" uid="uid://dbmf6jiisv031" path="res://scripts/data/GlobalPartVisualData.gd" id="4_vis"]
@@ -10,13 +10,16 @@
 [sub_resource type="Resource" id="Resource_ndris"]
 script = ExtResource("2")
 stat = "fuel_max"
+operation = "multiply"
 value = 0.9
-metadata/_custom_type_script = "uid://b8k3n2m9st4t01"
+metadata/_custom_type_script = "uid://drjo0qypkcvo3"
 
 [sub_resource type="Resource" id="Resource_ae1dh"]
 script = ExtResource("2")
 stat = "fuel_drain_per_second"
-metadata/_custom_type_script = "uid://b8k3n2m9st4t01"
+operation = "multiply"
+value = 1.0
+metadata/_custom_type_script = "uid://drjo0qypkcvo3"
 
 [sub_resource type="Resource" id="Resource_58bcc"]
 script = ExtResource("1_0cvbw")
@@ -26,12 +29,16 @@ metadata/_custom_type_script = "uid://b2fxsetlvl01u"
 [sub_resource type="Resource" id="Resource_f0iw0"]
 script = ExtResource("2")
 stat = "fuel_max"
-metadata/_custom_type_script = "uid://b8k3n2m9st4t01"
+operation = "multiply"
+value = 1.0
+metadata/_custom_type_script = "uid://drjo0qypkcvo3"
 
 [sub_resource type="Resource" id="Resource_acgmw"]
 script = ExtResource("2")
 stat = "fuel_drain_per_second"
-metadata/_custom_type_script = "uid://b8k3n2m9st4t01"
+operation = "multiply"
+value = 1.0
+metadata/_custom_type_script = "uid://drjo0qypkcvo3"
 
 [sub_resource type="Resource" id="Resource_mxm5l"]
 script = ExtResource("1_0cvbw")

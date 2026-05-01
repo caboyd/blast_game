@@ -5,7 +5,6 @@ const BottomHUDScene := preload("res://scenes/ui/BottomHUD.tscn")
 const PrepScene := preload("res://scenes/prep/Prep.tscn")
 const ScoutShipData := preload("res://data/ships/scout.tres")
 const ProspectorShipData := preload("res://data/ships/prospector.tres")
-const _GlobalPartStatEffect = preload("res://scripts/data/GlobalPartStatEffect.gd")
 const _GlobalPartMovementPenaltyEffect = preload("res://scripts/data/GlobalPartMovementPenaltyEffect.gd")
 
 
@@ -113,7 +112,7 @@ func _ready() -> void:
 	_assert_true(GlobalPartRegistry.get_part_max_level(&"part_drill_t1") == 2, "drill t1 has two levels")
 	var d_drill_effs: Array = d_t1.get_effects_for_level(1)
 	_assert_true(d_drill_effs.size() > 0, "drill t1 level 1 has effects")
-	_assert_true(d_drill_effs[0] is _GlobalPartStatEffect, "drill effect is stat typed")
+	_assert_true(d_drill_effs[0] is ShipUpgradeEffect, "drill effect is stat typed")
 
 	GlobalPartRegistry.reset_to_t0_defaults()
 	var cfg_gp := ConfigFile.new()
@@ -156,7 +155,7 @@ func _ready() -> void:
 	for e in treads_pd.get_effects_for_level(1):
 		if e is _GlobalPartMovementPenaltyEffect:
 			treads_l1_mpe = true
-		if e is _GlobalPartStatEffect:
+		if e is ShipUpgradeEffect:
 			treads_l1_stats += 1
 	_assert_true(treads_l1_mpe, "treads L1 includes movement penalty resource")
 	_assert_true(treads_l1_stats >= 1, "treads L1 includes stat effect resource")

@@ -6,7 +6,6 @@ extends Node
 ## The Prep shop only lists upgrades for the currently selected ship.
 
 const _SHIP_DATA_SCRIPT = preload("res://scripts/data/ShipData.gd")
-const _SHIP_UPGRADE_MATH = preload("res://scripts/data/ShipUpgradeMath.gd")
 const _ShipUpgradeEffectScript = preload("res://scripts/data/ShipUpgradeEffect.gd")
 
 const _SHIPS_DIR := "res://data/ships/"
@@ -206,7 +205,7 @@ func apply_effects_for_stat(stat: StringName, base: float) -> float:
 			var effs: Array = ud.get("effects") as Array
 			for eff in effs:
 				if eff != null and _ShipUpgradeEffectScript.normalize_effect_stat_id(eff.get("stat")) == stat:
-					v = _SHIP_UPGRADE_MATH.apply_effect(v, lvl, eff)
+					v = _ShipUpgradeEffectScript.apply_effect(v, lvl, eff)
 	return v
 
 
@@ -240,7 +239,7 @@ func preview_effective_stat(stat: StringName, focus_upgrade_id: StringName, focu
 			var effs: Array = ud.get("effects") as Array
 			for eff in effs:
 				if eff != null and _ShipUpgradeEffectScript.normalize_effect_stat_id(eff.get("stat")) == stat:
-					v = _SHIP_UPGRADE_MATH.apply_effect(v, lvl, eff)
+					v = _ShipUpgradeEffectScript.apply_effect(v, lvl, eff)
 	return v
 
 

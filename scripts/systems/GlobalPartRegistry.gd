@@ -33,9 +33,7 @@ const _LEGACY_PART_IDS := {
 	&"treads_t1": &"part_treads_t1",
 }
 
-const _SHIP_UPGRADE_MATH = preload("res://scripts/data/ShipUpgradeMath.gd")
 const _GlobalPartDataScript = preload("res://scripts/data/GlobalPartData.gd")
-const _GlobalPartStatEffect = preload("res://scripts/data/GlobalPartStatEffect.gd")
 const _GlobalPartMovementPenaltyEffect = preload("res://scripts/data/GlobalPartMovementPenaltyEffect.gd")
 
 var _parts_by_id: Dictionary = {} # StringName -> GlobalPartData
@@ -245,7 +243,7 @@ func equip_part(part_id: StringName) -> void:
 
 ## After upgrades: `base` is already ship-upgrade-adjusted.
 func apply_effects_for_stat(stat: StringName, base: float) -> float:
-	var st := GlobalPartEffect.normalize_stat_id(stat)
+	var st := ShipUpgradeEffect.normalize_stat_id(stat)
 	var v: float = base
 	for pk in [KEY_FUEL_TANK, KEY_DRILL, KEY_TREADS]:
 		var pid: StringName = get_equipped_for_type_key(pk)
@@ -254,13 +252,13 @@ func apply_effects_for_stat(stat: StringName, base: float) -> float:
 			continue
 		var level: int = get_part_level(pid)
 		for eff in pd.get_effects_for_level(level):
-			if eff == null or not (eff is _GlobalPartStatEffect):
+			if eff == null or not (eff is ShipUpgradeEffect):
 				continue
-			var se := eff as _GlobalPartStatEffect
-			var est := GlobalPartEffect.normalize_stat_id(se.stat)
+			var se := eff as ShipUpgradeEffect
+			var est := ShipUpgradeEffect.normalize_stat_id(se.stat)
 			if est != st:
 				continue
-			v = _SHIP_UPGRADE_MATH.apply_effect(v, 1, se)
+			v = ShipUpgradeEffect.apply_effect(v, 1, se)
 	return v
 
 

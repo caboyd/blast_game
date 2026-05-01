@@ -1,6 +1,5 @@
 extends PanelContainer
 
-const _GlobalPartStatEffect = preload("res://scripts/data/GlobalPartStatEffect.gd")
 const _GlobalPartMovementPenaltyEffect = preload("res://scripts/data/GlobalPartMovementPenaltyEffect.gd")
 
 
@@ -70,10 +69,10 @@ func _effects_summary_text(part_id: StringName) -> String:
 					)
 				)
 			continue
-		if not (eff is _GlobalPartStatEffect):
+		if not (eff is ShipUpgradeEffect):
 			continue
-		var se := eff as _GlobalPartStatEffect
-		var est := GlobalPartEffect.normalize_stat_id(se.stat)
+		var se := eff as ShipUpgradeEffect
+		var est := ShipUpgradeEffect.normalize_stat_id(se.stat)
 		var stat_nm: String = String(est).replace("_", " ")
 		var op: String = String(se.operation)
 		var val: float = float(se.value)

@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="GlobalPartData" format=3 uid="uid://dauskstwowhmh"]
 
 [ext_resource type="Script" uid="uid://b8431vs7scjj6" path="res://scripts/data/GlobalPartData.gd" id="1"]
-[ext_resource type="Script" uid="uid://bu5u1oni8ox41" path="res://scripts/data/GlobalPartStatEffect.gd" id="2"]
+[ext_resource type="Script" uid="uid://drjo0qypkcvo3" path="res://scripts/data/ShipUpgradeEffect.gd" id="2"]
 [ext_resource type="PackedScene" uid="uid://o8vri577j4ui" path="res://scenes/ship_parts/treads/part_treads_t0.tscn" id="3"]
 [ext_resource type="Script" uid="uid://dbmf6jiisv031" path="res://scripts/data/GlobalPartVisualData.gd" id="4_vis"]
 [ext_resource type="Script" uid="uid://b2fxsetlvl01u" path="res://scripts/data/GlobalPartEffectSet.gd" id="5_eset"]
@@ -11,7 +11,9 @@
 [sub_resource type="Resource" id="eff_sp"]
 script = ExtResource("2")
 stat = "move_speed_px_s"
+operation = "multiply"
 value = 0.9
+metadata/_custom_type_script = "uid://drjo0qypkcvo3"
 
 [sub_resource type="Resource" id="eff_stop"]
 script = ExtResource("6_mpe")
