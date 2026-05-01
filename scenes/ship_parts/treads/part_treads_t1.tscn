@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://bdrdono5r2i5f"]
 
-[node name="DilapidatedTreadsPart" type="Node2D" unique_id=753111176]
+[node name="PartTreadsT1" type="Node2D" unique_id=753111176]
 z_index = -1
 
 [node name="Left" type="Polygon2D" parent="." unique_id=1366138787]

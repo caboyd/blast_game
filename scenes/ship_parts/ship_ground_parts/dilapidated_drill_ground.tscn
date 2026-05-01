@@ -1,9 +1,0 @@
-[gd_scene format=3 uid="uid://df8wrxxuq2de4"]
-
-[ext_resource type="PackedScene" uid="uid://uhwa18fyqred" path="res://scenes/ship_parts/dilapidated_drill_part.tscn" id="1_drill"]
-
-[node name="DilapidatedDrillPickupVisual" type="Node2D" unique_id=1302461229]
-
-[node name="DilapidatedDrillPart" parent="." unique_id=1860702646 instance=ExtResource("1_drill")]
-position = Vector2(-0.91, 0)
-scale = Vector2(1.24, 1.24)

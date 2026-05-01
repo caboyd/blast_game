@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://uhwa18fyqred"]
 
-[node name="DilapidatedDrillPart" type="Node2D" unique_id=155945927]
+[node name="PartDrillT1" type="Node2D" unique_id=155945927]
 z_index = -2
 position = Vector2(4, 0)
 

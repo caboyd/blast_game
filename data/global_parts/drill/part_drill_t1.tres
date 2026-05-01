@@ -2,9 +2,9 @@
 
 [ext_resource type="Script" uid="uid://b8431vs7scjj6" path="res://scripts/data/GlobalPartData.gd" id="1"]
 [ext_resource type="Script" uid="uid://mf14x1dbtowp" path="res://scripts/data/GlobalPartEffect.gd" id="2"]
-[ext_resource type="PackedScene" uid="uid://uhwa18fyqred" path="res://scenes/ship_parts/dilapidated_drill_part.tscn" id="3"]
+[ext_resource type="PackedScene" uid="uid://uhwa18fyqred" path="res://scenes/ship_parts/drill/part_drill_t1.tscn" id="3"]
 [ext_resource type="Script" uid="uid://dbmf6jiisv031" path="res://scripts/data/GlobalPartVisualData.gd" id="4_vis"]
-[ext_resource type="PackedScene" uid="uid://df8wrxxuq2de4" path="res://scenes/ship_parts/ship_ground_parts/dilapidated_drill_ground.tscn" id="5_grnd"]
+[ext_resource type="PackedScene" uid="uid://df8wrxxuq2de4" path="res://scenes/ship_parts/drill/ground/part_drill_t1_ground.tscn" id="5_grnd"]
 
 [sub_resource type="Resource" id="eff_md"]
 script = ExtResource("2")
@@ -16,7 +16,7 @@ ship_scene = ExtResource("3")
 
 [resource]
 script = ExtResource("1")
-id = &"dilapidated_drill"
+id = &"part_drill_t1"
 part_type = "drill"
 display_name = "Dilapidated"
 max_level = 2

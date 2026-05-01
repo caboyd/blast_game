@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://cvisrv50hnhs5"]
 
-[node name="DilapidatedFuelTankPart" type="Node2D" unique_id=123611795]
+[node name="PartFuelTankT1" type="Node2D" unique_id=123611795]
 
 [node name="Blob" type="Polygon2D" parent="." unique_id=2011504271]
 position = Vector2(-4, 0)

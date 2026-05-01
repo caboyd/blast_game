@@ -31,7 +31,7 @@ const SPAWN_REVEAL_NORMAL := &"normal"
 const SPAWN_REVEAL_FULL := &"full"
 
 const _GENERIC_GLOBAL_PART_GROUND_PICKUP := preload(
-	"res://scenes/ship_parts/ship_ground_parts/global_part_ground_pickup.tscn"
+	"res://scenes/ship_parts/ground/global_part_ground_pickup.tscn"
 )
 
 ## World-space center of the square covered by one chunk (`CHUNK_SIZE` cells per side).

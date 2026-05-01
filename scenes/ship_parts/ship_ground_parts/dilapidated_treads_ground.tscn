@@ -1,8 +1,0 @@
-[gd_scene format=3 uid="uid://cgk8ncbrfbq3s"]
-
-[ext_resource type="PackedScene" uid="uid://bdrdono5r2i5f" path="res://scenes/ship_parts/dilapidated_treads_part.tscn" id="1_part"]
-
-[node name="DilapidatedTreadsPickupVisual" type="Node2D" unique_id=396534902]
-scale = Vector2(1.24, 1.24)
-
-[node name="DilapidatedTreadsPart" parent="." unique_id=1089924977 instance=ExtResource("1_part")]

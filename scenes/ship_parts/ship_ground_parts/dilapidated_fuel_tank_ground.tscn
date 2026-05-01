@@ -1,9 +1,0 @@
-[gd_scene format=3 uid="uid://c2aagd7togt5k"]
-
-[ext_resource type="PackedScene" uid="uid://cvisrv50hnhs5" path="res://scenes/ship_parts/dilapidated_fuel_tank_part.tscn" id="1_part"]
-
-[node name="DilapidatedFuelTankPickupVisual" type="Node2D" unique_id=546028778]
-
-[node name="DilapidatedFuelTankPart" parent="." unique_id=1340732663 instance=ExtResource("1_part")]
-position = Vector2(3.9, -3.795)
-scale = Vector2(1.93, 1.93)

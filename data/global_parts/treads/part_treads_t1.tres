@@ -2,9 +2,9 @@
 
 [ext_resource type="Script" uid="uid://b8431vs7scjj6" path="res://scripts/data/GlobalPartData.gd" id="1"]
 [ext_resource type="Script" uid="uid://mf14x1dbtowp" path="res://scripts/data/GlobalPartEffect.gd" id="2"]
-[ext_resource type="PackedScene" uid="uid://bdrdono5r2i5f" path="res://scenes/ship_parts/dilapidated_treads_part.tscn" id="3"]
+[ext_resource type="PackedScene" uid="uid://bdrdono5r2i5f" path="res://scenes/ship_parts/treads/part_treads_t1.tscn" id="3"]
 [ext_resource type="Script" uid="uid://dbmf6jiisv031" path="res://scripts/data/GlobalPartVisualData.gd" id="4_vis"]
-[ext_resource type="PackedScene" uid="uid://cgk8ncbrfbq3s" path="res://scenes/ship_parts/ship_ground_parts/dilapidated_treads_ground.tscn" id="5_grnd"]
+[ext_resource type="PackedScene" uid="uid://cgk8ncbrfbq3s" path="res://scenes/ship_parts/treads/ground/part_treads_t1_ground.tscn" id="5_grnd"]
 
 [sub_resource type="Resource" id="eff_sp"]
 script = ExtResource("2")
@@ -24,7 +24,7 @@ ship_scene = ExtResource("3")
 
 [resource]
 script = ExtResource("1")
-id = &"dilapidated_treads"
+id = &"part_treads_t1"
 part_type = "treads"
 display_name = "Dilapidated"
 max_level = 2

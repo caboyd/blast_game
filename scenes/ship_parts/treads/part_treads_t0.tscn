@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://o8vri577j4ui"]
 
-[node name="CrackedTreadsPart" type="Node2D" unique_id=383157623]
+[node name="PartTreadsT0" type="Node2D" unique_id=383157623]
 
 [node name="Left" type="Polygon2D" parent="." unique_id=1170340848]
 position = Vector2(0, 3.5)

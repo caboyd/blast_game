@@ -26,46 +26,46 @@ const STATIC_CELLS: Array[Dictionary] = [
 	{"cell": Vector2i(0, -10), "type": MiningWorld.TYPE_GOLD, "hp": 5},
 ]
 
-## Planet 1: only parts with `GlobalPartData.tier == 1` (dilapidated line). Tier 0 has no ground pickups.
+## Planet 1: only parts with `GlobalPartData.tier == 1` (`_t1` line). Tier 0 has no ground pickups.
 const GLOBAL_PART_PICKUP_DEFS: Array[Dictionary] = [
 	{
-		"pickup_id": &"planet1_dilapidated_fuel_tank_i0",
-		"part_id": &"dilapidated_fuel_tank",
+		"pickup_id": &"planet1_part_fuel_tank_t1_i0",
+		"part_id": &"part_fuel_tank_t1",
 		"pickup_index": 0,
 		"persistence": GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE,
 		"spawn_reveal_mode": MiningWorld.SPAWN_REVEAL_FULL,
 	},
 	{
-		"pickup_id": &"planet1_dilapidated_fuel_tank_i1",
-		"part_id": &"dilapidated_fuel_tank",
+		"pickup_id": &"planet1_part_fuel_tank_t1_i1",
+		"part_id": &"part_fuel_tank_t1",
 		"pickup_index": 1,
 		"persistence": GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE,
 		"spawn_reveal_mode": MiningWorld.SPAWN_REVEAL_NORMAL,
 	},
 	{
-		"pickup_id": &"planet1_dilapidated_drill_i0",
-		"part_id": &"dilapidated_drill",
+		"pickup_id": &"planet1_part_drill_t1_i0",
+		"part_id": &"part_drill_t1",
 		"pickup_index": 0,
 		"persistence": GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE,
 		"spawn_reveal_mode": MiningWorld.SPAWN_REVEAL_FULL,
 	},
 	{
-		"pickup_id": &"planet1_dilapidated_drill_i1",
-		"part_id": &"dilapidated_drill",
+		"pickup_id": &"planet1_part_drill_t1_i1",
+		"part_id": &"part_drill_t1",
 		"pickup_index": 1,
 		"persistence": GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE,
 		"spawn_reveal_mode": MiningWorld.SPAWN_REVEAL_NORMAL,
 	},
 	{
-		"pickup_id": &"planet1_dilapidated_treads_i0",
-		"part_id": &"dilapidated_treads",
+		"pickup_id": &"planet1_part_treads_t1_i0",
+		"part_id": &"part_treads_t1",
 		"pickup_index": 0,
 		"persistence": GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE,
 		"spawn_reveal_mode": MiningWorld.SPAWN_REVEAL_FULL,
 	},
 	{
-		"pickup_id": &"planet1_dilapidated_treads_i1",
-		"part_id": &"dilapidated_treads",
+		"pickup_id": &"planet1_part_treads_t1_i1",
+		"part_id": &"part_treads_t1",
 		"pickup_index": 1,
 		"persistence": GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE,
 		"spawn_reveal_mode": MiningWorld.SPAWN_REVEAL_NORMAL,

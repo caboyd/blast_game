@@ -11,22 +11,36 @@ const KEY_FUEL_TANK := &"fuel_tank"
 const KEY_DRILL := &"drill"
 const KEY_TREADS := &"treads"
 
-const DEFAULT_CRACKED_FUEL_TANK := &"cracked_fuel_tank"
-const DEFAULT_CRACKED_DRILL := &"cracked_drill"
-const DEFAULT_CRACKED_TREADS := &"cracked_treads"
+const DEFAULT_FUEL_TANK := &"part_fuel_tank_t0"
+const DEFAULT_DRILL := &"part_drill_t0"
+const DEFAULT_TREADS := &"part_treads_t0"
 
 const PICKUP_PERSISTENCE_ONCE := &"once"
 const PICKUP_PERSISTENCE_RESPAWNABLE := &"respawnable"
 const _LEGACY_PLANET1_PICKUP_PREFIX := "planet1_"
+const _LEGACY_PART_IDS := {
+	&"cracked_fuel_tank": &"part_fuel_tank_t0",
+	&"dilapidated_fuel_tank": &"part_fuel_tank_t1",
+	&"fuel_tank_t0": &"part_fuel_tank_t0",
+	&"fuel_tank_t1": &"part_fuel_tank_t1",
+	&"cracked_drill": &"part_drill_t0",
+	&"dilapidated_drill": &"part_drill_t1",
+	&"drill_t0": &"part_drill_t0",
+	&"drill_t1": &"part_drill_t1",
+	&"cracked_treads": &"part_treads_t0",
+	&"dilapidated_treads": &"part_treads_t1",
+	&"treads_t0": &"part_treads_t0",
+	&"treads_t1": &"part_treads_t1",
+}
 
 const _SHIP_UPGRADE_MATH = preload("res://scripts/data/ShipUpgradeMath.gd")
 const _GlobalPartDataScript = preload("res://scripts/data/GlobalPartData.gd")
 
 var _parts_by_id: Dictionary = {} # StringName -> GlobalPartData
 
-var equipped_fuel_tank_id: StringName = DEFAULT_CRACKED_FUEL_TANK
-var equipped_drill_id: StringName = DEFAULT_CRACKED_DRILL
-var equipped_treads_id: StringName = DEFAULT_CRACKED_TREADS
+var equipped_fuel_tank_id: StringName = DEFAULT_FUEL_TANK
+var equipped_drill_id: StringName = DEFAULT_DRILL
+var equipped_treads_id: StringName = DEFAULT_TREADS
 
 ## pickup_id -> true
 var _collected_pickups: Dictionary = {}
@@ -41,15 +55,22 @@ func _ready() -> void:
 
 func _reload_definitions() -> void:
 	_parts_by_id.clear()
-	var dir := DirAccess.open(_GLOBAL_PARTS_DIR)
+	_load_definitions_in_dir(_GLOBAL_PARTS_DIR)
+
+
+func _load_definitions_in_dir(dir_path: String) -> void:
+	var dir := DirAccess.open(dir_path)
 	if dir == null:
-		push_error("GlobalPartRegistry: cannot open %s" % _GLOBAL_PARTS_DIR)
+		push_error("GlobalPartRegistry: cannot open %s" % dir_path)
 		return
 	dir.list_dir_begin()
 	var fname := dir.get_next()
 	while fname != "":
-		if not dir.current_is_dir() and fname.ends_with(".tres"):
-			var path: String = _GLOBAL_PARTS_DIR.path_join(fname)
+		if dir.current_is_dir():
+			if not fname.begins_with("."):
+				_load_definitions_in_dir(dir_path.path_join(fname))
+		elif fname.ends_with(".tres"):
+			var path: String = dir_path.path_join(fname)
 			var res: Resource = ResourceLoader.load(path, "", ResourceLoader.CACHE_MODE_REUSE)
 			if res != null and res.get_script() == _GlobalPartDataScript:
 				var pid: StringName = res.get("id") as StringName
@@ -61,10 +82,14 @@ func _reload_definitions() -> void:
 	dir.list_dir_end()
 
 
-func reset_to_cracked_defaults() -> void:
-	equipped_fuel_tank_id = DEFAULT_CRACKED_FUEL_TANK
-	equipped_drill_id = DEFAULT_CRACKED_DRILL
-	equipped_treads_id = DEFAULT_CRACKED_TREADS
+func _normalize_part_id(part_id: StringName) -> StringName:
+	return _LEGACY_PART_IDS.get(part_id, part_id) as StringName
+
+
+func reset_to_t0_defaults() -> void:
+	equipped_fuel_tank_id = DEFAULT_FUEL_TANK
+	equipped_drill_id = DEFAULT_DRILL
+	equipped_treads_id = DEFAULT_TREADS
 	_collected_pickups.clear()
 	_part_levels.clear()
 	GameSession.clear_global_part_pickup_collected_by_type()
@@ -77,19 +102,19 @@ func load_from_config_file(c: ConfigFile) -> void:
 		if c.has_section_key(_CONFIG_SECTION_PARTS, String(KEY_FUEL_TANK)):
 			fuel_from_save = c.get_value(_CONFIG_SECTION_PARTS, String(KEY_FUEL_TANK))
 		if fuel_from_save == null:
-			equipped_fuel_tank_id = DEFAULT_CRACKED_FUEL_TANK
+			equipped_fuel_tank_id = DEFAULT_FUEL_TANK
 		else:
-			equipped_fuel_tank_id = StringName(str(fuel_from_save))
-		equipped_drill_id = StringName(
-			str(c.get_value(_CONFIG_SECTION_PARTS, String(KEY_DRILL), String(DEFAULT_CRACKED_DRILL)))
+			equipped_fuel_tank_id = _normalize_part_id(StringName(str(fuel_from_save)))
+		equipped_drill_id = _normalize_part_id(
+			StringName(str(c.get_value(_CONFIG_SECTION_PARTS, String(KEY_DRILL), String(DEFAULT_DRILL))))
 		)
-		equipped_treads_id = StringName(
-			str(c.get_value(_CONFIG_SECTION_PARTS, String(KEY_TREADS), String(DEFAULT_CRACKED_TREADS)))
+		equipped_treads_id = _normalize_part_id(
+			StringName(str(c.get_value(_CONFIG_SECTION_PARTS, String(KEY_TREADS), String(DEFAULT_TREADS))))
 		)
 	else:
-		equipped_fuel_tank_id = DEFAULT_CRACKED_FUEL_TANK
-		equipped_drill_id = DEFAULT_CRACKED_DRILL
-		equipped_treads_id = DEFAULT_CRACKED_TREADS
+		equipped_fuel_tank_id = DEFAULT_FUEL_TANK
+		equipped_drill_id = DEFAULT_DRILL
+		equipped_treads_id = DEFAULT_TREADS
 	_collected_pickups.clear()
 	if c.has_section(_CONFIG_SECTION_PICKUPS):
 		for k in c.get_section_keys(_CONFIG_SECTION_PICKUPS):
@@ -100,7 +125,7 @@ func load_from_config_file(c: ConfigFile) -> void:
 		for k in c.get_section_keys(_CONFIG_SECTION_PART_LEVELS):
 			var raw: Variant = c.get_value(_CONFIG_SECTION_PART_LEVELS, k, 1)
 			var lv: int = int(raw) if raw != null else 1
-			var pid: StringName = StringName(str(k))
+			var pid: StringName = _normalize_part_id(StringName(str(k)))
 			lv = maxi(1, lv)
 			if _part_levels.has(pid):
 				_part_levels[pid] = maxi(_part_levels[pid], lv)
@@ -123,7 +148,7 @@ func write_to_config_file(c: ConfigFile) -> void:
 
 
 func get_part_data(part_id: StringName) -> GlobalPartData:
-	return _parts_by_id.get(part_id) as GlobalPartData
+	return _parts_by_id.get(_normalize_part_id(part_id)) as GlobalPartData
 
 
 func get_equipped_for_type_key(type_key: StringName) -> StringName:
@@ -151,6 +176,7 @@ func _slot_key_for_part_data(pd: GlobalPartData) -> StringName:
 
 
 func get_part_level(part_id: StringName) -> int:
+	part_id = _normalize_part_id(part_id)
 	return maxi(1, int(_part_levels.get(part_id, 1)))
 
 
@@ -167,6 +193,7 @@ func is_part_max_level(part_id: StringName) -> bool:
 
 ## Central level + equip rule for pickups and upgrades.
 func collect_part(part_id: StringName) -> void:
+	part_id = _normalize_part_id(part_id)
 	var pd: GlobalPartData = get_part_data(part_id)
 	if pd == null:
 		push_warning("GlobalPartRegistry.collect_part: unknown id %s" % String(part_id))
@@ -190,6 +217,7 @@ func collect_part(part_id: StringName) -> void:
 
 
 func equip_part(part_id: StringName) -> void:
+	part_id = _normalize_part_id(part_id)
 	var d: GlobalPartData = get_part_data(part_id)
 	if d == null:
 		push_warning("GlobalPartRegistry.equip_part: unknown id %s" % String(part_id))
