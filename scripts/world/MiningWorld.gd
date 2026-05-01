@@ -24,15 +24,8 @@ static var TYPE_COLOR: PackedColorArray = PackedColorArray([
 	Color(0.92, 0.18, 0.38, 1.0),
 ])
 
-## Planet 1 “generation monument”: hollow 5×5 (non-solid shell) + ruby center cell.
-const PLANET1_GENERATION_MONUMENT_CHUNK := Vector2i(0, 2)
-const PLANET1_GENERATION_MONUMENT_CENTER_CELL := Vector2i(20, 100)
-const PLANET1_GENERATION_MONUMENT_RADIUS_CELLS := 2
-
 const SHADER_TYPE_COLOR_MAX := 8
 const APRON_COLUMNS := 0
-
-const _GENERATION_MONUMENT_SCRIPT: GDScript = preload("res://scripts/world/GenerationMonument.gd")
 
 const SPAWN_REVEAL_NORMAL := &"normal"
 const SPAWN_REVEAL_FULL := &"full"
@@ -41,70 +34,16 @@ const _GENERIC_GLOBAL_PART_GROUND_PICKUP := preload(
 	"res://scenes/ship_parts/ship_ground_parts/global_part_ground_pickup.tscn"
 )
 
-## Planet 1: only parts with `GlobalPartData.tier == 1` (dilapidated line). Tier 0 has no ground pickups.
-const _PLANET1_GLOBAL_PART_PICKUP_DEFS: Array[Dictionary] = [
-	{
-		"pickup_id": &"planet1_dilapidated_fuel_tank_i0",
-		"part_id": &"dilapidated_fuel_tank",
-		"pickup_index": 0,
-		"persistence": GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE,
-		"spawn_reveal_mode": SPAWN_REVEAL_FULL,
-	},
-	{
-		"pickup_id": &"planet1_dilapidated_fuel_tank_i1",
-		"part_id": &"dilapidated_fuel_tank",
-		"pickup_index": 1,
-		"persistence": GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE,
-		"spawn_reveal_mode": SPAWN_REVEAL_NORMAL,
-	},
-	{
-		"pickup_id": &"planet1_dilapidated_drill_i0",
-		"part_id": &"dilapidated_drill",
-		"pickup_index": 0,
-		"persistence": GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE,
-		"spawn_reveal_mode": SPAWN_REVEAL_FULL,
-	},
-	{
-		"pickup_id": &"planet1_dilapidated_drill_i1",
-		"part_id": &"dilapidated_drill",
-		"pickup_index": 1,
-		"persistence": GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE,
-		"spawn_reveal_mode": SPAWN_REVEAL_NORMAL,
-	},
-	{
-		"pickup_id": &"planet1_dilapidated_treads_i0",
-		"part_id": &"dilapidated_treads",
-		"pickup_index": 0,
-		"persistence": GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE,
-		"spawn_reveal_mode": SPAWN_REVEAL_FULL,
-	},
-	{
-		"pickup_id": &"planet1_dilapidated_treads_i1",
-		"part_id": &"dilapidated_treads",
-		"pickup_index": 1,
-		"persistence": GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE,
-		"spawn_reveal_mode": SPAWN_REVEAL_NORMAL,
-	},
-]
-
-
 ## World-space center of the square covered by one chunk (`CHUNK_SIZE` cells per side).
 static func get_chunk_center_world(chunk: Vector2i) -> Vector2:
 	var s: float = float(CHUNK_SIZE) * CELL_SIZE_PX
 	return Vector2((float(chunk.x) + 0.5) * s, (float(chunk.y) + 0.5) * s)
 
 
-## Landmarks in absolute world cell coordinates (post-generation stamp).
-const STATIC_CELLS: Array[Dictionary] = [
-	{"cell": Vector2i(0, -10), "type": TYPE_GOLD, "hp": 5},
-]
-
 @export var stage_id: StringName = &"planet1"
 @export var stage_seed: int = 0
 @export var view_margin_cells: int = 2
 @export var reveal_save_debounce_s: float = 1.0
-## Probability per cell during gold pass (after dirt + rock splats). Sparse by default.
-@export_range(0.0, 1.0, 0.0001) var gold_density: float = 0.012
 
 
 const _VEIN_NEIGHBOR_DIRS: Array[Vector2i] = [
@@ -134,7 +73,7 @@ var _visual_dirty: bool = true
 var _reveal_dirty_chunks: Dictionary = {} # Vector2i -> true
 var _reveal_save_accum: float = 0.0
 
-var _planet1_generation_monument: Node2D = null
+var _chunk_generator: Callable = Callable()
 
 @onready var _world_visual: Sprite2D = $WorldVisual
 @onready var _fog_visual: Sprite2D = $FogVisual
@@ -144,7 +83,6 @@ func _ready() -> void:
 	_init_visuals()
 	if _fog_visual:
 		_fog_visual.z_index = 2
-	_load_persisted_reveals()
 	set_process(true)
 
 
@@ -173,6 +111,16 @@ func _chunk_rng_seed(chunk: Vector2i) -> int:
 	return hash(Vector3i(_stage_seed_effective(), chunk.x, chunk.y))
 
 
+func configure_stage_generation(new_stage_id: StringName, chunk_generator: Callable) -> void:
+	stage_id = new_stage_id
+	_chunk_generator = chunk_generator
+	_chunks.clear()
+	_reveal_dirty_chunks.clear()
+	_reveal_save_accum = 0.0
+	_load_persisted_reveals()
+	_visual_dirty = true
+
+
 func _floor_div(a: int, b: int) -> int:
 	return int(floor(float(a) / float(b)))
 
@@ -185,6 +133,16 @@ func _cell_to_local_in_chunk(cell: Vector2i, chunk: Vector2i) -> int:
 	var lx: int = cell.x - chunk.x * CHUNK_SIZE
 	var ly: int = cell.y - chunk.y * CHUNK_SIZE
 	return ly * CHUNK_SIZE + lx
+
+
+func ensure_chunk(chunk: Vector2i) -> void:
+	_ensure_chunk(chunk)
+
+
+func _hp_for_type(type_id: int) -> int:
+	if type_id < 0 or type_id >= TYPE_MAX_HP.size():
+		return 0
+	return clampi(int(TYPE_MAX_HP[type_id]), 0, 255)
 
 
 func _ensure_chunk(chunk: Vector2i) -> void:
@@ -201,17 +159,43 @@ func _ensure_chunk(chunk: Vector2i) -> void:
 	var revealed := PackedByteArray()
 	revealed.resize(n)
 
-	var dirt_hp: int = clampi(int(TYPE_MAX_HP[TYPE_DIRT]), 0, 255)
-	var stone_hp: int = clampi(int(TYPE_MAX_HP[TYPE_STONE]), 0, 255)
-	var gold_hp: int = clampi(int(TYPE_MAX_HP[TYPE_GOLD]), 0, 255)
+	var chunk_data: Dictionary = {
+		"cells": cells,
+		"hp": hp,
+		"revealed": revealed,
+	}
+	_chunks[chunk] = chunk_data
 
+	if _chunk_generator.is_valid():
+		_chunk_generator.call(self, chunk, rng, chunk_data)
+	else:
+		fill_chunk_with_type(chunk_data, TYPE_DIRT)
+
+
+func fill_chunk_with_type(chunk_data: Dictionary, type_id: int) -> void:
+	var cells: PackedByteArray = chunk_data["cells"]
+	var hparr: PackedByteArray = chunk_data["hp"]
+	var hp_value: int = _hp_for_type(type_id)
+	var n: int = mini(cells.size(), hparr.size())
 	for i in n:
-		cells[i] = TYPE_DIRT
-		hp[i] = dirt_hp
+		cells[i] = type_id
+		hparr[i] = hp_value
 
-	var num_splats: int = rng.randi_range(1, 3)
+
+func add_random_stone_splats_to_chunk(
+	chunk_data: Dictionary,
+	rng: RandomNumberGenerator,
+	min_splats: int,
+	max_splats: int,
+	min_radius: int,
+	max_radius: int
+) -> void:
+	var cells: PackedByteArray = chunk_data["cells"]
+	var hparr: PackedByteArray = chunk_data["hp"]
+	var stone_hp: int = _hp_for_type(TYPE_STONE)
+	var num_splats: int = rng.randi_range(min_splats, max_splats)
 	for _s in num_splats:
-		var splat_r: int = rng.randi_range(2, 5)
+		var splat_r: int = rng.randi_range(min_radius, max_radius)
 		var cx: int = rng.randi_range(0, CHUNK_SIZE - 1)
 		var cy: int = rng.randi_range(0, CHUNK_SIZE - 1)
 		var r2: int = splat_r * splat_r
@@ -223,7 +207,20 @@ func _ensure_chunk(chunk: Vector2i) -> void:
 					continue
 				var idx: int = ly * CHUNK_SIZE + lx
 				cells[idx] = TYPE_STONE
-				hp[idx] = stone_hp
+				hparr[idx] = stone_hp
+
+
+func add_gold_veins_to_chunk(
+	chunk_data: Dictionary,
+	rng: RandomNumberGenerator,
+	density: float
+) -> void:
+	var cells: PackedByteArray = chunk_data["cells"]
+	var hparr: PackedByteArray = chunk_data["hp"]
+	var n: int = CHUNK_SIZE * CHUNK_SIZE
+	var dirt_hp: int = _hp_for_type(TYPE_DIRT)
+	var stone_hp: int = _hp_for_type(TYPE_STONE)
+	var gold_hp: int = _hp_for_type(TYPE_GOLD)
 
 	var order: Array[int] = []
 	order.resize(n)
@@ -236,12 +233,12 @@ func _ensure_chunk(chunk: Vector2i) -> void:
 		order[jj] = tmp
 
 	for idx_cell in order:
-		if rng.randf() >= gold_density:
+		if rng.randf() >= density:
 			continue
 		var t: int = int(cells[idx_cell])
 		if t == TYPE_DIRT:
 			cells[idx_cell] = TYPE_GOLD
-			hp[idx_cell] = gold_hp
+			hparr[idx_cell] = gold_hp
 		elif t == TYPE_STONE:
 			# Replace the entire connected stone splat with gold; stone shell around it and a 2×2 dirt mouth.
 			# The mouth may overlap halo + gold and one step beyond the halo (open dirt) so a 2×2 always fits.
@@ -273,7 +270,7 @@ func _ensure_chunk(chunk: Vector2i) -> void:
 				inside_set[id_i] = true
 			for id_i in inside:
 				cells[id_i] = TYPE_GOLD
-				hp[id_i] = gold_hp
+				hparr[id_i] = gold_hp
 			var halo: Array[int] = []
 			var halo_seen: Dictionary = {}
 			for id_i in inside:
@@ -294,7 +291,7 @@ func _ensure_chunk(chunk: Vector2i) -> void:
 				# No in-chunk neighbor to carve an opening (edge-sealed blob); leave as ordinary stone.
 				for id_i in inside:
 					cells[id_i] = TYPE_STONE
-					hp[id_i] = stone_hp
+					hparr[id_i] = stone_hp
 			else:
 				var halo_set: Dictionary = {}
 				for h_i in halo:
@@ -352,7 +349,7 @@ func _ensure_chunk(chunk: Vector2i) -> void:
 						push_error("MiningWorld: gold vein has no 2×2 mouth (generation bug); reverting blob to stone.")
 						for id_i in inside:
 							cells[id_i] = TYPE_STONE
-							hp[id_i] = stone_hp
+							hparr[id_i] = stone_hp
 						mouth_failed = true
 						break
 					for pk in pending:
@@ -365,87 +362,78 @@ func _ensure_chunk(chunk: Vector2i) -> void:
 							var eidx: int = (pick.y + dy) * CHUNK_SIZE + (pick.x + dx)
 							entrance_indices[eidx] = true
 							cells[eidx] = TYPE_DIRT
-							hp[eidx] = dirt_hp
+							hparr[eidx] = dirt_hp
 					for hi in halo.size():
 						var hid: int = halo[hi]
 						if entrance_indices.has(hid):
 							continue
 						cells[hid] = TYPE_STONE
-						hp[hid] = stone_hp
-
-	# One 2×2 fuel pickup per chunk (any tile destroyed removes the whole cluster).
-	# Skip spawn chunk so the starting area has no fuel cell.
-	var chunk_data: Dictionary = {
-		"cells": cells,
-		"hp": hp,
-		"revealed": revealed,
-	}
-	if chunk != Vector2i.ZERO:
-		var fax: int = rng.randi_range(0, CHUNK_SIZE - 2)
-		var fay: int = rng.randi_range(0, CHUNK_SIZE - 2)
-		var fuel_hp: int = clampi(int(TYPE_MAX_HP[TYPE_FUEL]), 0, 255)
-		for fy in 2:
-			for fx in 2:
-				var fi: int = (fay + fy) * CHUNK_SIZE + (fax + fx)
-				cells[fi] = TYPE_FUEL
-				hp[fi] = fuel_hp
-		chunk_data["fuel_anchor"] = Vector2i(fax, fay)
-	_chunks[chunk] = chunk_data
-	_apply_static_overrides_for_chunk(chunk)
-	_stamp_planet1_generation_monument_chunk(chunk)
+						hparr[hid] = stone_hp
 
 
-func _stamp_planet1_generation_monument_chunk(chunk: Vector2i) -> void:
-	if stage_id != &"planet1":
-		return
-	if chunk != PLANET1_GENERATION_MONUMENT_CHUNK:
-		return
-	var data: Dictionary = _chunks[chunk]
-	var cells: PackedByteArray = data["cells"]
-	var hparr: PackedByteArray = data["hp"]
-	var ruby_hp: int = clampi(int(TYPE_MAX_HP[TYPE_RUBY]), 0, 255)
-	var cc: Vector2i = PLANET1_GENERATION_MONUMENT_CENTER_CELL
-	for dy in range(-PLANET1_GENERATION_MONUMENT_RADIUS_CELLS, PLANET1_GENERATION_MONUMENT_RADIUS_CELLS + 1):
-		for dx in range(-PLANET1_GENERATION_MONUMENT_RADIUS_CELLS, PLANET1_GENERATION_MONUMENT_RADIUS_CELLS + 1):
-			var wc: Vector2i = Vector2i(cc.x + dx, cc.y + dy)
-			var idx: int = _cell_to_local_in_chunk(wc, chunk)
-			if dx == 0 and dy == 0:
-				cells[idx] = TYPE_RUBY
-				hparr[idx] = ruby_hp
-			else:
-				cells[idx] = TYPE_EMPTY
-				hparr[idx] = 0
+func stamp_fuel_cluster(
+	chunk_data: Dictionary,
+	local_anchor: Vector2i,
+	size_cells: Vector2i = Vector2i(2, 2)
+) -> void:
+	var cells: PackedByteArray = chunk_data["cells"]
+	var hparr: PackedByteArray = chunk_data["hp"]
+	var fuel_hp: int = _hp_for_type(TYPE_FUEL)
+	for fy in size_cells.y:
+		for fx in size_cells.x:
+			var lx: int = local_anchor.x + fx
+			var ly: int = local_anchor.y + fy
+			if lx < 0 or lx >= CHUNK_SIZE or ly < 0 or ly >= CHUNK_SIZE:
+				continue
+			var idx: int = ly * CHUNK_SIZE + lx
+			cells[idx] = TYPE_FUEL
+			hparr[idx] = fuel_hp
+	chunk_data["fuel_anchor"] = local_anchor
+	chunk_data["fuel_size"] = size_cells
 
 
-func attach_planet1_stage_content(ship: ShipBase) -> void:
-	if stage_id != &"planet1":
-		return
-	_ensure_chunk(PLANET1_GENERATION_MONUMENT_CHUNK)
-	if _planet1_generation_monument != null:
-		return
-	var cc: Vector2i = PLANET1_GENERATION_MONUMENT_CENTER_CELL
-	var cw: Vector2 = cell_top_left_world(cc) + Vector2(CELL_SIZE_PX * 0.5, CELL_SIZE_PX * 0.5)
-	var mon = _GENERATION_MONUMENT_SCRIPT.new()
-	mon.name = "GenerationMonumentChunk02"
-	mon.setup(ship, cw)
-	add_child(mon)
-	_planet1_generation_monument = mon
+func pick_random_cell_in_chunk(chunk: Vector2i, rng: RandomNumberGenerator) -> Vector2i:
+	_ensure_chunk(chunk)
+	var lx: int = rng.randi_range(0, CHUNK_SIZE - 1)
+	var ly: int = rng.randi_range(0, CHUNK_SIZE - 1)
+	return Vector2i(chunk.x * CHUNK_SIZE + lx, chunk.y * CHUNK_SIZE + ly)
 
 
-func _apply_static_overrides_for_chunk(chunk: Vector2i) -> void:
+func stamp_cell_overrides_for_chunk(chunk: Vector2i, overrides: Array[Dictionary]) -> void:
 	var data: Dictionary = _chunks[chunk]
 	var cells: PackedByteArray = data["cells"]
 	var hparr: PackedByteArray = data["hp"]
 
-	for o in STATIC_CELLS:
+	for o in overrides:
 		var wc: Vector2i = o["cell"]
 		if _cell_to_chunk_coord(wc) != chunk:
 			continue
 		var idx: int = _cell_to_local_in_chunk(wc, chunk)
 		var tid: int = int(o["type"])
-		var h: int = int(o["hp"])
+		var h: int = int(o.get("hp", _hp_for_type(tid)))
 		cells[idx] = tid
 		hparr[idx] = clampi(h, 0, 255)
+
+
+func stamp_square_shell_for_chunk(
+	chunk: Vector2i,
+	center_cell: Vector2i,
+	radius_cells: int,
+	shell_type: int,
+	center_type: int
+) -> void:
+	var data: Dictionary = _chunks[chunk]
+	var cells: PackedByteArray = data["cells"]
+	var hparr: PackedByteArray = data["hp"]
+	for dy in range(-radius_cells, radius_cells + 1):
+		for dx in range(-radius_cells, radius_cells + 1):
+			var wc: Vector2i = Vector2i(center_cell.x + dx, center_cell.y + dy)
+			if _cell_to_chunk_coord(wc) != chunk:
+				continue
+			var idx: int = _cell_to_local_in_chunk(wc, chunk)
+			var type_id: int = center_type if dx == 0 and dy == 0 else shell_type
+			cells[idx] = type_id
+			hparr[idx] = _hp_for_type(type_id)
 
 
 ## Soft terrain fill: Chebyshev radius `radius_cells` (square: ±radius on both axes). Ensures chunks.
@@ -635,7 +623,9 @@ func _fuel_cluster_local_rect(data: Dictionary) -> Rect2i:
 	if anchor == null or not anchor is Vector2i:
 		return Rect2i()
 	var a: Vector2i = anchor as Vector2i
-	return Rect2i(a.x, a.y, 2, 2)
+	var size_var: Variant = data.get("fuel_size", Vector2i(2, 2))
+	var size: Vector2i = size_var as Vector2i if size_var is Vector2i else Vector2i(2, 2)
+	return Rect2i(a.x, a.y, size.x, size.y)
 
 
 func _cell_local_in_chunk_vec(cell: Vector2i, chunk: Vector2i) -> Vector2i:
@@ -995,109 +985,13 @@ func _rebuild_view_textures() -> void:
 	_visual_dirty = false
 
 
-func _tier_for_planet_def(part_id: StringName) -> int:
-	var pd: GlobalPartData = GlobalPartRegistry.get_part_data(part_id)
-	if pd == null:
-		return 0
-	return int(pd.tier)
+func stage_rng_seed(salt_a: int, salt_b: int = 0) -> int:
+	return hash(Vector3i(_stage_seed_effective(), salt_a, salt_b))
 
 
-func _planet1_pickup_type_slot_index(part_id: StringName) -> int:
-	var pd: GlobalPartData = GlobalPartRegistry.get_part_data(part_id)
-	if pd == null:
-		return -1
-	match String(pd.part_type):
-		"fuel_tank":
-			return 0
-		"drill":
-			return 1
-		"treads":
-			return 2
-		_:
-			return -1
-
-
-func _planet1_neighbor_chunks_chebyshev1(origin_chunk: Vector2i) -> Array[Vector2i]:
-	var out: Array[Vector2i] = []
-	for dy in [-1, 0, 1]:
-		for dx in [-1, 0, 1]:
-			if dx == 0 and dy == 0:
-				continue
-			out.append(origin_chunk + Vector2i(dx, dy))
-	return out
-
-
-func _planet1_shuffle_chebyshev8_ring(origin_cell: Vector2i, rng: RandomNumberGenerator) -> Array[Vector2i]:
-	var ring: Array[Vector2i] = []
-	for dy in range(-8, 9):
-		for dx in range(-8, 9):
-			if maxi(abs(dx), abs(dy)) != 8:
-				continue
-			ring.append(origin_cell + Vector2i(dx, dy))
-	for ii in range(ring.size() - 1, 0, -1):
-		var jj: int = rng.randi_range(0, ii)
-		var swap: Vector2i = ring[ii]
-		ring[ii] = ring[jj]
-		ring[jj] = swap
-	return ring
-
-
-func _planet1_pick_random_cell_in_chunk(chunk: Vector2i, rng: RandomNumberGenerator) -> Vector2i:
-	_ensure_chunk(chunk)
-	var lx: int = rng.randi_range(0, CHUNK_SIZE - 1)
-	var ly: int = rng.randi_range(0, CHUNK_SIZE - 1)
-	return Vector2i(chunk.x * CHUNK_SIZE + lx, chunk.y * CHUNK_SIZE + ly)
-
-
-func _planet1_assign_cells_pickup_tier1(
-	defs: Array[Dictionary],
-	spawn_world: Vector2,
-	rng_ring: RandomNumberGenerator,
-	rng_far: RandomNumberGenerator,
-	out_cells: Dictionary
-) -> void:
-	var origin_cell := world_pos_to_cell(spawn_world)
-	var ring: Array[Vector2i] = _planet1_shuffle_chebyshev8_ring(origin_cell, rng_ring)
-	var neighbors: Array[Vector2i] = _planet1_neighbor_chunks_chebyshev1(Vector2i.ZERO)
-	for ii in range(neighbors.size() - 1, 0, -1):
-		var jj: int = rng_far.randi_range(0, ii)
-		var nswap: Vector2i = neighbors[ii]
-		neighbors[ii] = neighbors[jj]
-		neighbors[jj] = nswap
-
-	for d in defs:
-		var pid: StringName = d["pickup_id"] as StringName
-		var part_id: StringName = d["part_id"] as StringName
-		var pidx: int = int(d.get("pickup_index", 0))
-		var type_slot: int = _planet1_pickup_type_slot_index(part_id)
-		if type_slot < 0:
-			push_warning("MiningWorld: tier-1 pickup unknown part_type for %s" % String(part_id))
-			continue
-		if pidx == 0:
-			if type_slot >= ring.size():
-				push_warning(
-					"MiningWorld: tier-1 ring has no cell for type slot %d" % type_slot
-				)
-				continue
-			out_cells[pid] = ring[type_slot]
-		else:
-			if type_slot >= neighbors.size():
-				push_warning(
-					"MiningWorld: tier-1 neighbor ring has no chunk for type slot %d" % type_slot
-				)
-				continue
-			var ch: Vector2i = neighbors[type_slot]
-			var rcell := RandomNumberGenerator.new()
-			rcell.seed = hash(Vector3i(_stage_seed_effective(), 771903 + type_slot * 97 + pidx * 31, 404))
-			out_cells[pid] = _planet1_pick_random_cell_in_chunk(ch, rcell)
-
-
-## Tier 1 only: pickup_index 0 = Chebyshev-8 ring around spawn; pickup_index 1 = random cell in a chunk adjacent to `(0,0)`.
-func spawn_planet1_global_part_pickups(spawn_world: Vector2) -> void:
-	if stage_id != &"planet1":
-		return
+func active_global_part_pickup_defs(defs: Array[Dictionary]) -> Array[Dictionary]:
 	var active: Array[Dictionary] = []
-	for d in _PLANET1_GLOBAL_PART_PICKUP_DEFS:
+	for d in defs:
 		var pickup_id: StringName = d["pickup_id"] as StringName
 		var part_id: StringName = d["part_id"] as StringName
 		var persistence: StringName = d.get(
@@ -1109,35 +1003,21 @@ func spawn_planet1_global_part_pickups(spawn_world: Vector2) -> void:
 		):
 			continue
 		active.append(d)
-	if active.is_empty():
-		return
-	var tier1_active: Array[Dictionary] = []
-	for d in active:
-		var part_id_chk: StringName = d["part_id"] as StringName
-		var tier: int = _tier_for_planet_def(part_id_chk)
-		if tier != 1:
-			push_warning(
-				"MiningWorld.spawn_planet1_global_part_pickups: skip %s — tier=%d has no ground spawns (only tier 1 does)"
-				% [String(part_id_chk), tier]
-			)
-			continue
-		tier1_active.append(d)
-	if tier1_active.is_empty():
-		return
-	var cells_by_pickup_id: Dictionary = {}
-	var rng_ring := RandomNumberGenerator.new()
-	rng_ring.seed = hash(Vector3i(_stage_seed_effective(), 771001, 42))
-	var rng_far := RandomNumberGenerator.new()
-	rng_far.seed = hash(Vector3i(_stage_seed_effective(), 771002, 43))
-	_planet1_assign_cells_pickup_tier1(tier1_active, spawn_world, rng_ring, rng_far, cells_by_pickup_id)
+	return active
 
-	for def in tier1_active:
+
+func spawn_global_part_pickups_at_cells(
+	defs: Array[Dictionary],
+	cells_by_pickup_id: Dictionary,
+	clear_radius_world: float = 8.0
+) -> void:
+	for def in defs:
 		var pid: StringName = def["pickup_id"] as StringName
 		if not cells_by_pickup_id.has(pid):
 			continue
 		var cell: Vector2i = cells_by_pickup_id[pid] as Vector2i
 		var cw: Vector2 = cell_center_world(cell)
-		clear_solid_in_circle_world(cw, 8.0)
+		clear_solid_in_circle_world(cw, clear_radius_world)
 		var node: GlobalPartGroundPickup = _GENERIC_GLOBAL_PART_GROUND_PICKUP.instantiate() as GlobalPartGroundPickup
 		if node == null:
 			continue

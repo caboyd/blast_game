@@ -15,7 +15,66 @@ const GAME_VIEWPORT_SIZE: Vector2i = Vector2i(1280, 720 - HUD_RESERVE_PX)
 const CELLS_PER_HALF_VIEW: int = 10
 const CELL_SIZE_PX: float = 8.0
 
+## Planet 1 “generation monument”: hollow 5×5 (non-solid shell) + ruby center cell.
+const GENERATION_MONUMENT_CHUNK := Vector2i(0, 2)
+const GENERATION_MONUMENT_CENTER_CELL := Vector2i(20, 100)
+const GENERATION_MONUMENT_RADIUS_CELLS := 2
+const _GENERATION_MONUMENT_SCRIPT: GDScript = preload("res://scripts/world/GenerationMonument.gd")
+
+## Landmarks in absolute world cell coordinates (post-generation stamp).
+const STATIC_CELLS: Array[Dictionary] = [
+	{"cell": Vector2i(0, -10), "type": MiningWorld.TYPE_GOLD, "hp": 5},
+]
+
+## Planet 1: only parts with `GlobalPartData.tier == 1` (dilapidated line). Tier 0 has no ground pickups.
+const GLOBAL_PART_PICKUP_DEFS: Array[Dictionary] = [
+	{
+		"pickup_id": &"planet1_dilapidated_fuel_tank_i0",
+		"part_id": &"dilapidated_fuel_tank",
+		"pickup_index": 0,
+		"persistence": GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE,
+		"spawn_reveal_mode": MiningWorld.SPAWN_REVEAL_FULL,
+	},
+	{
+		"pickup_id": &"planet1_dilapidated_fuel_tank_i1",
+		"part_id": &"dilapidated_fuel_tank",
+		"pickup_index": 1,
+		"persistence": GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE,
+		"spawn_reveal_mode": MiningWorld.SPAWN_REVEAL_NORMAL,
+	},
+	{
+		"pickup_id": &"planet1_dilapidated_drill_i0",
+		"part_id": &"dilapidated_drill",
+		"pickup_index": 0,
+		"persistence": GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE,
+		"spawn_reveal_mode": MiningWorld.SPAWN_REVEAL_FULL,
+	},
+	{
+		"pickup_id": &"planet1_dilapidated_drill_i1",
+		"part_id": &"dilapidated_drill",
+		"pickup_index": 1,
+		"persistence": GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE,
+		"spawn_reveal_mode": MiningWorld.SPAWN_REVEAL_NORMAL,
+	},
+	{
+		"pickup_id": &"planet1_dilapidated_treads_i0",
+		"part_id": &"dilapidated_treads",
+		"pickup_index": 0,
+		"persistence": GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE,
+		"spawn_reveal_mode": MiningWorld.SPAWN_REVEAL_FULL,
+	},
+	{
+		"pickup_id": &"planet1_dilapidated_treads_i1",
+		"part_id": &"dilapidated_treads",
+		"pickup_index": 1,
+		"persistence": GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE,
+		"spawn_reveal_mode": MiningWorld.SPAWN_REVEAL_NORMAL,
+	},
+]
+
 @export var planet_id: StringName = &"planet1"
+## Probability per cell during gold pass (after dirt + rock splats). Sparse by default.
+@export_range(0.0, 1.0, 0.0001) var gold_density: float = 0.012
 
 @onready var _mining_world: MiningWorld = %MiningWorld
 @onready var _ship_spawn: Node2D = %ShipSpawn
@@ -42,18 +101,19 @@ const _MISSION_SHIP_CHAIN_TAIL_TURN_RATE_MIN_RAD_S := 0.35
 
 var _vp_w: int = 1280
 var _vp_h: int = 520
+var _generation_monument: Node2D = null
 
 
 func _ready() -> void:
 	MiningMissionUI.attach_fuel_bar_for_mining_host(self)
 	GameSession.start_mission_timer()
 	_apply_game_viewport_layout()
-	_spawn_mission_ship()
 	if _mining_world:
-		_mining_world.stage_id = planet_id
+		_mining_world.configure_stage_generation(planet_id, Callable(self, "_generate_mining_world_chunk"))
+	_spawn_mission_ship()
 	if _ship and _mining_world:
 		_ship.grid = _mining_world
-		_mining_world.attach_planet1_stage_content(_ship)
+		_attach_generation_monument(_ship)
 		# Hull origin at the middle of chunk (0,0) in grid/world space.
 		var spawn_world: Vector2 = MiningWorld.get_chunk_center_world(Vector2i.ZERO)
 		_ship.position = spawn_world
@@ -64,7 +124,7 @@ func _ready() -> void:
 			GlobalPartVisuals.attach_to_ship(tail)
 		_mining_world.stamp_dirt_chebyshev_from_world(spawn_world, 4)
 		_ship.carve_hull_terrain_on_spawn()
-		_mining_world.spawn_planet1_global_part_pickups(spawn_world)
+		_spawn_global_part_pickups(spawn_world)
 	if _ship and not _ship.out_of_fuel.is_connected(_on_ship_out_of_fuel):
 		_ship.out_of_fuel.connect(_on_ship_out_of_fuel)
 	if _subviewport_container != null and not _subviewport_container.resized.is_connected(_on_subviewport_container_resized):
@@ -81,6 +141,160 @@ func _ready() -> void:
 	if not get_viewport().size_changed.is_connected(_on_main_resized_for_viewport):
 		get_viewport().size_changed.connect(_on_main_resized_for_viewport)
 	call_deferred("_apply_game_viewport_layout")
+
+
+func _generate_mining_world_chunk(
+	world: MiningWorld,
+	chunk: Vector2i,
+	rng: RandomNumberGenerator,
+	chunk_data: Dictionary
+) -> void:
+	world.fill_chunk_with_type(chunk_data, MiningWorld.TYPE_DIRT)
+	world.add_random_stone_splats_to_chunk(chunk_data, rng, 1, 3, 2, 5)
+	world.add_gold_veins_to_chunk(chunk_data, rng, gold_density)
+	if chunk != Vector2i.ZERO:
+		var fuel_anchor := Vector2i(
+			rng.randi_range(0, MiningWorld.CHUNK_SIZE - 2),
+			rng.randi_range(0, MiningWorld.CHUNK_SIZE - 2)
+		)
+		world.stamp_fuel_cluster(chunk_data, fuel_anchor, Vector2i(2, 2))
+	world.stamp_cell_overrides_for_chunk(chunk, STATIC_CELLS)
+	if chunk == GENERATION_MONUMENT_CHUNK:
+		world.stamp_square_shell_for_chunk(
+			chunk,
+			GENERATION_MONUMENT_CENTER_CELL,
+			GENERATION_MONUMENT_RADIUS_CELLS,
+			MiningWorld.TYPE_EMPTY,
+			MiningWorld.TYPE_RUBY
+		)
+
+
+func _attach_generation_monument(ship: Node2D) -> void:
+	if _generation_monument != null:
+		return
+	var ship_base := ship as ShipBase
+	if ship_base == null:
+		return
+	_mining_world.ensure_chunk(GENERATION_MONUMENT_CHUNK)
+	var cw: Vector2 = _mining_world.cell_center_world(GENERATION_MONUMENT_CENTER_CELL)
+	var mon = _GENERATION_MONUMENT_SCRIPT.new()
+	mon.name = "GenerationMonumentChunk02"
+	mon.setup(ship_base, cw)
+	_mining_world.add_child(mon)
+	_generation_monument = mon
+
+
+func _tier_for_part_def(part_id: StringName) -> int:
+	var pd: GlobalPartData = GlobalPartRegistry.get_part_data(part_id)
+	if pd == null:
+		return 0
+	return int(pd.tier)
+
+
+func _pickup_type_slot_index(part_id: StringName) -> int:
+	var pd: GlobalPartData = GlobalPartRegistry.get_part_data(part_id)
+	if pd == null:
+		return -1
+	match String(pd.part_type):
+		"fuel_tank":
+			return 0
+		"drill":
+			return 1
+		"treads":
+			return 2
+		_:
+			return -1
+
+
+func _neighbor_chunks_chebyshev1(origin_chunk: Vector2i) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	for dy in [-1, 0, 1]:
+		for dx in [-1, 0, 1]:
+			if dx == 0 and dy == 0:
+				continue
+			out.append(origin_chunk + Vector2i(dx, dy))
+	return out
+
+
+func _shuffle_chebyshev8_ring(origin_cell: Vector2i, rng: RandomNumberGenerator) -> Array[Vector2i]:
+	var ring: Array[Vector2i] = []
+	for dy in range(-8, 9):
+		for dx in range(-8, 9):
+			if maxi(abs(dx), abs(dy)) != 8:
+				continue
+			ring.append(origin_cell + Vector2i(dx, dy))
+	for ii in range(ring.size() - 1, 0, -1):
+		var jj: int = rng.randi_range(0, ii)
+		var swap: Vector2i = ring[ii]
+		ring[ii] = ring[jj]
+		ring[jj] = swap
+	return ring
+
+
+func _assign_tier1_pickup_cells(
+	defs: Array[Dictionary],
+	spawn_world: Vector2,
+	rng_ring: RandomNumberGenerator,
+	rng_far: RandomNumberGenerator,
+	out_cells: Dictionary
+) -> void:
+	var origin_cell := _mining_world.world_pos_to_cell(spawn_world)
+	var ring: Array[Vector2i] = _shuffle_chebyshev8_ring(origin_cell, rng_ring)
+	var neighbors: Array[Vector2i] = _neighbor_chunks_chebyshev1(Vector2i.ZERO)
+	for ii in range(neighbors.size() - 1, 0, -1):
+		var jj: int = rng_far.randi_range(0, ii)
+		var nswap: Vector2i = neighbors[ii]
+		neighbors[ii] = neighbors[jj]
+		neighbors[jj] = nswap
+
+	for d in defs:
+		var pid: StringName = d["pickup_id"] as StringName
+		var part_id: StringName = d["part_id"] as StringName
+		var pidx: int = int(d.get("pickup_index", 0))
+		var type_slot: int = _pickup_type_slot_index(part_id)
+		if type_slot < 0:
+			push_warning("Planet1: tier-1 pickup unknown part_type for %s" % String(part_id))
+			continue
+		if pidx == 0:
+			if type_slot >= ring.size():
+				push_warning("Planet1: tier-1 ring has no cell for type slot %d" % type_slot)
+				continue
+			out_cells[pid] = ring[type_slot]
+		else:
+			if type_slot >= neighbors.size():
+				push_warning("Planet1: tier-1 neighbor ring has no chunk for type slot %d" % type_slot)
+				continue
+			var ch: Vector2i = neighbors[type_slot]
+			var rcell := RandomNumberGenerator.new()
+			rcell.seed = _mining_world.stage_rng_seed(771903 + type_slot * 97 + pidx * 31, 404)
+			out_cells[pid] = _mining_world.pick_random_cell_in_chunk(ch, rcell)
+
+
+## Tier 1 only: pickup_index 0 = Chebyshev-8 ring around spawn; pickup_index 1 = random cell in a chunk adjacent to `(0,0)`.
+func _spawn_global_part_pickups(spawn_world: Vector2) -> void:
+	var active: Array[Dictionary] = _mining_world.active_global_part_pickup_defs(GLOBAL_PART_PICKUP_DEFS)
+	if active.is_empty():
+		return
+	var tier1_active: Array[Dictionary] = []
+	for d in active:
+		var part_id_chk: StringName = d["part_id"] as StringName
+		var tier: int = _tier_for_part_def(part_id_chk)
+		if tier != 1:
+			push_warning(
+				"Planet1: skip %s - tier=%d has no ground spawns (only tier 1 does)"
+				% [String(part_id_chk), tier]
+			)
+			continue
+		tier1_active.append(d)
+	if tier1_active.is_empty():
+		return
+	var cells_by_pickup_id: Dictionary = {}
+	var rng_ring := RandomNumberGenerator.new()
+	rng_ring.seed = _mining_world.stage_rng_seed(771001, 42)
+	var rng_far := RandomNumberGenerator.new()
+	rng_far.seed = _mining_world.stage_rng_seed(771002, 43)
+	_assign_tier1_pickup_cells(tier1_active, spawn_world, rng_ring, rng_far, cells_by_pickup_id)
+	_mining_world.spawn_global_part_pickups_at_cells(tier1_active, cells_by_pickup_id, 8.0)
 
 
 func _spawn_mission_ship() -> void:
