@@ -26,6 +26,18 @@ const STATIC_CELLS: Array[Dictionary] = [
 	{"cell": Vector2i(0, -10), "type": MiningWorld.TYPE_GOLD, "hp": 5},
 ]
 
+const PRIMARY_MATERIAL_TYPE := MiningWorld.TYPE_DIRT
+
+static var CELL_MATERIAL_COLORS: PackedColorArray = PackedColorArray([
+	Color(0.0, 0.0, 0.0, 0.0),
+	Color(0.42, 0.28, 0.18, 1.0),
+	Color(0.52, 0.52, 0.55, 1.0),
+	Color(1.0, 0.82, 0.2, 1.0),
+	# Fuel shader uses this as its tint anchor; brown preserves the current look.
+	Color(0.22, 0.15, 0.10, 1.0),
+	Color(0.92, 0.18, 0.38, 1.0),
+])
+
 ## Planet 1: only parts with `GlobalPartData.tier == 1` (`_t1` line). Tier 0 has no ground pickups.
 const GLOBAL_PART_PICKUP_DEFS: Array[Dictionary] = [
 	{
@@ -110,7 +122,8 @@ func _ready() -> void:
 	_apply_game_viewport_layout()
 	if _mining_world:
 		_mining_world.configure_stage_generation(planet_id, Callable(self, "_generate_mining_world_chunk"))
-		_mining_world.set_fog_base_color(MiningWorld.TYPE_COLOR[MiningWorld.TYPE_DIRT])
+		_mining_world.set_cell_material_colors(CELL_MATERIAL_COLORS)
+		_mining_world.set_fog_base_color(CELL_MATERIAL_COLORS[PRIMARY_MATERIAL_TYPE])
 	_spawn_mission_ship()
 	if _ship and _mining_world:
 		_ship.grid = _mining_world

@@ -19,7 +19,7 @@ static var TYPE_COLOR: PackedColorArray = PackedColorArray([
 	Color(0.42, 0.28, 0.18, 1.0),
 	Color(0.52, 0.52, 0.55, 1.0),
 	Color(1.0, 0.82, 0.2, 1.0),
-	# Shader uses dedicated fuel look; keep brown for any CPU fallbacks.
+	# Fuel shader uses this as its tint anchor; brown preserves the current look.
 	Color(0.22, 0.15, 0.10, 1.0),
 	Color(0.92, 0.18, 0.38, 1.0),
 ])
@@ -78,6 +78,7 @@ var _type_texture: ImageTexture
 var _reveal_texture: ImageTexture
 var _terrain_dirty: bool = true
 var _fog_dirty: bool = true
+var _type_colors: PackedColorArray = TYPE_COLOR.duplicate()
 var _fog_mid: Color = TYPE_COLOR[TYPE_DIRT]
 var _fog_dark: Color = fog_dark_tint_for_mid(TYPE_COLOR[TYPE_DIRT])
 
@@ -139,6 +140,17 @@ func configure_stage_generation(new_stage_id: StringName, chunk_generator: Calla
 	_load_persisted_reveals()
 	_terrain_dirty = true
 	_fog_dirty = true
+
+
+## Sets per-material shader colors for this stage. Missing entries fall back to `TYPE_COLOR`.
+func set_cell_material_colors(colors: PackedColorArray) -> void:
+	var normalized := PackedColorArray()
+	normalized.resize(TYPE_COUNT)
+	for i in TYPE_COUNT:
+		normalized[i] = colors[i] if i < colors.size() else TYPE_COLOR[i]
+	_type_colors = normalized
+	_push_shader_type_colors()
+	_terrain_dirty = true
 
 
 ## Sets the main fog tint and derives `fog_dark` as a deep, same-hue layer (e.g. planet1 → dirt).
@@ -949,7 +961,7 @@ func _init_visuals() -> void:
 		return
 	_resize_view_textures(32, 32)
 	var sm := ShaderMaterial.new()
-	var sh: Shader = load("res://shaders/destructible_target_marching.gdshader")
+	var sh: Shader = load("res://shaders/planet1_marching.gdshader")
 	if sh:
 		sm.shader = sh
 		sm.set_shader_parameter("mask_tex", _mask_texture)
@@ -972,14 +984,19 @@ func _init_visuals() -> void:
 		_update_visual_positions()
 
 
-func _push_shader_type_colors(sm: ShaderMaterial) -> void:
+func _push_shader_type_colors(sm: ShaderMaterial = null) -> void:
+	var target: ShaderMaterial = sm
+	if target == null:
+		if _world_visual == null or not (_world_visual.material is ShaderMaterial):
+			return
+		target = _world_visual.material as ShaderMaterial
 	var n: int = mini(TYPE_COUNT, SHADER_TYPE_COLOR_MAX)
-	sm.set_shader_parameter("type_count", n)
+	target.set_shader_parameter("type_count", n)
 	var pc := PackedColorArray()
 	pc.resize(SHADER_TYPE_COLOR_MAX)
 	for i in range(SHADER_TYPE_COLOR_MAX):
-		pc[i] = TYPE_COLOR[i] if i < TYPE_COUNT else Color(0, 0, 0, 0)
-	sm.set_shader_parameter("type_colors", pc)
+		pc[i] = _type_colors[i] if i < TYPE_COUNT else Color(0, 0, 0, 0)
+	target.set_shader_parameter("type_colors", pc)
 
 
 func _push_fog_shader_colors(sm: ShaderMaterial = null) -> void:

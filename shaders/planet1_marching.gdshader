@@ -50,9 +50,10 @@ CellSample sample_cell(ivec2 t, ivec2 ts, int tc1) {
 // TYPE_* in MiningWorld.gd (must match consts).
 const int MATERIAL_DIRT = 1;
 const int MATERIAL_FUEL = 4;
+const vec3 DEFAULT_FUEL_MATERIAL_COLOR = vec3(0.22, 0.15, 0.10);
 
 // `world_cell_uv`: absolute world grid position (float; matches MiningWorld cell indices + sub-texel).
-vec3 fuel_cell_rgb(vec2 world_cell_uv, float hp_ratio, float time_sec) {
+vec3 fuel_cell_rgb(vec2 world_cell_uv, float hp_ratio, float time_sec, vec3 material_color) {
 	// ========== Fuel tunables (edit these) ==========
 	vec2 scroll_dir_raw = vec2(1.0, 0.38);
 	vec2 world_bias = vec2(0.416, 0.203);
@@ -141,7 +142,8 @@ vec3 fuel_cell_rgb(vec2 world_cell_uv, float hp_ratio, float time_sec) {
 	float b = sin(t * pulse_rate + ph_star) * 0.5 + 0.5;
 	float breathe_star = mix(pulse_dim, pulse_bright, b * b);
 
-	return body + star_c * breathe_star;
+	vec3 tint = material_color / max(DEFAULT_FUEL_MATERIAL_COLOR, vec3(0.001));
+	return (body + star_c * breathe_star) * tint;
 }
 
 void fragment() {
@@ -227,7 +229,7 @@ void fragment() {
 	vec3 rgb;
 	
 	if (best_id == MATERIAL_FUEL) {
-		rgb = fuel_cell_rgb(fuel_world_origin + p, hp_ratio, TIME);
+		rgb = fuel_cell_rgb(fuel_world_origin + p, hp_ratio, TIME, base.rgb);
 	} else {
 		rgb = base.rgb * mix(0.45, 1.0, hp_ratio);
 	}
