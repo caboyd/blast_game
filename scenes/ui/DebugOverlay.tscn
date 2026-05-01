@@ -18,7 +18,7 @@ layout_mode = 0
 offset_left = 8.0
 offset_top = 8.0
 offset_right = 300.0
-offset_bottom = 220.0
+offset_bottom = 260.0
 mouse_filter = 0
 
 [node name="VBox" type="VBoxContainer" parent="Panel"]
@@ -56,3 +56,7 @@ text = "Return to Prep"
 layout_mode = 2
 button_pressed = true
 text = "Show Debug Visuals"
+
+[node name="DisableFog" type="CheckButton" parent="Panel/VBox"]
+layout_mode = 2
+text = "Reveal map (temp)"

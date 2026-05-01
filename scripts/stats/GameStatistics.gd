@@ -35,6 +35,18 @@ var fuel_max: float = 0.0
 
 ## Master switch for world gizmos (mining ship hull/drill debug, conveyor bounds, viewport label). Toggled from `DebugOverlay` on planet; default off so Prep (no overlay) is clean.
 var debug_world_visuals: bool = false
+## Debug: temporarily reveals fog-of-war for the current mining mission only. Cleared in `GameSession.begin_run()`.
+var debug_fog_disabled: bool = false
+
+
+func set_debug_fog_disabled(on: bool) -> void:
+	debug_fog_disabled = on
+	var tree := get_tree()
+	if tree == null:
+		return
+	for n in tree.get_nodes_in_group(&"mining_world"):
+		if n.has_method(&"apply_debug_fog_visibility"):
+			n.apply_debug_fog_visibility()
 
 
 func _ready() -> void:

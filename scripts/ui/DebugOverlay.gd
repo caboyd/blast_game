@@ -4,6 +4,7 @@ var _gold_spin: SpinBox
 var _gold_give: Button
 var _return_to_prep: Button
 var _debug_visuals: CheckButton
+var _disable_fog: CheckButton
 var _viewport_info: Label
 
 
@@ -12,6 +13,7 @@ func _ready() -> void:
 	_gold_give = get_node_or_null("Panel/VBox/GoldRow/GoldGive") as Button
 	_return_to_prep = get_node_or_null("Panel/VBox/ReturnToPrep") as Button
 	_debug_visuals = get_node_or_null("Panel/VBox/DebugVisuals") as CheckButton
+	_disable_fog = get_node_or_null("Panel/VBox/DisableFog") as CheckButton
 	_viewport_info = get_node_or_null("../../GameplayBlock/AspectRatioContainer/ViewportFrame/ViewportInfo") as Label
 
 	if _gold_give:
@@ -20,6 +22,9 @@ func _ready() -> void:
 		_return_to_prep.pressed.connect(_on_return_to_prep_pressed)
 	if _debug_visuals:
 		_debug_visuals.toggled.connect(_on_debug_visuals_toggled)
+	if _disable_fog:
+		_disable_fog.button_pressed = GameStatistics.debug_fog_disabled
+		_disable_fog.toggled.connect(_on_disable_fog_toggled)
 	var on: bool = _debug_visuals.button_pressed if _debug_visuals else false
 	_apply_debug_visuals(on)
 
@@ -41,6 +46,10 @@ func _on_return_to_prep_pressed() -> void:
 
 func _on_debug_visuals_toggled(pressed: bool) -> void:
 	_apply_debug_visuals(pressed)
+
+
+func _on_disable_fog_toggled(pressed: bool) -> void:
+	GameStatistics.set_debug_fog_disabled(pressed)
 
 
 func _on_active_target_changed(_new_target: Node2D) -> void:

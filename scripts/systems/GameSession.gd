@@ -246,6 +246,7 @@ func write_global_part_pickup_collected_to_config(c: ConfigFile) -> void:
 
 ## Call from Prep when starting a mission so HUD "blocks" counts this run only.
 func begin_run() -> void:
+	GameStatistics.debug_fog_disabled = false
 	GameStatistics.set_blocks_run_baseline()
 	GameStatistics.reset_fuel_for_run()
 

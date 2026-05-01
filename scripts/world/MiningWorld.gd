@@ -80,10 +80,19 @@ var _chunk_generator: Callable = Callable()
 
 
 func _ready() -> void:
+	add_to_group(&"mining_world")
 	_init_visuals()
 	if _fog_visual:
 		_fog_visual.z_index = 2
+	apply_debug_fog_visibility()
 	set_process(true)
+
+
+func apply_debug_fog_visibility() -> void:
+	var fog: Sprite2D = _fog_visual if _fog_visual else get_node_or_null("FogVisual") as Sprite2D
+	if fog:
+		fog.visible = not GameStatistics.debug_fog_disabled
+	_visual_dirty = true
 
 
 func _exit_tree() -> void:
@@ -801,6 +810,8 @@ func _set_cell_type_empty_silent(cell: Vector2i) -> bool:
 
 
 func update_vision(center_world: Vector2, radius_cells: int) -> void:
+	if GameStatistics.debug_fog_disabled:
+		return
 	var cc := world_pos_to_cell(center_world)
 	var r2: int = radius_cells * radius_cells
 	var any_new: bool = false
@@ -944,6 +955,7 @@ func _rebuild_view_textures() -> void:
 	var oy: int = _view_origin_cell.y
 	var w: int = _view_size_cells.x
 	var h: int = _view_size_cells.y
+	var debug_reveal_all: bool = GameStatistics.debug_fog_disabled
 
 	for iy in h:
 		for ix in w:
@@ -956,7 +968,7 @@ func _rebuild_view_textures() -> void:
 			var rev: PackedByteArray = data["revealed"]
 			var idx: int = _cell_to_local_in_chunk(wc, ch)
 			var t: int = int(cells[idx])
-			var revealed: bool = int(rev[idx]) != 0
+			var revealed: bool = debug_reveal_all or int(rev[idx]) != 0
 
 			if not revealed:
 				_mask_image.set_pixel(ix, iy, Color(0, 0, 0, 1))
