@@ -24,6 +24,7 @@ script = ExtResource("1")
 id = &"dilapidated_fuel_tank"
 display_name = "Dilapidated"
 max_level = 2
+tier = 1
 visuals = SubResource("visuals_inline")
 effects = Array[ExtResource("2")]([SubResource("eff_fm"), SubResource("eff_fd")])
 allowed_mine_type_ids = null

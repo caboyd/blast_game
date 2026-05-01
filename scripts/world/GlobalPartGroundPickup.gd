@@ -3,6 +3,8 @@ extends Area2D
 
 @export var pickup_id: StringName = &""
 @export var part_id: StringName = &""
+## Which tier-up pickup this is for this part (`0` … `GlobalPartData.max_level - 1`).
+@export var pickup_index: int = 0
 ## See `GlobalPartRegistry.PICKUP_PERSISTENCE_*`.
 @export var persistence: StringName = &"once"
 
@@ -85,15 +87,15 @@ func _resolve_ship_base(node: Node) -> ShipBase:
 func _collect() -> void:
 	if _collected:
 		return
-	if pickup_id != &"" and persistence == GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE and GlobalPartRegistry.is_pickup_collected(pickup_id):
+	if part_id == &"":
 		queue_free()
 		return
-	if part_id == &"":
+	if persistence == GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE and GlobalPartRegistry.is_slot_pickup_collected(part_id, pickup_index):
 		queue_free()
 		return
 	_collected = true
 	GlobalPartRegistry.collect_part(part_id)
-	if pickup_id != &"" and persistence == GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE:
-		GlobalPartRegistry.mark_pickup_collected(pickup_id)
+	if persistence == GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE:
+		GlobalPartRegistry.mark_once_global_part_pickup(part_id, pickup_index, pickup_id)
 	GameSession.save_career()
 	queue_free()

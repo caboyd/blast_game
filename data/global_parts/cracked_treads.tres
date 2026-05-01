@@ -26,6 +26,7 @@ script = ExtResource("1")
 id = &"cracked_treads"
 part_type = "treads"
 display_name = "Cracked"
+tier = 0
 visuals = SubResource("visuals_inline")
 effects = Array[ExtResource("2")]([SubResource("eff_sp"), SubResource("eff_stop")])
 allowed_mine_type_ids = null

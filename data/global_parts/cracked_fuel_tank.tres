@@ -23,6 +23,7 @@ ship_scene = ExtResource("3")
 script = ExtResource("1")
 id = &"cracked_fuel_tank"
 display_name = "Cracked"
+tier = 0
 visuals = SubResource("visuals_inline")
 effects = Array[ExtResource("2")]([SubResource("eff_fm"), SubResource("eff_fd")])
 allowed_mine_type_ids = PackedInt32Array()

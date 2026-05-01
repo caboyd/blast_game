@@ -41,24 +41,49 @@ const _GENERIC_GLOBAL_PART_GROUND_PICKUP := preload(
 	"res://scenes/ship_parts/ship_ground_parts/global_part_ground_pickup.tscn"
 )
 
-const _PLANET1_DILAPIDATED_DEFS: Array[Dictionary] = [
+## Planet 1: only parts with `GlobalPartData.tier == 1` (dilapidated line). Tier 0 has no ground pickups.
+const _PLANET1_GLOBAL_PART_PICKUP_DEFS: Array[Dictionary] = [
 	{
-		"pickup_id": &"planet1_dilapidated_fuel_tank",
+		"pickup_id": &"planet1_dilapidated_fuel_tank_i0",
 		"part_id": &"dilapidated_fuel_tank",
-		"persistence": GlobalPartRegistry.PICKUP_PERSISTENCE_RESPAWNABLE,
+		"pickup_index": 0,
+		"persistence": GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE,
 		"spawn_reveal_mode": SPAWN_REVEAL_FULL,
 	},
 	{
-		"pickup_id": &"planet1_dilapidated_drill",
+		"pickup_id": &"planet1_dilapidated_fuel_tank_i1",
+		"part_id": &"dilapidated_fuel_tank",
+		"pickup_index": 1,
+		"persistence": GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE,
+		"spawn_reveal_mode": SPAWN_REVEAL_NORMAL,
+	},
+	{
+		"pickup_id": &"planet1_dilapidated_drill_i0",
 		"part_id": &"dilapidated_drill",
-		"persistence": GlobalPartRegistry.PICKUP_PERSISTENCE_RESPAWNABLE,
+		"pickup_index": 0,
+		"persistence": GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE,
 		"spawn_reveal_mode": SPAWN_REVEAL_FULL,
 	},
 	{
-		"pickup_id": &"planet1_dilapidated_treads",
+		"pickup_id": &"planet1_dilapidated_drill_i1",
+		"part_id": &"dilapidated_drill",
+		"pickup_index": 1,
+		"persistence": GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE,
+		"spawn_reveal_mode": SPAWN_REVEAL_NORMAL,
+	},
+	{
+		"pickup_id": &"planet1_dilapidated_treads_i0",
 		"part_id": &"dilapidated_treads",
-		"persistence": GlobalPartRegistry.PICKUP_PERSISTENCE_RESPAWNABLE,
+		"pickup_index": 0,
+		"persistence": GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE,
 		"spawn_reveal_mode": SPAWN_REVEAL_FULL,
+	},
+	{
+		"pickup_id": &"planet1_dilapidated_treads_i1",
+		"part_id": &"dilapidated_treads",
+		"pickup_index": 1,
+		"persistence": GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE,
+		"spawn_reveal_mode": SPAWN_REVEAL_NORMAL,
 	},
 ]
 
@@ -970,47 +995,155 @@ func _rebuild_view_textures() -> void:
 	_visual_dirty = false
 
 
-## Spawns Dilapidated ground pickups on the Chebyshev-8 ring around `spawn_world` (Planet 1 only).
-func spawn_planet1_global_part_pickups(spawn_world: Vector2) -> void:
-	if stage_id != &"planet1":
-		return
-	var to_place: Array[Dictionary] = []
-	for d in _PLANET1_DILAPIDATED_DEFS:
-		var pickup_id: StringName = d["pickup_id"] as StringName
-		var part_id: StringName = d["part_id"] as StringName
-		var persistence: StringName = d.get(
-			"persistence",
-			GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE
-		) as StringName
-		if GlobalPartRegistry.should_skip_spawn_for_pickup_def(persistence, pickup_id, part_id):
-			continue
-		to_place.append(d)
-	if to_place.is_empty():
-		return
-	var origin_cell := world_pos_to_cell(spawn_world)
+func _tier_for_planet_def(part_id: StringName) -> int:
+	var pd: GlobalPartData = GlobalPartRegistry.get_part_data(part_id)
+	if pd == null:
+		return 0
+	return int(pd.tier)
+
+
+func _planet1_pickup_type_slot_index(part_id: StringName) -> int:
+	var pd: GlobalPartData = GlobalPartRegistry.get_part_data(part_id)
+	if pd == null:
+		return -1
+	match String(pd.part_type):
+		"fuel_tank":
+			return 0
+		"drill":
+			return 1
+		"treads":
+			return 2
+		_:
+			return -1
+
+
+func _planet1_neighbor_chunks_chebyshev1(origin_chunk: Vector2i) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	for dy in [-1, 0, 1]:
+		for dx in [-1, 0, 1]:
+			if dx == 0 and dy == 0:
+				continue
+			out.append(origin_chunk + Vector2i(dx, dy))
+	return out
+
+
+func _planet1_shuffle_chebyshev8_ring(origin_cell: Vector2i, rng: RandomNumberGenerator) -> Array[Vector2i]:
 	var ring: Array[Vector2i] = []
 	for dy in range(-8, 9):
 		for dx in range(-8, 9):
 			if maxi(abs(dx), abs(dy)) != 8:
 				continue
 			ring.append(origin_cell + Vector2i(dx, dy))
-	var rng := RandomNumberGenerator.new()
-	rng.seed = hash(Vector3i(_stage_seed_effective(), 771001, 42))
 	for ii in range(ring.size() - 1, 0, -1):
 		var jj: int = rng.randi_range(0, ii)
 		var swap: Vector2i = ring[ii]
 		ring[ii] = ring[jj]
 		ring[jj] = swap
-	var n: int = mini(to_place.size(), ring.size())
-	for i in n:
-		var cw: Vector2 = cell_center_world(ring[i])
+	return ring
+
+
+func _planet1_pick_random_cell_in_chunk(chunk: Vector2i, rng: RandomNumberGenerator) -> Vector2i:
+	_ensure_chunk(chunk)
+	var lx: int = rng.randi_range(0, CHUNK_SIZE - 1)
+	var ly: int = rng.randi_range(0, CHUNK_SIZE - 1)
+	return Vector2i(chunk.x * CHUNK_SIZE + lx, chunk.y * CHUNK_SIZE + ly)
+
+
+func _planet1_assign_cells_pickup_tier1(
+	defs: Array[Dictionary],
+	spawn_world: Vector2,
+	rng_ring: RandomNumberGenerator,
+	rng_far: RandomNumberGenerator,
+	out_cells: Dictionary
+) -> void:
+	var origin_cell := world_pos_to_cell(spawn_world)
+	var ring: Array[Vector2i] = _planet1_shuffle_chebyshev8_ring(origin_cell, rng_ring)
+	var neighbors: Array[Vector2i] = _planet1_neighbor_chunks_chebyshev1(Vector2i.ZERO)
+	for ii in range(neighbors.size() - 1, 0, -1):
+		var jj: int = rng_far.randi_range(0, ii)
+		var nswap: Vector2i = neighbors[ii]
+		neighbors[ii] = neighbors[jj]
+		neighbors[jj] = nswap
+
+	for d in defs:
+		var pid: StringName = d["pickup_id"] as StringName
+		var part_id: StringName = d["part_id"] as StringName
+		var pidx: int = int(d.get("pickup_index", 0))
+		var type_slot: int = _planet1_pickup_type_slot_index(part_id)
+		if type_slot < 0:
+			push_warning("MiningWorld: tier-1 pickup unknown part_type for %s" % String(part_id))
+			continue
+		if pidx == 0:
+			if type_slot >= ring.size():
+				push_warning(
+					"MiningWorld: tier-1 ring has no cell for type slot %d" % type_slot
+				)
+				continue
+			out_cells[pid] = ring[type_slot]
+		else:
+			if type_slot >= neighbors.size():
+				push_warning(
+					"MiningWorld: tier-1 neighbor ring has no chunk for type slot %d" % type_slot
+				)
+				continue
+			var ch: Vector2i = neighbors[type_slot]
+			var rcell := RandomNumberGenerator.new()
+			rcell.seed = hash(Vector3i(_stage_seed_effective(), 771903 + type_slot * 97 + pidx * 31, 404))
+			out_cells[pid] = _planet1_pick_random_cell_in_chunk(ch, rcell)
+
+
+## Tier 1 only: pickup_index 0 = Chebyshev-8 ring around spawn; pickup_index 1 = random cell in a chunk adjacent to `(0,0)`.
+func spawn_planet1_global_part_pickups(spawn_world: Vector2) -> void:
+	if stage_id != &"planet1":
+		return
+	var active: Array[Dictionary] = []
+	for d in _PLANET1_GLOBAL_PART_PICKUP_DEFS:
+		var pickup_id: StringName = d["pickup_id"] as StringName
+		var part_id: StringName = d["part_id"] as StringName
+		var persistence: StringName = d.get(
+			"persistence",
+			GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE
+		) as StringName
+		if GlobalPartRegistry.should_skip_spawn_for_pickup_def(
+			persistence, pickup_id, part_id, int(d.get("pickup_index", 0))
+		):
+			continue
+		active.append(d)
+	if active.is_empty():
+		return
+	var tier1_active: Array[Dictionary] = []
+	for d in active:
+		var part_id_chk: StringName = d["part_id"] as StringName
+		var tier: int = _tier_for_planet_def(part_id_chk)
+		if tier != 1:
+			push_warning(
+				"MiningWorld.spawn_planet1_global_part_pickups: skip %s — tier=%d has no ground spawns (only tier 1 does)"
+				% [String(part_id_chk), tier]
+			)
+			continue
+		tier1_active.append(d)
+	if tier1_active.is_empty():
+		return
+	var cells_by_pickup_id: Dictionary = {}
+	var rng_ring := RandomNumberGenerator.new()
+	rng_ring.seed = hash(Vector3i(_stage_seed_effective(), 771001, 42))
+	var rng_far := RandomNumberGenerator.new()
+	rng_far.seed = hash(Vector3i(_stage_seed_effective(), 771002, 43))
+	_planet1_assign_cells_pickup_tier1(tier1_active, spawn_world, rng_ring, rng_far, cells_by_pickup_id)
+
+	for def in tier1_active:
+		var pid: StringName = def["pickup_id"] as StringName
+		if not cells_by_pickup_id.has(pid):
+			continue
+		var cell: Vector2i = cells_by_pickup_id[pid] as Vector2i
+		var cw: Vector2 = cell_center_world(cell)
 		clear_solid_in_circle_world(cw, 8.0)
-		var def: Dictionary = to_place[i]
 		var node: GlobalPartGroundPickup = _GENERIC_GLOBAL_PART_GROUND_PICKUP.instantiate() as GlobalPartGroundPickup
 		if node == null:
 			continue
-		node.pickup_id = def["pickup_id"] as StringName
+		node.pickup_id = pid
 		node.part_id = def["part_id"] as StringName
+		node.pickup_index = int(def.get("pickup_index", 0))
 		node.persistence = def.get(
 			"persistence",
 			GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE

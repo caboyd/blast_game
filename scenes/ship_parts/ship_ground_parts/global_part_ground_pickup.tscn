@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://dmcexuntivfxv" path="res://scripts/world/GlobalPartGroundPickup.gd" id="1"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_pick"]
-radius = 9.91
+radius = 8.0
 
 [node name="GlobalPartGroundPickup" type="Area2D" unique_id=1459452419]
 collision_layer = 0

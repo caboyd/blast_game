@@ -7,9 +7,11 @@ func setup_from_equipped_slot(type_key: StringName, part_id: StringName) -> void
 	var type_txt: String = String(type_key).replace("_", " ").capitalize()
 
 	if pd != null:
-		type_txt = String(pd.part_type).replace("_", " ").capitalize()
 		var dn: String = pd.display_name.strip_edges()
-		name_txt = type_txt if dn.is_empty() else "%s %s" % [dn, type_txt]
+		var base_type: String = String(pd.part_type).replace("_", " ").capitalize()
+		var pti: int = int(pd.tier)
+		type_txt = base_type if pti <= 0 else ("%s · Tier %d" % [base_type, pti])
+		name_txt = base_type if dn.is_empty() else "%s %s" % [dn, base_type]
 
 	var lvl: int = GlobalPartRegistry.get_part_level(part_id)
 	var mx: int = GlobalPartRegistry.get_part_max_level(part_id)

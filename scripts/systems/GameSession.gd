@@ -4,6 +4,7 @@ extends Node
 const PREP_SCENE := "res://scenes/prep/Prep.tscn"
 const _CAREER_SAVE_PATH := "user://career.cfg"
 const _CAREER_SECTION := "career"
+const _GLOBAL_PART_PICKUP_BY_TYPE_SECTION := "global_part_pickup_by_type"
 const _CAREER_KEY_BLOCKS := "total_blocks_destroyed"
 const _CAREER_KEY_MONEY := "money"
 const _CAREER_KEY_SELECTED_SHIP := "selected_ship_id"
@@ -24,6 +25,8 @@ var _career_write_pending: bool = false
 var _mission_start_ticks_msec: int = 0
 ## `stage_id` (String) -> { type_id: true } for types seen (vision) or hit (damage).
 var _stage_block_types_found: Dictionary = {}
+## String slot key (`fuel_tank` / `drill` / `treads`) → dict composite key `"%d|%d" % [tier, pickup_index]` → true
+var _global_part_pickups_by_type: Dictionary = {}
 
 
 func _ready() -> void:
@@ -51,6 +54,7 @@ func _load_career() -> void:
 	if c.load(_CAREER_SAVE_PATH) != OK:
 		# First launch: no save yet — still apply ship-derived fuel max (and empty upgrade levels).
 		UpgradeBus._levels.clear()
+		clear_global_part_pickup_collected_by_type()
 		GlobalPartRegistry.reset_to_cracked_defaults()
 		GameStatistics.apply_fuel_max_from_career_load()
 		return
@@ -63,6 +67,8 @@ func _load_career() -> void:
 		ShipDataRegistry.reload_active()
 	UpgradeBus.read_from_career_config(c)
 	GlobalPartRegistry.load_from_config_file(c)
+	load_global_part_pickup_collected_from_config(c)
+	GlobalPartRegistry.migrate_legacy_pickup_ids_to_game_session_pickup_slots()
 	GameStatistics.apply_fuel_max_from_career_load()
 	_load_block_discovery_from_config(c)
 
@@ -87,6 +93,7 @@ func _write_career_to_disk() -> void:
 	c.set_value(_CAREER_SECTION, _CAREER_KEY_SELECTED_SHIP, String(selected_ship_id))
 	UpgradeBus.write_to_career_config(c)
 	GlobalPartRegistry.write_to_config_file(c)
+	write_global_part_pickup_collected_to_config(c)
 	_write_block_discovery_to_config(c)
 	var err := c.save(_CAREER_SAVE_PATH)
 	if err != OK:
@@ -153,6 +160,88 @@ func _write_block_discovery_to_config(c: ConfigFile) -> void:
 				s_ids += ","
 			s_ids += str(ids[i])
 		c.set_value(_BLOCK_DISCOVERY_SECTION, String(sid), s_ids)
+
+
+func _global_slot_key_string(slot: StringName) -> String:
+	return String(slot)
+
+
+func clear_global_part_pickup_collected_by_type() -> void:
+	_global_part_pickups_by_type.clear()
+
+
+func _global_part_pickup_tuple_key(tier: int, pickup_index: int) -> String:
+	return "%d|%d" % [tier, pickup_index]
+
+
+func is_global_part_pickup_collected(type_key: StringName, tier: int, pickup_index: int) -> bool:
+	var inner: Variant = _global_part_pickups_by_type.get(_global_slot_key_string(type_key))
+	if inner == null:
+		return false
+	if typeof(inner) != TYPE_DICTIONARY:
+		return false
+	return bool((inner as Dictionary).get(_global_part_pickup_tuple_key(tier, pickup_index), false))
+
+
+func mark_global_part_pickup_collected(type_key: StringName, tier: int, pickup_index: int) -> void:
+	var slot_s: String = _global_slot_key_string(type_key)
+	if slot_s.is_empty():
+		return
+	if not _global_part_pickups_by_type.has(slot_s):
+		_global_part_pickups_by_type[slot_s] = {}
+	var slot_map: Dictionary = _global_part_pickups_by_type[slot_s]
+	slot_map[_global_part_pickup_tuple_key(tier, pickup_index)] = true
+
+
+func load_global_part_pickup_collected_from_config(c: ConfigFile) -> void:
+	_global_part_pickups_by_type.clear()
+	if not c.has_section(_GLOBAL_PART_PICKUP_BY_TYPE_SECTION):
+		return
+	for slot_s in c.get_section_keys(_GLOBAL_PART_PICKUP_BY_TYPE_SECTION):
+		var raw_v: Variant = c.get_value(_GLOBAL_PART_PICKUP_BY_TYPE_SECTION, slot_s, "")
+		var list_s: String = str(raw_v).strip_edges()
+		if list_s.is_empty():
+			continue
+		if not _global_part_pickups_by_type.has(slot_s):
+			_global_part_pickups_by_type[slot_s] = {}
+		var inner: Dictionary = _global_part_pickups_by_type[slot_s]
+		for part in list_s.split(","):
+			var chunk: String = part.strip_edges()
+			if chunk.is_empty():
+				continue
+			var segs: PackedStringArray = chunk.split(":")
+			if segs.size() != 2:
+				continue
+			if not String(segs[0]).is_valid_int() or not String(segs[1]).is_valid_int():
+				continue
+			var t: int = int(segs[0])
+			var pix: int = int(segs[1])
+			inner[_global_part_pickup_tuple_key(t, pix)] = true
+
+
+func write_global_part_pickup_collected_to_config(c: ConfigFile) -> void:
+	for sk in _global_part_pickups_by_type:
+		var inner_raw: Variant = _global_part_pickups_by_type[sk]
+		if typeof(inner_raw) != TYPE_DICTIONARY:
+			continue
+		var inner_dict: Dictionary = inner_raw
+		var tuples: PackedStringArray = PackedStringArray()
+		for comp in inner_dict:
+			if not bool(inner_dict[comp]):
+				continue
+			var segs: PackedStringArray = String(comp).split("|")
+			if segs.size() != 2:
+				continue
+			tuples.append("%s:%s" % [segs[0], segs[1]])
+		if tuples.is_empty():
+			continue
+		tuples.sort()
+		var line := ""
+		for i in tuples.size():
+			if i > 0:
+				line += ","
+			line += tuples[i]
+		c.set_value(_GLOBAL_PART_PICKUP_BY_TYPE_SECTION, String(sk), line)
 
 
 ## Call from Prep when starting a mission so HUD "blocks" counts this run only.
@@ -231,6 +320,7 @@ func reset_all_progress() -> void:
 	GameStatistics._blocks_destroyed_run_baseline = 0
 	GameStatistics.furthest_depth_cells = 0
 	UpgradeBus._levels.clear()
+	clear_global_part_pickup_collected_by_type()
 	GlobalPartRegistry.reset_to_cracked_defaults()
 	ShipDataRegistry.reload_all()
 	GameStatistics._apply_ship_fuel_base()

@@ -17,6 +17,7 @@ const DEFAULT_CRACKED_TREADS := &"cracked_treads"
 
 const PICKUP_PERSISTENCE_ONCE := &"once"
 const PICKUP_PERSISTENCE_RESPAWNABLE := &"respawnable"
+const _LEGACY_PLANET1_PICKUP_PREFIX := "planet1_"
 
 const _SHIP_UPGRADE_MATH = preload("res://scripts/data/ShipUpgradeMath.gd")
 const _GlobalPartDataScript = preload("res://scripts/data/GlobalPartData.gd")
@@ -66,6 +67,7 @@ func reset_to_cracked_defaults() -> void:
 	equipped_treads_id = DEFAULT_CRACKED_TREADS
 	_collected_pickups.clear()
 	_part_levels.clear()
+	GameSession.clear_global_part_pickup_collected_by_type()
 	parts_changed.emit()
 
 
@@ -114,9 +116,6 @@ func write_to_config_file(c: ConfigFile) -> void:
 	c.set_value(_CONFIG_SECTION_PARTS, String(KEY_FUEL_TANK), String(equipped_fuel_tank_id))
 	c.set_value(_CONFIG_SECTION_PARTS, String(KEY_DRILL), String(equipped_drill_id))
 	c.set_value(_CONFIG_SECTION_PARTS, String(KEY_TREADS), String(equipped_treads_id))
-	for pid in _collected_pickups:
-		if _collected_pickups[pid]:
-			c.set_value(_CONFIG_SECTION_PICKUPS, String(pid), true)
 	for pid in _part_levels:
 		var lv: int = int(_part_levels[pid])
 		if lv > 0:
@@ -255,6 +254,65 @@ func treads_movement_effect_timing() -> PackedFloat32Array:
 	return PackedFloat32Array([0.0, 0.0, 0.0])
 
 
+func migrate_legacy_pickup_ids_to_game_session_pickup_slots() -> void:
+	for pickup_id_any in _collected_pickups.keys():
+		if bool(_collected_pickups[pickup_id_any]):
+			_try_migrate_one_legacy_pickup_id_to_game_session(StringName(str(pickup_id_any)))
+
+
+func _try_migrate_one_legacy_pickup_id_to_game_session(pickup_id: StringName) -> void:
+	var s: String = String(pickup_id)
+	var pickup_index: int = 0
+	var after_planet: String = ""
+	var idx_marker := s.rfind("_i")
+	if idx_marker >= 0:
+		var suffix: String = s.substr(idx_marker + 2)
+		if suffix.is_empty() or not suffix.is_valid_int():
+			return
+		pickup_index = int(suffix)
+		var before_idx: String = s.substr(0, idx_marker)
+		if not before_idx.begins_with(_LEGACY_PLANET1_PICKUP_PREFIX):
+			return
+		after_planet = before_idx.substr(_LEGACY_PLANET1_PICKUP_PREFIX.length())
+	else:
+		if not s.begins_with(_LEGACY_PLANET1_PICKUP_PREFIX):
+			return
+		after_planet = s.substr(_LEGACY_PLANET1_PICKUP_PREFIX.length())
+		pickup_index = 0
+	if after_planet.is_empty():
+		return
+	var part_id: StringName = StringName(after_planet)
+	var pd: GlobalPartData = get_part_data(part_id)
+	if pd == null:
+		return
+	var slot_key: StringName = _slot_key_for_part_data(pd)
+	if slot_key == &"":
+		return
+	GameSession.mark_global_part_pickup_collected(slot_key, int(pd.tier), pickup_index)
+
+
+func is_slot_pickup_collected(part_id: StringName, pickup_index: int) -> bool:
+	var pd: GlobalPartData = get_part_data(part_id)
+	if pd == null:
+		return false
+	var slot_key: StringName = _slot_key_for_part_data(pd)
+	if slot_key == &"":
+		return false
+	return GameSession.is_global_part_pickup_collected(slot_key, int(pd.tier), pickup_index)
+
+
+func mark_once_global_part_pickup(part_id: StringName, pickup_index: int, pickup_id: StringName) -> void:
+	if pickup_id != &"":
+		_collected_pickups[pickup_id] = true
+	var pd: GlobalPartData = get_part_data(part_id)
+	if pd == null:
+		return
+	var slot_key: StringName = _slot_key_for_part_data(pd)
+	if slot_key == &"":
+		return
+	GameSession.mark_global_part_pickup_collected(slot_key, int(pd.tier), pickup_index)
+
+
 func is_pickup_collected(pickup_id: StringName) -> bool:
 	return bool(_collected_pickups.get(pickup_id, false))
 
@@ -263,8 +321,19 @@ func mark_pickup_collected(pickup_id: StringName) -> void:
 	_collected_pickups[pickup_id] = true
 
 
-func should_skip_spawn_for_pickup_def(persistence: StringName, pickup_id: StringName, part_id: StringName) -> bool:
+func should_skip_spawn_for_pickup_def(
+	persistence: StringName,
+	pickup_id: StringName,
+	part_id: StringName,
+	pickup_index: int = 0
+) -> bool:
 	if persistence == PICKUP_PERSISTENCE_ONCE:
+		var pd_once: GlobalPartData = get_part_data(part_id)
+		if pd_once != null:
+			var slot_once: StringName = _slot_key_for_part_data(pd_once)
+			if slot_once != &"":
+				if GameSession.is_global_part_pickup_collected(slot_once, int(pd_once.tier), pickup_index):
+					return true
 		return is_pickup_collected(pickup_id)
 	if persistence == PICKUP_PERSISTENCE_RESPAWNABLE:
 		var pd: GlobalPartData = get_part_data(part_id)
