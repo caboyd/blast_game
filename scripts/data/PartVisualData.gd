@@ -1,4 +1,4 @@
-class_name GlobalPartVisualData
+class_name PartVisualData
 extends Resource
 
 @export var prep_icon_scene: PackedScene

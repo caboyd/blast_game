@@ -41,48 +41,48 @@ static var CELL_MATERIAL_COLORS: PackedColorArray = PackedColorArray([
 	Color(0.92, 0.18, 0.38, 1.0),
 ])
 
-## Planet 1: only parts with `GlobalPartData.tier == 1` (`_t1` line). Tier 0 has no ground pickups.
-const GLOBAL_PART_PICKUP_DEFS: Array[Dictionary] = [
+## Planet 1: only parts with `PartData.tier == 1` (`_t1` line). Tier 0 has no ground pickups.
+const PART_PICKUP_DEFS: Array[Dictionary] = [
 	{
 		"pickup_id": &"planet1_part_fuel_tank_t1_i0",
 		"part_id": &"part_fuel_tank_t1",
 		"pickup_index": 0,
-		"persistence": GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE,
+		"persistence": PartRegistry.PICKUP_PERSISTENCE_ONCE,
 		"spawn_reveal_mode": MiningWorld.SPAWN_REVEAL_FULL,
 	},
 	{
 		"pickup_id": &"planet1_part_fuel_tank_t1_i1",
 		"part_id": &"part_fuel_tank_t1",
 		"pickup_index": 1,
-		"persistence": GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE,
+		"persistence": PartRegistry.PICKUP_PERSISTENCE_ONCE,
 		"spawn_reveal_mode": MiningWorld.SPAWN_REVEAL_NORMAL,
 	},
 	{
 		"pickup_id": &"planet1_part_drill_t1_i0",
 		"part_id": &"part_drill_t1",
 		"pickup_index": 0,
-		"persistence": GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE,
+		"persistence": PartRegistry.PICKUP_PERSISTENCE_ONCE,
 		"spawn_reveal_mode": MiningWorld.SPAWN_REVEAL_FULL,
 	},
 	{
 		"pickup_id": &"planet1_part_drill_t1_i1",
 		"part_id": &"part_drill_t1",
 		"pickup_index": 1,
-		"persistence": GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE,
+		"persistence": PartRegistry.PICKUP_PERSISTENCE_ONCE,
 		"spawn_reveal_mode": MiningWorld.SPAWN_REVEAL_NORMAL,
 	},
 	{
 		"pickup_id": &"planet1_part_treads_t1_i0",
 		"part_id": &"part_treads_t1",
 		"pickup_index": 0,
-		"persistence": GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE,
+		"persistence": PartRegistry.PICKUP_PERSISTENCE_ONCE,
 		"spawn_reveal_mode": MiningWorld.SPAWN_REVEAL_FULL,
 	},
 	{
 		"pickup_id": &"planet1_part_treads_t1_i1",
 		"part_id": &"part_treads_t1",
 		"pickup_index": 1,
-		"persistence": GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE,
+		"persistence": PartRegistry.PICKUP_PERSISTENCE_ONCE,
 		"spawn_reveal_mode": MiningWorld.SPAWN_REVEAL_NORMAL,
 	},
 ]
@@ -137,12 +137,12 @@ func _ready() -> void:
 		_ship.position = spawn_world
 		_ship.add_to_group(&"leading_mining_ship")
 		_layout_mission_ship_chain_followers_from_head()
-		GlobalPartVisuals.attach_to_ship(_ship)
+		PartVisuals.attach_to_ship(_ship)
 		for tail in _ship_chain_followers:
-			GlobalPartVisuals.attach_to_ship(tail)
+			PartVisuals.attach_to_ship(tail)
 		_mining_world.stamp_dirt_chebyshev_from_world(spawn_world, 4)
 		_ship.carve_hull_terrain_on_spawn()
-		_spawn_global_part_pickups(spawn_world)
+		_spawn_part_pickups(spawn_world)
 	if _ship and not _ship.out_of_fuel.is_connected(_on_ship_out_of_fuel):
 		_ship.out_of_fuel.connect(_on_ship_out_of_fuel)
 	if _subviewport_container != null and not _subviewport_container.resized.is_connected(_on_subviewport_container_resized):
@@ -203,14 +203,14 @@ func _attach_generation_monument(ship: Node2D) -> void:
 
 
 func _tier_for_part_def(part_id: StringName) -> int:
-	var pd: GlobalPartData = GlobalPartRegistry.get_part_data(part_id)
+	var pd: PartData = PartRegistry.get_part_data(part_id)
 	if pd == null:
 		return 0
 	return int(pd.tier)
 
 
 func _pickup_type_slot_index(part_id: StringName) -> int:
-	var pd: GlobalPartData = GlobalPartRegistry.get_part_data(part_id)
+	var pd: PartData = PartRegistry.get_part_data(part_id)
 	if pd == null:
 		return -1
 	match String(pd.part_type):
@@ -289,8 +289,8 @@ func _assign_tier1_pickup_cells(
 
 
 ## Tier 1 only: pickup_index 0 = Chebyshev-8 ring around spawn; pickup_index 1 = random cell in a chunk adjacent to `(0,0)`.
-func _spawn_global_part_pickups(spawn_world: Vector2) -> void:
-	var active: Array[Dictionary] = _mining_world.active_global_part_pickup_defs(GLOBAL_PART_PICKUP_DEFS)
+func _spawn_part_pickups(spawn_world: Vector2) -> void:
+	var active: Array[Dictionary] = _mining_world.active_part_pickup_defs(PART_PICKUP_DEFS)
 	if active.is_empty():
 		return
 	var tier1_active: Array[Dictionary] = []
@@ -312,7 +312,7 @@ func _spawn_global_part_pickups(spawn_world: Vector2) -> void:
 	var rng_far := RandomNumberGenerator.new()
 	rng_far.seed = _mining_world.stage_rng_seed(771002, 43)
 	_assign_tier1_pickup_cells(tier1_active, spawn_world, rng_ring, rng_far, cells_by_pickup_id)
-	_mining_world.spawn_global_part_pickups_at_cells(tier1_active, cells_by_pickup_id, 8.0)
+	_mining_world.spawn_part_pickups_at_cells(tier1_active, cells_by_pickup_id, 8.0)
 
 
 func _spawn_mission_ship() -> void:

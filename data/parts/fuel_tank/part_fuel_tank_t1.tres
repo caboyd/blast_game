@@ -1,11 +1,11 @@
-[gd_resource type="Resource" script_class="GlobalPartData" format=3 uid="uid://carkk08p2870d"]
+[gd_resource type="Resource" script_class="PartData" format=3 uid="uid://carkk08p2870d"]
 
-[ext_resource type="Script" uid="uid://b8431vs7scjj6" path="res://scripts/data/GlobalPartData.gd" id="1"]
-[ext_resource type="Script" path="res://scripts/data/GlobalPartEffectSet.gd" id="1_0cvbw"]
+[ext_resource type="Script" uid="uid://b8431vs7scjj6" path="res://scripts/data/PartData.gd" id="1"]
+[ext_resource type="Script" uid="uid://b2fxsetlvl01u" path="res://scripts/data/PartEffectSet.gd" id="1_0cvbw"]
 [ext_resource type="Script" uid="uid://drjo0qypkcvo3" path="res://scripts/data/ShipUpgradeEffect.gd" id="2"]
 [ext_resource type="PackedScene" uid="uid://c2aagd7togt5k" path="res://scenes/ship_parts/fuel_tank/ground/part_fuel_tank_t1_ground.tscn" id="3_sixo0"]
 [ext_resource type="PackedScene" uid="uid://cvisrv50hnhs5" path="res://scenes/ship_parts/fuel_tank/part_fuel_tank_t1.tscn" id="4_l5fcr"]
-[ext_resource type="Script" uid="uid://dbmf6jiisv031" path="res://scripts/data/GlobalPartVisualData.gd" id="4_vis"]
+[ext_resource type="Script" uid="uid://dbmf6jiisv031" path="res://scripts/data/PartVisualData.gd" id="4_vis"]
 
 [sub_resource type="Resource" id="Resource_ndris"]
 script = ExtResource("2")

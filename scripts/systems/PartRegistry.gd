@@ -2,10 +2,10 @@ extends Node
 
 signal parts_changed
 
-const _GLOBAL_PARTS_DIR := "res://data/global_parts/"
-const _CONFIG_SECTION_PARTS := "global_parts"
-const _CONFIG_SECTION_PICKUPS := "global_part_pickups"
-const _CONFIG_SECTION_PART_LEVELS := "global_part_levels"
+const _PARTS_DIR := "res://data/parts/"
+const _CONFIG_SECTION_PARTS := "parts"
+const _CONFIG_SECTION_PICKUPS := "part_pickups"
+const _CONFIG_SECTION_PART_LEVELS := "part_levels"
 
 const KEY_FUEL_TANK := &"fuel_tank"
 const KEY_DRILL := &"drill"
@@ -33,10 +33,10 @@ const _LEGACY_PART_IDS := {
 	&"treads_t1": &"part_treads_t1",
 }
 
-const _GlobalPartDataScript = preload("res://scripts/data/GlobalPartData.gd")
-const _GlobalPartMovementPenaltyEffect = preload("res://scripts/data/GlobalPartMovementPenaltyEffect.gd")
+const _PartDataScript = preload("res://scripts/data/PartData.gd")
+const _PartMovementPenaltyEffect = preload("res://scripts/data/PartMovementPenaltyEffect.gd")
 
-var _parts_by_id: Dictionary = {} # StringName -> GlobalPartData
+var _parts_by_id: Dictionary = {} # StringName -> PartData
 
 var equipped_fuel_tank_id: StringName = DEFAULT_FUEL_TANK
 var equipped_drill_id: StringName = DEFAULT_DRILL
@@ -55,13 +55,13 @@ func _ready() -> void:
 
 func _reload_definitions() -> void:
 	_parts_by_id.clear()
-	_load_definitions_in_dir(_GLOBAL_PARTS_DIR)
+	_load_definitions_in_dir(_PARTS_DIR)
 
 
 func _load_definitions_in_dir(dir_path: String) -> void:
 	var dir := DirAccess.open(dir_path)
 	if dir == null:
-		push_error("GlobalPartRegistry: cannot open %s" % dir_path)
+		push_error("PartRegistry: cannot open %s" % dir_path)
 		return
 	dir.list_dir_begin()
 	var fname := dir.get_next()
@@ -72,10 +72,10 @@ func _load_definitions_in_dir(dir_path: String) -> void:
 		elif fname.ends_with(".tres"):
 			var path: String = dir_path.path_join(fname)
 			var res: Resource = ResourceLoader.load(path, "", ResourceLoader.CACHE_MODE_REUSE)
-			if res != null and res.get_script() == _GlobalPartDataScript:
+			if res != null and res.get_script() == _PartDataScript:
 				var pid: StringName = res.get("id") as StringName
 				if String(pid).is_empty():
-					push_error("GlobalPartRegistry: part id empty in %s" % path)
+					push_error("PartRegistry: part id empty in %s" % path)
 				else:
 					_parts_by_id[pid] = res
 		fname = dir.get_next()
@@ -92,7 +92,7 @@ func reset_to_t0_defaults() -> void:
 	equipped_treads_id = DEFAULT_TREADS
 	_collected_pickups.clear()
 	_part_levels.clear()
-	GameSession.clear_global_part_pickup_collected_by_type()
+	GameSession.clear_part_pickup_collected_by_type()
 	parts_changed.emit()
 
 
@@ -127,7 +127,7 @@ func load_from_config_file(c: ConfigFile) -> void:
 			var lv: int = int(raw) if raw != null else 1
 			var pid: StringName = _normalize_part_id(StringName(str(k)))
 			lv = maxi(1, lv)
-			var pd_lv: GlobalPartData = get_part_data(pid)
+			var pd_lv: PartData = get_part_data(pid)
 			if pd_lv != null:
 				lv = mini(lv, pd_lv.get_max_level())
 			if _part_levels.has(pid):
@@ -150,8 +150,8 @@ func write_to_config_file(c: ConfigFile) -> void:
 			c.set_value(_CONFIG_SECTION_PART_LEVELS, String(pid), lv)
 
 
-func get_part_data(part_id: StringName) -> GlobalPartData:
-	return _parts_by_id.get(_normalize_part_id(part_id)) as GlobalPartData
+func get_part_data(part_id: StringName) -> PartData:
+	return _parts_by_id.get(_normalize_part_id(part_id)) as PartData
 
 
 func get_equipped_for_type_key(type_key: StringName) -> StringName:
@@ -166,7 +166,7 @@ func get_equipped_for_type_key(type_key: StringName) -> StringName:
 			return &""
 
 
-func _slot_key_for_part_data(pd: GlobalPartData) -> StringName:
+func _slot_key_for_part_data(pd: PartData) -> StringName:
 	match String(pd.part_type):
 		"fuel_tank":
 			return KEY_FUEL_TANK
@@ -181,14 +181,14 @@ func _slot_key_for_part_data(pd: GlobalPartData) -> StringName:
 func get_part_level(part_id: StringName) -> int:
 	part_id = _normalize_part_id(part_id)
 	var lv: int = maxi(1, int(_part_levels.get(part_id, 1)))
-	var pd: GlobalPartData = get_part_data(part_id)
+	var pd: PartData = get_part_data(part_id)
 	if pd != null:
 		lv = mini(lv, pd.get_max_level())
 	return lv
 
 
 func get_part_max_level(part_id: StringName) -> int:
-	var pd: GlobalPartData = get_part_data(part_id)
+	var pd: PartData = get_part_data(part_id)
 	if pd == null:
 		return 1
 	return pd.get_max_level()
@@ -201,13 +201,13 @@ func is_part_max_level(part_id: StringName) -> bool:
 ## Central level + equip rule for pickups and upgrades.
 func collect_part(part_id: StringName) -> void:
 	part_id = _normalize_part_id(part_id)
-	var pd: GlobalPartData = get_part_data(part_id)
+	var pd: PartData = get_part_data(part_id)
 	if pd == null:
-		push_warning("GlobalPartRegistry.collect_part: unknown id %s" % String(part_id))
+		push_warning("PartRegistry.collect_part: unknown id %s" % String(part_id))
 		return
 	var slot_key: StringName = _slot_key_for_part_data(pd)
 	if slot_key == &"":
-		push_warning("GlobalPartRegistry.collect_part: bad part_type on %s" % String(part_id))
+		push_warning("PartRegistry.collect_part: bad part_type on %s" % String(part_id))
 		return
 	var cur: StringName = get_equipped_for_type_key(slot_key)
 	if cur == part_id:
@@ -225,9 +225,9 @@ func collect_part(part_id: StringName) -> void:
 
 func equip_part(part_id: StringName) -> void:
 	part_id = _normalize_part_id(part_id)
-	var d: GlobalPartData = get_part_data(part_id)
+	var d: PartData = get_part_data(part_id)
 	if d == null:
-		push_warning("GlobalPartRegistry.equip_part: unknown id %s" % String(part_id))
+		push_warning("PartRegistry.equip_part: unknown id %s" % String(part_id))
 		return
 	match String(d.part_type):
 		"fuel_tank":
@@ -237,7 +237,7 @@ func equip_part(part_id: StringName) -> void:
 		"treads":
 			equipped_treads_id = part_id
 		_:
-			push_warning("GlobalPartRegistry.equip_part: bad part_type on %s" % String(part_id))
+			push_warning("PartRegistry.equip_part: bad part_type on %s" % String(part_id))
 	parts_changed.emit()
 
 
@@ -247,7 +247,7 @@ func apply_effects_for_stat(stat: StringName, base: float) -> float:
 	var v: float = base
 	for pk in [KEY_FUEL_TANK, KEY_DRILL, KEY_TREADS]:
 		var pid: StringName = get_equipped_for_type_key(pk)
-		var pd: GlobalPartData = get_part_data(pid)
+		var pd: PartData = get_part_data(pid)
 		if pd == null:
 			continue
 		var level: int = get_part_level(pid)
@@ -264,7 +264,7 @@ func apply_effects_for_stat(stat: StringName, base: float) -> float:
 
 func get_drill_allowed_mine_type_ids() -> PackedInt32Array:
 	var pid: StringName = equipped_drill_id
-	var pd: GlobalPartData = get_part_data(pid)
+	var pd: PartData = get_part_data(pid)
 	if pd == null:
 		return PackedInt32Array()
 	return pd.allowed_mine_type_ids
@@ -272,14 +272,14 @@ func get_drill_allowed_mine_type_ids() -> PackedInt32Array:
 
 func treads_movement_effect_timing() -> PackedFloat32Array:
 	## [0]=every_s, [1]=duration_s, [2]=speed multiplier during penalty [0–1]; empty or zeros = no stutter
-	var pd: GlobalPartData = get_part_data(equipped_treads_id)
+	var pd: PartData = get_part_data(equipped_treads_id)
 	if pd == null:
 		return PackedFloat32Array([0.0, 0.0, 0.0])
 	var lv: int = get_part_level(equipped_treads_id)
 	for eff in pd.get_effects_for_level(lv):
-		if eff == null or not (eff is _GlobalPartMovementPenaltyEffect):
+		if eff == null or not (eff is _PartMovementPenaltyEffect):
 			continue
-		var mpe := eff as _GlobalPartMovementPenaltyEffect
+		var mpe := eff as _PartMovementPenaltyEffect
 		var ev: float = float(mpe.every_s)
 		var du: float = float(mpe.duration_s)
 		if ev > 0.0 and du > 0.0:
@@ -316,35 +316,35 @@ func _try_migrate_one_legacy_pickup_id_to_game_session(pickup_id: StringName) ->
 	if after_planet.is_empty():
 		return
 	var part_id: StringName = StringName(after_planet)
-	var pd: GlobalPartData = get_part_data(part_id)
+	var pd: PartData = get_part_data(part_id)
 	if pd == null:
 		return
 	var slot_key: StringName = _slot_key_for_part_data(pd)
 	if slot_key == &"":
 		return
-	GameSession.mark_global_part_pickup_collected(slot_key, int(pd.tier), pickup_index)
+	GameSession.mark_part_pickup_collected(slot_key, int(pd.tier), pickup_index)
 
 
 func is_slot_pickup_collected(part_id: StringName, pickup_index: int) -> bool:
-	var pd: GlobalPartData = get_part_data(part_id)
+	var pd: PartData = get_part_data(part_id)
 	if pd == null:
 		return false
 	var slot_key: StringName = _slot_key_for_part_data(pd)
 	if slot_key == &"":
 		return false
-	return GameSession.is_global_part_pickup_collected(slot_key, int(pd.tier), pickup_index)
+	return GameSession.is_part_pickup_collected(slot_key, int(pd.tier), pickup_index)
 
 
-func mark_once_global_part_pickup(part_id: StringName, pickup_index: int, pickup_id: StringName) -> void:
+func mark_once_part_pickup(part_id: StringName, pickup_index: int, pickup_id: StringName) -> void:
 	if pickup_id != &"":
 		_collected_pickups[pickup_id] = true
-	var pd: GlobalPartData = get_part_data(part_id)
+	var pd: PartData = get_part_data(part_id)
 	if pd == null:
 		return
 	var slot_key: StringName = _slot_key_for_part_data(pd)
 	if slot_key == &"":
 		return
-	GameSession.mark_global_part_pickup_collected(slot_key, int(pd.tier), pickup_index)
+	GameSession.mark_part_pickup_collected(slot_key, int(pd.tier), pickup_index)
 
 
 func is_pickup_collected(pickup_id: StringName) -> bool:
@@ -362,15 +362,15 @@ func should_skip_spawn_for_pickup_def(
 	pickup_index: int = 0
 ) -> bool:
 	if persistence == PICKUP_PERSISTENCE_ONCE:
-		var pd_once: GlobalPartData = get_part_data(part_id)
+		var pd_once: PartData = get_part_data(part_id)
 		if pd_once != null:
 			var slot_once: StringName = _slot_key_for_part_data(pd_once)
 			if slot_once != &"":
-				if GameSession.is_global_part_pickup_collected(slot_once, int(pd_once.tier), pickup_index):
+				if GameSession.is_part_pickup_collected(slot_once, int(pd_once.tier), pickup_index):
 					return true
 		return is_pickup_collected(pickup_id)
 	if persistence == PICKUP_PERSISTENCE_RESPAWNABLE:
-		var pd: GlobalPartData = get_part_data(part_id)
+		var pd: PartData = get_part_data(part_id)
 		if pd == null:
 			return false
 		var slot_key: StringName = _slot_key_for_part_data(pd)

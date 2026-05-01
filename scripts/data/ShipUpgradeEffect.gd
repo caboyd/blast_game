@@ -1,5 +1,5 @@
 class_name ShipUpgradeEffect
-extends GlobalPartEffect
+extends PartEffect
 
 const OP_ADD := "add"
 const OP_MULTIPLY := "multiply"

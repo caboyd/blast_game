@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="PartData" format=3 uid="uid://d15s6sdfdk6gv"]
+
+[ext_resource type="Script" uid="uid://b8431vs7scjj6" path="res://scripts/data/PartData.gd" id="1"]
+[ext_resource type="Script" uid="uid://b2fxsetlvl01u" path="res://scripts/data/PartEffectSet.gd" id="1_bpfer"]
+[ext_resource type="PackedScene" uid="uid://dhfr4u06mdoje" path="res://scenes/ship_parts/drill/part_drill_t0.tscn" id="3"]
+[ext_resource type="Script" uid="uid://dbmf6jiisv031" path="res://scripts/data/PartVisualData.gd" id="4_vis"]
+
+[sub_resource type="Resource" id="visuals_inline"]
+script = ExtResource("4_vis")
+ship_scene = ExtResource("3")
+
+[resource]
+script = ExtResource("1")
+id = &"part_drill_t0"
+part_type = "drill"
+display_name = "Cracked"
+visuals = SubResource("visuals_inline")
+allowed_mine_type_ids = PackedInt32Array(1)

@@ -1,11 +1,11 @@
-class_name GlobalPartGroundPickup
+class_name PartGroundPickup
 extends Area2D
 
 @export var pickup_id: StringName = &""
 @export var part_id: StringName = &""
-## Which tier-up pickup this is for this part (`0` … `GlobalPartData.get_max_level() - 1`).
+## Which tier-up pickup this is for this part (`0` … `PartData.get_max_level() - 1`).
 @export var pickup_index: int = 0
-## See `GlobalPartRegistry.PICKUP_PERSISTENCE_*`.
+## See `PartRegistry.PICKUP_PERSISTENCE_*`.
 @export var persistence: StringName = &"once"
 
 var _collected: bool = false
@@ -52,7 +52,7 @@ func _mount_visual_if_needed() -> void:
 		return
 	for c in holder.get_children():
 		c.queue_free()
-	var pd: GlobalPartData = GlobalPartRegistry.get_part_data(part_id)
+	var pd: PartData = PartRegistry.get_part_data(part_id)
 	if pd == null or pd.visuals == null:
 		return
 	var gs: PackedScene = pd.visuals.ground_scene
@@ -90,12 +90,12 @@ func _collect() -> void:
 	if part_id == &"":
 		queue_free()
 		return
-	if persistence == GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE and GlobalPartRegistry.is_slot_pickup_collected(part_id, pickup_index):
+	if persistence == PartRegistry.PICKUP_PERSISTENCE_ONCE and PartRegistry.is_slot_pickup_collected(part_id, pickup_index):
 		queue_free()
 		return
 	_collected = true
-	GlobalPartRegistry.collect_part(part_id)
-	if persistence == GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE:
-		GlobalPartRegistry.mark_once_global_part_pickup(part_id, pickup_index, pickup_id)
+	PartRegistry.collect_part(part_id)
+	if persistence == PartRegistry.PICKUP_PERSISTENCE_ONCE:
+		PartRegistry.mark_once_part_pickup(part_id, pickup_index, pickup_id)
 	GameSession.save_career()
 	queue_free()

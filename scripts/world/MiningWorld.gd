@@ -30,8 +30,8 @@ const APRON_COLUMNS := 0
 const SPAWN_REVEAL_NORMAL := &"normal"
 const SPAWN_REVEAL_FULL := &"full"
 
-const _GENERIC_GLOBAL_PART_GROUND_PICKUP := preload(
-	"res://scenes/ship_parts/ground/global_part_ground_pickup.tscn"
+const _GENERIC_PART_GROUND_PICKUP := preload(
+	"res://scenes/ship_parts/ground/part_ground_pickup.tscn"
 )
 
 
@@ -1076,16 +1076,16 @@ func stage_rng_seed(salt_a: int, salt_b: int = 0) -> int:
 	return hash(Vector3i(_stage_seed_effective(), salt_a, salt_b))
 
 
-func active_global_part_pickup_defs(defs: Array[Dictionary]) -> Array[Dictionary]:
+func active_part_pickup_defs(defs: Array[Dictionary]) -> Array[Dictionary]:
 	var active: Array[Dictionary] = []
 	for d in defs:
 		var pickup_id: StringName = d["pickup_id"] as StringName
 		var part_id: StringName = d["part_id"] as StringName
 		var persistence: StringName = d.get(
 			"persistence",
-			GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE
+			PartRegistry.PICKUP_PERSISTENCE_ONCE
 		) as StringName
-		if GlobalPartRegistry.should_skip_spawn_for_pickup_def(
+		if PartRegistry.should_skip_spawn_for_pickup_def(
 			persistence, pickup_id, part_id, int(d.get("pickup_index", 0))
 		):
 			continue
@@ -1093,7 +1093,7 @@ func active_global_part_pickup_defs(defs: Array[Dictionary]) -> Array[Dictionary
 	return active
 
 
-func spawn_global_part_pickups_at_cells(
+func spawn_part_pickups_at_cells(
 	defs: Array[Dictionary],
 	cells_by_pickup_id: Dictionary,
 	clear_radius_world: float = 8.0
@@ -1105,7 +1105,7 @@ func spawn_global_part_pickups_at_cells(
 		var cell: Vector2i = cells_by_pickup_id[pid] as Vector2i
 		var cw: Vector2 = cell_center_world(cell)
 		clear_solid_in_circle_world(cw, clear_radius_world)
-		var node: GlobalPartGroundPickup = _GENERIC_GLOBAL_PART_GROUND_PICKUP.instantiate() as GlobalPartGroundPickup
+		var node: PartGroundPickup = _GENERIC_PART_GROUND_PICKUP.instantiate() as PartGroundPickup
 		if node == null:
 			continue
 		node.pickup_id = pid
@@ -1113,7 +1113,7 @@ func spawn_global_part_pickups_at_cells(
 		node.pickup_index = int(def.get("pickup_index", 0))
 		node.persistence = def.get(
 			"persistence",
-			GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE
+			PartRegistry.PICKUP_PERSISTENCE_ONCE
 		) as StringName
 		node.global_position = cw
 		add_child(node)

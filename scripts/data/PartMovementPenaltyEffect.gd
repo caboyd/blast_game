@@ -1,5 +1,5 @@
-class_name GlobalPartMovementPenaltyEffect
-extends GlobalPartEffect
+class_name PartMovementPenaltyEffect
+extends PartEffect
 
 ## Treads-only: every `every_s`, translation is scaled by `speed_multiplier` for `duration_s`.
 

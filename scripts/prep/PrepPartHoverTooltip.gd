@@ -1,10 +1,10 @@
 extends PanelContainer
 
-const _GlobalPartMovementPenaltyEffect = preload("res://scripts/data/GlobalPartMovementPenaltyEffect.gd")
+const _PartMovementPenaltyEffect = preload("res://scripts/data/PartMovementPenaltyEffect.gd")
 
 
 func setup_from_equipped_slot(type_key: StringName, part_id: StringName) -> void:
-	var pd: GlobalPartData = GlobalPartRegistry.get_part_data(part_id)
+	var pd: PartData = PartRegistry.get_part_data(part_id)
 	var name_txt: String = "—"
 	var type_txt: String = String(type_key).replace("_", " ").capitalize()
 
@@ -15,8 +15,8 @@ func setup_from_equipped_slot(type_key: StringName, part_id: StringName) -> void
 		type_txt = base_type if pti <= 0 else ("%s · Tier %d" % [base_type, pti])
 		name_txt = base_type if dn.is_empty() else "%s %s" % [dn, base_type]
 
-	var lvl: int = GlobalPartRegistry.get_part_level(part_id)
-	var mx: int = GlobalPartRegistry.get_part_max_level(part_id)
+	var lvl: int = PartRegistry.get_part_level(part_id)
+	var mx: int = PartRegistry.get_part_max_level(part_id)
 
 	if has_node(^"%TooltipName"):
 		(get_node(^"%TooltipName") as Label).text = name_txt
@@ -48,16 +48,16 @@ func setup_from_equipped_slot(type_key: StringName, part_id: StringName) -> void
 
 
 func _effects_summary_text(part_id: StringName) -> String:
-	var pd: GlobalPartData = GlobalPartRegistry.get_part_data(part_id)
+	var pd: PartData = PartRegistry.get_part_data(part_id)
 	if pd == null:
 		return ""
-	var lvl: int = GlobalPartRegistry.get_part_level(part_id)
+	var lvl: int = PartRegistry.get_part_level(part_id)
 	var rows: PackedStringArray = PackedStringArray()
 	for eff in pd.get_effects_for_level(lvl):
 		if eff == null:
 			continue
-		if eff is _GlobalPartMovementPenaltyEffect:
-			var mpe := eff as _GlobalPartMovementPenaltyEffect
+		if eff is _PartMovementPenaltyEffect:
+			var mpe := eff as _PartMovementPenaltyEffect
 			var evs: float = float(mpe.every_s)
 			var dus: float = float(mpe.duration_s)
 			var msm: float = clampf(float(mpe.speed_multiplier), 0.0, 1.0)

@@ -1,11 +1,11 @@
-class_name GlobalPartVisuals
+class_name PartVisuals
 extends RefCounted
 
 ## Legacy single root (pre split); removed on attach so old ships clean up.
-const LEGACY_ROOT_NAME := &"GlobalPartsVisualRoot"
+const LEGACY_ROOT_NAME := &"PartsVisualRoot"
 ## Legacy z-ordered roots (pre attachment slots); removed on attach.
-const TREADS_ROOT_NAME := &"GlobalPartsTreadsRoot"
-const UPPER_ROOT_NAME := &"GlobalPartsUpperRoot"
+const TREADS_ROOT_NAME := &"PartsTreadsRoot"
+const UPPER_ROOT_NAME := &"PartsUpperRoot"
 
 
 static func attach_to_ship(ship: Node2D) -> void:
@@ -21,7 +21,7 @@ static func attach_to_ship(ship: Node2D) -> void:
 	var fuel_tank_slot: Marker2D = ship.get_node_or_null(^"%Attachment_FuelTank") as Marker2D
 	if treads_slot == null or drill_slot == null or fuel_tank_slot == null:
 		push_error(
-			"GlobalPartVisuals: ship '%s' missing %%Attachment_Treads, %%Attachment_Drill, or %%Attachment_FuelTank (Marker2D)."
+			"PartVisuals: ship '%s' missing %%Attachment_Treads, %%Attachment_Drill, or %%Attachment_FuelTank (Marker2D)."
 			% ship.name
 		)
 		return
@@ -41,8 +41,8 @@ static func _clear_slot_children(slot: Node2D) -> void:
 
 
 static func _instantiate_part(slot: Node2D, type_key: StringName) -> void:
-	var pid: StringName = GlobalPartRegistry.get_equipped_for_type_key(type_key)
-	var pd: GlobalPartData = GlobalPartRegistry.get_part_data(pid)
+	var pid: StringName = PartRegistry.get_equipped_for_type_key(type_key)
+	var pd: PartData = PartRegistry.get_part_data(pid)
 	if pd == null or pd.visuals == null:
 		return
 	var ps: PackedScene = pd.visuals.ship_scene

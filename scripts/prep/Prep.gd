@@ -39,7 +39,7 @@ const _SHIP_PICK_SCROLL_STEP_PX := 140
 @onready var _world: Node2D = %PrepShipPreviewWorld
 @onready var _ship_preview_stack: Control = %PrepShipPreviewStack
 @onready var _prep_parts_strip: MarginContainer = %PrepPartsOverlayStrip
-@onready var _prep_parts_hbox: HBoxContainer = %PrepGlobalPartsHBox
+@onready var _prep_parts_hbox: HBoxContainer = %PrepPartsHBox
 @onready var _ship_preview_label: Label = %ShipPreviewLabel
 @onready var _ship_description_label: Label = %ShipPreviewDescriptionLabel
 @onready var _ship_lock_reason: Label = %ShipPreviewLockReasonLabel
@@ -102,8 +102,8 @@ func _ready() -> void:
 		GameStatistics.fuel_changed.connect(_on_fuel_changed)
 	if not UpgradeBus.upgrade_purchased.is_connected(_on_upgrade_purchased):
 		UpgradeBus.upgrade_purchased.connect(_on_upgrade_purchased)
-	if not GlobalPartRegistry.parts_changed.is_connected(_on_global_parts_changed):
-		GlobalPartRegistry.parts_changed.connect(_on_global_parts_changed)
+	if not PartRegistry.parts_changed.is_connected(_on_parts_changed):
+		PartRegistry.parts_changed.connect(_on_parts_changed)
 	if _ship_preview_stack and not _ship_preview_stack.resized.is_connected(_on_ship_preview_stack_resized):
 		_ship_preview_stack.resized.connect(_on_ship_preview_stack_resized)
 	ShipDataRegistry.reload_active()
@@ -117,7 +117,7 @@ func _ready() -> void:
 	# the viewport. Rebuild once more after career apply so the preview matches the ship.
 	call_deferred("_rebuild_preview_ship")
 	call_deferred("_update_ship_picker_scroll_state")
-	call_deferred("_rebuild_global_parts_strip")
+	call_deferred("_rebuild_parts_strip")
 
 
 func _select_ship(ship_id: StringName) -> void:
@@ -143,16 +143,16 @@ func _rebuild_preview_ship() -> void:
 	_preview_ship = null
 	var chain: Array[StringName] = ShipDataRegistry.get_mission_ship_chain_ship_ids()
 	if chain.is_empty():
-		_rebuild_global_parts_strip()
+		_rebuild_parts_strip()
 		return
 	var head_sd: Resource = ShipDataRegistry.get_ship_data(chain[0])
 	if head_sd == null:
-		_rebuild_global_parts_strip()
+		_rebuild_parts_strip()
 		return
 	var head_ps: Variant = head_sd.get("ship_scene")
 	if head_ps == null or not (head_ps is PackedScene):
 		push_error("Prep: active ShipData missing ship_scene")
-		_rebuild_global_parts_strip()
+		_rebuild_parts_strip()
 		return
 	_preview_ship = (head_ps as PackedScene).instantiate() as Node2D
 	if _preview_ship == null or not _preview_ship.has_method("get_effective_mine_damage_per_tick"):
@@ -160,7 +160,7 @@ func _rebuild_preview_ship() -> void:
 		if _preview_ship != null:
 			_preview_ship.queue_free()
 		_preview_ship = null
-		_rebuild_global_parts_strip()
+		_rebuild_parts_strip()
 		return
 	_world.add_child(_preview_ship)
 	_preview_ship.scale = _PREVIEW_SCALE
@@ -187,8 +187,8 @@ func _rebuild_preview_ship() -> void:
 	for p in _world.get_children():
 		var n2 := p as Node2D
 		if n2:
-			GlobalPartVisuals.attach_to_ship(n2)
-	_rebuild_global_parts_strip()
+			PartVisuals.attach_to_ship(n2)
+	_rebuild_parts_strip()
 
 
 func _apply_prep_parts_overlay_layout() -> void:
@@ -215,7 +215,7 @@ func _prep_type_display_name(type_key: StringName) -> String:
 
 
 func _prep_make_part_chip(type_key: StringName, part_id: StringName) -> Control:
-	var pd: GlobalPartData = GlobalPartRegistry.get_part_data(part_id)
+	var pd: PartData = PartRegistry.get_part_data(part_id)
 	var name_txt: String = "Empty"
 	var type_txt: String = _prep_type_display_name(type_key)
 	var icon_scene: PackedScene
@@ -236,8 +236,8 @@ func _prep_make_part_chip(type_key: StringName, part_id: StringName) -> Control:
 	chip.mouse_filter = Control.MOUSE_FILTER_STOP
 	chip.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 
-	chip.mouse_entered.connect(_on_prep_global_part_chip_entered.bind(type_key, part_id))
-	chip.mouse_exited.connect(_on_prep_global_part_chip_exited)
+	chip.mouse_entered.connect(_on_prep_part_chip_entered.bind(type_key, part_id))
+	chip.mouse_exited.connect(_on_prep_part_chip_exited)
 
 	var name_lbl := chip.get_node_or_null(^"%NameLabel") as Label
 	if name_lbl != null:
@@ -271,17 +271,17 @@ func _prep_make_part_chip(type_key: StringName, part_id: StringName) -> Control:
 	return chip
 
 
-func _rebuild_global_parts_strip() -> void:
+func _rebuild_parts_strip() -> void:
 	if _prep_parts_hbox == null:
 		return
-	_on_prep_global_part_chip_exited()
+	_on_prep_part_chip_exited()
 	_apply_prep_parts_overlay_layout()
 	for c in _prep_parts_hbox.get_children():
 		_prep_parts_hbox.remove_child(c)
 		c.queue_free()
 	var order: Array[StringName] = [&"fuel_tank", &"drill", &"treads"]
 	for type_key in order:
-		var pid: StringName = GlobalPartRegistry.get_equipped_for_type_key(type_key)
+		var pid: StringName = PartRegistry.get_equipped_for_type_key(type_key)
 		_prep_parts_hbox.add_child(_prep_make_part_chip(type_key, pid))
 	call_deferred("_apply_prep_parts_overlay_layout")
 
@@ -300,7 +300,7 @@ func _ensure_part_tooltip() -> void:
 	add_child(_part_tooltip)
 
 
-func _on_prep_global_part_chip_entered(type_key: StringName, part_id: StringName) -> void:
+func _on_prep_part_chip_entered(type_key: StringName, part_id: StringName) -> void:
 	_ensure_part_tooltip()
 	if _part_tooltip == null:
 		return
@@ -324,13 +324,13 @@ func _finish_part_tooltip_position() -> void:
 	_part_tooltip.position = pos
 
 
-func _on_prep_global_part_chip_exited() -> void:
+func _on_prep_part_chip_exited() -> void:
 	if _part_tooltip != null:
 		_part_tooltip.visible = false
 
 
-func _on_global_parts_changed() -> void:
-	_rebuild_global_parts_strip()
+func _on_parts_changed() -> void:
+	_rebuild_parts_strip()
 	call_deferred("_rebuild_preview_ship")
 
 

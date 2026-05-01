@@ -113,7 +113,7 @@ func get_effective_mine_damage_per_tick() -> float:
 	var v: float = ShipDataRegistry.apply_effects_for_stat(
 		&"mine_damage_per_tick", _base_mine_damage_per_tick
 	)
-	return GlobalPartRegistry.apply_effects_for_stat(&"mine_damage_per_tick", v)
+	return PartRegistry.apply_effects_for_stat(&"mine_damage_per_tick", v)
 
 
 func get_effective_vision_radius_cells() -> int:
@@ -125,11 +125,11 @@ func get_effective_vision_radius_cells() -> int:
 
 func get_effective_move_speed_px_s() -> float:
 	var v: float = ShipDataRegistry.apply_effects_for_stat(&"move_speed_px_s", _base_move_speed_px_s)
-	return GlobalPartRegistry.apply_effects_for_stat(&"move_speed_px_s", v)
+	return PartRegistry.apply_effects_for_stat(&"move_speed_px_s", v)
 
 
 func get_effective_fuel_drain_per_second() -> float:
-	return GlobalPartRegistry.apply_effects_for_stat(&"fuel_drain_per_second", fuel_drain_per_second)
+	return PartRegistry.apply_effects_for_stat(&"fuel_drain_per_second", fuel_drain_per_second)
 
 
 func get_effective_turn_rate_rad_s() -> float:
@@ -142,7 +142,7 @@ func get_effective_turn_rate_rad_s() -> float:
 func carve_hull_terrain_on_spawn() -> void:
 	if grid == null:
 		return
-	grid.clear_solid_in_circle_world(global_position, hull_radius_px)
+	grid.clear_solid_in_circle_world(position, hull_radius_px)
 
 
 func _physics_process(delta: float) -> void:
@@ -156,7 +156,7 @@ func _physics_process(delta: float) -> void:
 		rotation = rotate_toward(rotation, target_rot, max_turn)
 	var tread_move_mult := 1.0
 	if not follower_visual_only:
-		var ts: PackedFloat32Array = GlobalPartRegistry.treads_movement_effect_timing()
+		var ts: PackedFloat32Array = PartRegistry.treads_movement_effect_timing()
 		var ev: float = ts[0]
 		var du: float = ts[1]
 		if ev > 0.0 and du > 0.0:
@@ -439,7 +439,7 @@ func _tick_mining(delta: float) -> void:
 		_mine_pending_damage -= float(whole)
 		drill_c = _drill_center_world()
 		drill_r = get_effective_drill_world_radius_px()
-		var allowed := GlobalPartRegistry.get_drill_allowed_mine_type_ids()
+		var allowed := PartRegistry.get_drill_allowed_mine_type_ids()
 		grid.mine_solid_in_circle_world(drill_c, drill_r, whole, allowed)
 
 

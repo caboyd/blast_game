@@ -1,11 +1,11 @@
 [gd_scene format=3 uid="uid://c07q27ejy3mt0"]
 
-[ext_resource type="Script" uid="uid://dmcexuntivfxv" path="res://scripts/world/GlobalPartGroundPickup.gd" id="1"]
+[ext_resource type="Script" uid="uid://dmcexuntivfxv" path="res://scripts/world/PartGroundPickup.gd" id="1"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_pick"]
 radius = 8.0
 
-[node name="GlobalPartGroundPickup" type="Area2D" unique_id=1459452419]
+[node name="PartGroundPickup" type="Area2D" unique_id=1459452419]
 collision_layer = 0
 collision_mask = 32
 monitorable = false
