@@ -1,5 +1,7 @@
 extends Control
 
+const _PREP_PART_TOOLTIP_SCENE := preload("res://scenes/prep/prep_part_hover_tooltip.tscn")
+
 const _STAGE_TAB_INDEX := 1
 const _STAGE_BLOCK_CATALOG_ID: StringName = &"planet1"
 const _UNKNOWN_BLOCK := "???"
@@ -62,6 +64,7 @@ var _ship_pick_buttons: Dictionary = {}  # StringName -> Button
 ## Root from `ShipData.ship_scene` (implements mining API from `ShipBase`).
 var _preview_ship: Node2D
 var _shop_row_info_labels: Array[Label] = []
+var _part_tooltip: Control
 
 
 func _ready() -> void:
@@ -219,7 +222,10 @@ func _prep_make_part_chip(type_key: StringName, part_id: StringName) -> Control:
 	if pd != null:
 		name_txt = pd.display_name
 		type_txt = String(pd.part_type).replace("_", " ").capitalize()
-		icon_scene = pd.prep_icon_scene if pd.prep_icon_scene != null else pd.ship_scene
+		if pd.visuals != null:
+			icon_scene = pd.visuals.prep_icon_scene
+			if icon_scene == null:
+				icon_scene = pd.visuals.ship_scene
 
 	var chip := Control.new()
 	if prep_part_icon_template != null:
@@ -227,18 +233,21 @@ func _prep_make_part_chip(type_key: StringName, part_id: StringName) -> Control:
 	if chip == null:
 		chip = Control.new()
 	chip.custom_minimum_size = prep_part_chip_min_size
-	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	chip.mouse_filter = Control.MOUSE_FILTER_STOP
 	chip.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 
-	var name_lbl := chip.get_node_or_null("Col/Row/TextCol/NameLabel") as Label
+	chip.mouse_entered.connect(_on_prep_global_part_chip_entered.bind(type_key, part_id))
+	chip.mouse_exited.connect(_on_prep_global_part_chip_exited)
+
+	var name_lbl := chip.get_node_or_null(^"%NameLabel") as Label
 	if name_lbl != null:
 		name_lbl.text = name_txt
-	var type_lbl := chip.get_node_or_null("Col/Row2/TypeLabel") as Label
+	var type_lbl := chip.get_node_or_null(^"%TypeLabel") as Label
 	if type_lbl != null:
 		type_lbl.text = type_txt
 		type_lbl.visible = prep_part_show_type_label
 
-	var icon := chip.get_node_or_null("Row/Icon") as Control
+	var icon := chip.get_node_or_null("Col/Row/Icon") as Control
 	if icon != null:
 		icon.custom_minimum_size = prep_part_icon_size
 	var viewport := chip.get_node_or_null("Col/Row/Icon/SubViewport") as SubViewport
@@ -265,6 +274,7 @@ func _prep_make_part_chip(type_key: StringName, part_id: StringName) -> Control:
 func _rebuild_global_parts_strip() -> void:
 	if _prep_parts_hbox == null:
 		return
+	_on_prep_global_part_chip_exited()
 	_apply_prep_parts_overlay_layout()
 	for c in _prep_parts_hbox.get_children():
 		_prep_parts_hbox.remove_child(c)
@@ -274,6 +284,49 @@ func _rebuild_global_parts_strip() -> void:
 		var pid: StringName = GlobalPartRegistry.get_equipped_for_type_key(type_key)
 		_prep_parts_hbox.add_child(_prep_make_part_chip(type_key, pid))
 	call_deferred("_apply_prep_parts_overlay_layout")
+
+
+func _ensure_part_tooltip() -> void:
+	if _part_tooltip != null:
+		return
+	var node := _PREP_PART_TOOLTIP_SCENE.instantiate() as Control
+	if node == null or not node.has_method(&"setup_from_equipped_slot"):
+		push_error("Prep: prep_part_hover_tooltip scene must expose setup_from_equipped_slot")
+		if node != null:
+			node.queue_free()
+		return
+	_part_tooltip = node
+	_part_tooltip.visible = false
+	add_child(_part_tooltip)
+
+
+func _on_prep_global_part_chip_entered(type_key: StringName, part_id: StringName) -> void:
+	_ensure_part_tooltip()
+	if _part_tooltip == null:
+		return
+	_part_tooltip.call(&"setup_from_equipped_slot", type_key, part_id)
+	_part_tooltip.visible = true
+	call_deferred("_finish_part_tooltip_position")
+
+
+func _finish_part_tooltip_position() -> void:
+	if _part_tooltip == null or not _part_tooltip.visible:
+		return
+	var vp := get_viewport()
+	var tip_size: Vector2 = _part_tooltip.size
+	if tip_size.x < 4.0 or tip_size.y < 4.0:
+		tip_size = _part_tooltip.get_combined_minimum_size()
+	var mouse_local := vp.get_mouse_position()
+	var pos := mouse_local + Vector2(14.0, 14.0)
+	var vr := vp.get_visible_rect().size
+	pos.x = clampf(pos.x, 8.0, vr.x - tip_size.x - 8.0)
+	pos.y = clampf(pos.y, 8.0, vr.y - tip_size.y - 8.0)
+	_part_tooltip.position = pos
+
+
+func _on_prep_global_part_chip_exited() -> void:
+	if _part_tooltip != null:
+		_part_tooltip.visible = false
 
 
 func _on_global_parts_changed() -> void:

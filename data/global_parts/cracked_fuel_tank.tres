@@ -2,22 +2,27 @@
 
 [ext_resource type="Script" uid="uid://b8431vs7scjj6" path="res://scripts/data/GlobalPartData.gd" id="1"]
 [ext_resource type="Script" uid="uid://mf14x1dbtowp" path="res://scripts/data/GlobalPartEffect.gd" id="2"]
-[ext_resource type="PackedScene" uid="uid://div80xfq6s8go" path="res://scenes/ship_parts/cracked_tank_part.tscn" id="3"]
+[ext_resource type="PackedScene" uid="uid://div80xfq6s8go" path="res://scenes/ship_parts/cracked_fuel_tank_part.tscn" id="3"]
+[ext_resource type="Script" uid="uid://dbmf6jiisv031" path="res://scripts/data/GlobalPartVisualData.gd" id="4_vis"]
 
 [sub_resource type="Resource" id="eff_fm"]
 script = ExtResource("2")
 stat = "fuel_max"
-value = 0.5
+value = 0.75
 
 [sub_resource type="Resource" id="eff_fd"]
 script = ExtResource("2")
 stat = "fuel_drain_per_second"
 value = 2.0
 
+[sub_resource type="Resource" id="visuals_inline"]
+script = ExtResource("4_vis")
+ship_scene = ExtResource("3")
+
 [resource]
 script = ExtResource("1")
-id = &"cracked_tank"
+id = &"cracked_fuel_tank"
 display_name = "Cracked"
-ship_scene = ExtResource("3")
+visuals = SubResource("visuals_inline")
 effects = Array[ExtResource("2")]([SubResource("eff_fm"), SubResource("eff_fd")])
-allowed_mine_type_ids = null
+allowed_mine_type_ids = PackedInt32Array()

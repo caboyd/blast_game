@@ -57,3 +57,6 @@ func _apply_debug_visuals(on: bool) -> void:
 		for n in get_tree().get_nodes_in_group(&"mining_ship"):
 			if n is CanvasItem:
 				(n as CanvasItem).queue_redraw()
+		for n in get_tree().get_nodes_in_group(&"pickup_debug_redraw"):
+			if n is CanvasItem:
+				(n as CanvasItem).queue_redraw()

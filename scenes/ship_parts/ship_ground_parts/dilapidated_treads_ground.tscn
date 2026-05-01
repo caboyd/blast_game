@@ -1,20 +1,8 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene format=3 uid="uid://cgk8ncbrfbq3s"]
 
-[ext_resource type="Script" path="res://scripts/world/GlobalPartGroundPickup.gd" id="1"]
+[ext_resource type="PackedScene" uid="uid://bdrdono5r2i5f" path="res://scenes/ship_parts/dilapidated_treads_part.tscn" id="1_part"]
 
-[sub_resource type="CircleShape2D" id="CircleShape2D_pick"]
-radius = 12.0
+[node name="DilapidatedTreadsPickupVisual" type="Node2D" unique_id=396534902]
+scale = Vector2(1.24, 1.24)
 
-[node name="DilapidatedTreadsGround" type="Area2D"]
-collision_layer = 0
-collision_mask = 0
-script = ExtResource("1")
-pickup_id = &"planet1_dilapidated_treads"
-part_id = &"dilapidated_treads"
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
-shape = SubResource("CircleShape2D_pick")
-
-[node name="Vis" type="Polygon2D" parent="."]
-color = Color(0.58, 0.54, 0.48, 1)
-polygon = PackedVector2Array(-14, -6, 14, -6, 14, 6, -14, 6)
+[node name="DilapidatedTreadsPart" parent="." unique_id=1089924977 instance=ExtResource("1_part")]

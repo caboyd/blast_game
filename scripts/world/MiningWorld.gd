@@ -34,10 +34,32 @@ const APRON_COLUMNS := 0
 
 const _GENERATION_MONUMENT_SCRIPT: GDScript = preload("res://scripts/world/GenerationMonument.gd")
 
+const SPAWN_REVEAL_NORMAL := &"normal"
+const SPAWN_REVEAL_FULL := &"full"
+
+const _GENERIC_GLOBAL_PART_GROUND_PICKUP := preload(
+	"res://scenes/ship_parts/ship_ground_parts/global_part_ground_pickup.tscn"
+)
+
 const _PLANET1_DILAPIDATED_DEFS: Array[Dictionary] = [
-	{"pickup_id": &"planet1_dilapidated_tank", "scene": preload("res://scenes/ship_parts/ship_ground_parts/dilapidated_tank_ground.tscn")},
-	{"pickup_id": &"planet1_dilapidated_drill", "scene": preload("res://scenes/ship_parts/ship_ground_parts/dilapidated_drill_ground.tscn")},
-	{"pickup_id": &"planet1_dilapidated_treads", "scene": preload("res://scenes/ship_parts/ship_ground_parts/dilapidated_treads_ground.tscn")},
+	{
+		"pickup_id": &"planet1_dilapidated_fuel_tank",
+		"part_id": &"dilapidated_fuel_tank",
+		"persistence": GlobalPartRegistry.PICKUP_PERSISTENCE_RESPAWNABLE,
+		"spawn_reveal_mode": SPAWN_REVEAL_FULL,
+	},
+	{
+		"pickup_id": &"planet1_dilapidated_drill",
+		"part_id": &"dilapidated_drill",
+		"persistence": GlobalPartRegistry.PICKUP_PERSISTENCE_RESPAWNABLE,
+		"spawn_reveal_mode": SPAWN_REVEAL_FULL,
+	},
+	{
+		"pickup_id": &"planet1_dilapidated_treads",
+		"part_id": &"dilapidated_treads",
+		"persistence": GlobalPartRegistry.PICKUP_PERSISTENCE_RESPAWNABLE,
+		"spawn_reveal_mode": SPAWN_REVEAL_FULL,
+	},
 ]
 
 
@@ -954,8 +976,13 @@ func spawn_planet1_global_part_pickups(spawn_world: Vector2) -> void:
 		return
 	var to_place: Array[Dictionary] = []
 	for d in _PLANET1_DILAPIDATED_DEFS:
-		var pid: StringName = d["pickup_id"] as StringName
-		if GlobalPartRegistry.is_pickup_collected(pid):
+		var pickup_id: StringName = d["pickup_id"] as StringName
+		var part_id: StringName = d["part_id"] as StringName
+		var persistence: StringName = d.get(
+			"persistence",
+			GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE
+		) as StringName
+		if GlobalPartRegistry.should_skip_spawn_for_pickup_def(persistence, pickup_id, part_id):
 			continue
 		to_place.append(d)
 	if to_place.is_empty():
@@ -977,12 +1004,19 @@ func spawn_planet1_global_part_pickups(spawn_world: Vector2) -> void:
 	var n: int = mini(to_place.size(), ring.size())
 	for i in n:
 		var cw: Vector2 = cell_center_world(ring[i])
-		clear_solid_in_circle_world(cw, 14.0)
-		var ps: PackedScene = to_place[i]["scene"] as PackedScene
-		if ps == null:
-			continue
-		var node: Node2D = ps.instantiate() as Node2D
+		clear_solid_in_circle_world(cw, 8.0)
+		var def: Dictionary = to_place[i]
+		var node: GlobalPartGroundPickup = _GENERIC_GLOBAL_PART_GROUND_PICKUP.instantiate() as GlobalPartGroundPickup
 		if node == null:
 			continue
+		node.pickup_id = def["pickup_id"] as StringName
+		node.part_id = def["part_id"] as StringName
+		node.persistence = def.get(
+			"persistence",
+			GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE
+		) as StringName
 		node.global_position = cw
 		add_child(node)
+		var reveal_mode: StringName = def.get("spawn_reveal_mode", SPAWN_REVEAL_NORMAL) as StringName
+		if reveal_mode == SPAWN_REVEAL_FULL:
+			update_vision(cw, 1)

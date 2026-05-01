@@ -11,6 +11,12 @@ radius = 3.0
 [node name="Scout" type="Node2D" unique_id=665882411]
 script = ExtResource("1_jv3lx")
 
+[node name="Attachment_Treads" type="Marker2D" parent="." unique_id=900010001]
+unique_name_in_owner = true
+
+[node name="Attachment_Drill" type="Marker2D" parent="." unique_id=900010002]
+unique_name_in_owner = true
+
 [node name="Drill" type="Polygon2D" parent="." unique_id=712383373]
 visible = false
 position = Vector2(0.99999994, 2.646978e-23)
@@ -29,3 +35,6 @@ polygon = PackedVector2Array(-4, -4, 4, -4, 4, 4, -4, 4)
 
 [node name="HullCollider" type="CollisionShape2D" parent="Hull" unique_id=9381616]
 shape = SubResource("CircleShape2D_iwkxr")
+
+[node name="Attachment_FuelTank" type="Marker2D" parent="." unique_id=900010003]
+unique_name_in_owner = true

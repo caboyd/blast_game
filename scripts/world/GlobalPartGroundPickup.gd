@@ -3,32 +3,61 @@ extends Area2D
 
 @export var pickup_id: StringName = &""
 @export var part_id: StringName = &""
-
-const _COLLECT_RADIUS_PX := 28.0
+## See `GlobalPartRegistry.PICKUP_PERSISTENCE_*`.
+@export var persistence: StringName = &"once"
 
 var _collected: bool = false
 
 
 func _ready() -> void:
-	set_physics_process(true)
-	body_entered.connect(_on_body_entered)
+	collision_mask = ShipBase.PHYSICS_LAYER_MINING_SHIP_FOR_PICKUPS
+	monitoring = true
+	add_to_group(&"pickup_debug_redraw")
+	_mount_visual_if_needed()
 	area_entered.connect(_on_area_entered)
 
 
-func _physics_process(_delta: float) -> void:
-	if _collected:
-		return
-	var lead := get_tree().get_first_node_in_group(&"leading_mining_ship") as Node2D
-	if lead == null:
-		return
-	if lead is ShipBase and (lead as ShipBase).follower_visual_only:
-		return
-	if global_position.distance_squared_to(lead.global_position) <= _COLLECT_RADIUS_PX * _COLLECT_RADIUS_PX:
-		_collect()
+func _pickup_collision_shape() -> CollisionShape2D:
+	return get_node_or_null(^"%PickupCollision") as CollisionShape2D
 
 
-func _on_body_entered(body: Node) -> void:
-	_try_collect_from_collider(body)
+func _pickup_circle_radius_local() -> float:
+	var cs := _pickup_collision_shape()
+	if cs == null or not (cs.shape is CircleShape2D):
+		return 0.0
+	var circ := cs.shape as CircleShape2D
+	var s: float = maxf(absf(cs.scale.x), absf(cs.scale.y))
+	return circ.radius * s
+
+
+func _draw() -> void:
+	if _collected or not GameStatistics.debug_world_visuals:
+		return
+	var cs := _pickup_collision_shape()
+	if cs == null:
+		return
+	var r: float = _pickup_circle_radius_local()
+	if r <= 0.0:
+		return
+	var ctr: Vector2 = cs.position
+	draw_circle(ctr, r, Color(0.98, 0.78, 0.12, 0.2))
+	draw_arc(ctr, r, 0.0, TAU, 64, Color(1.0, 0.82, 0.18, 0.92), 2.0, true)
+
+
+func _mount_visual_if_needed() -> void:
+	var holder := get_node_or_null(^"%VisualHolder") as Node2D
+	if holder == null:
+		return
+	for c in holder.get_children():
+		c.queue_free()
+	var pd: GlobalPartData = GlobalPartRegistry.get_part_data(part_id)
+	if pd == null or pd.visuals == null:
+		return
+	var gs: PackedScene = pd.visuals.ground_scene
+	if gs == null:
+		return
+	var vis: Node = gs.instantiate()
+	holder.add_child(vis)
 
 
 func _on_area_entered(area: Area2D) -> void:
@@ -56,16 +85,15 @@ func _resolve_ship_base(node: Node) -> ShipBase:
 func _collect() -> void:
 	if _collected:
 		return
-	if pickup_id != &"" and GlobalPartRegistry.is_pickup_collected(pickup_id):
+	if pickup_id != &"" and persistence == GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE and GlobalPartRegistry.is_pickup_collected(pickup_id):
 		queue_free()
 		return
 	if part_id == &"":
 		queue_free()
 		return
 	_collected = true
-	set_physics_process(false)
-	GlobalPartRegistry.equip_part(part_id)
-	if pickup_id != &"":
+	GlobalPartRegistry.collect_part(part_id)
+	if pickup_id != &"" and persistence == GlobalPartRegistry.PICKUP_PERSISTENCE_ONCE:
 		GlobalPartRegistry.mark_pickup_collected(pickup_id)
 	GameSession.save_career()
 	queue_free()

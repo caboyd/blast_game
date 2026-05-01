@@ -1,6 +1,9 @@
 class_name ShipBase
 extends Node2D
 
+## Physics layer 6 (`mining_ship_pickup`). Monitorable `Area2D` hull mirror so pickup areas get `area_entered`.
+const PHYSICS_LAYER_MINING_SHIP_FOR_PICKUPS: int = 1 << 5
+
 ## Local +X is forward. Hull + drill use `CircleShape2D` on nodes resolved at runtime
 ## (`Hull/HullCollider` or `Hull/CollisionShape2D`, `Drill/DrillCollider` or `Drill/CollisionShape2D`).
 
@@ -71,6 +74,25 @@ func _ready() -> void:
 	_debug_layer.z_index = 10
 	add_child(_debug_layer)
 	_debug_layer.add_to_group(&"mining_ship")
+	_setup_pickup_overlap_area()
+
+
+func _setup_pickup_overlap_area() -> void:
+	if _hull_shape == null:
+		return
+	if get_node_or_null(^"PickupOverlapArea") != null:
+		return
+	var area := Area2D.new()
+	area.name = &"PickupOverlapArea"
+	area.collision_layer = PHYSICS_LAYER_MINING_SHIP_FOR_PICKUPS
+	area.collision_mask = 0
+	area.monitoring = false
+	area.monitorable = true
+	var cs := CollisionShape2D.new()
+	cs.shape = _hull_shape.shape
+	add_child(area)
+	area.add_child(cs)
+	cs.global_transform = _hull_shape.global_transform
 
 
 func _ready_follower_visual_only() -> void:
@@ -132,11 +154,11 @@ func _physics_process(delta: float) -> void:
 		var target_rot: float = dir.angle()
 		var max_turn: float = get_effective_turn_rate_rad_s() * delta
 		rotation = rotate_toward(rotation, target_rot, max_turn)
-	var move_blocked := false
+	var tread_move_mult := 1.0
 	if not follower_visual_only:
-		var tm: Vector2 = GlobalPartRegistry.treads_movement_stop_timing()
-		var ev: float = tm.x
-		var du: float = tm.y
+		var ts: PackedFloat32Array = GlobalPartRegistry.treads_movement_effect_timing()
+		var ev: float = ts[0]
+		var du: float = ts[1]
 		if ev > 0.0 and du > 0.0:
 			_tread_cycle_t += delta
 			if not _tread_stopping:
@@ -144,13 +166,13 @@ func _physics_process(delta: float) -> void:
 					_tread_stopping = true
 					_tread_cycle_t = 0.0
 			else:
-				move_blocked = true
+				tread_move_mult = clampf(ts[2], 0.0, 1.0)
 				if _tread_cycle_t >= du:
 					_tread_stopping = false
 					_tread_cycle_t = 0.0
-	var step := transform.x.normalized() * get_effective_move_speed_px_s() * delta
-	if move_blocked:
-		step = Vector2.ZERO
+	var step := (
+		transform.x.normalized() * get_effective_move_speed_px_s() * delta * tread_move_mult
+	)
 	_move_with_collision(step)
 
 	_tick_mining(delta)

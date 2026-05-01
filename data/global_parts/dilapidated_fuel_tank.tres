@@ -2,8 +2,9 @@
 
 [ext_resource type="Script" uid="uid://b8431vs7scjj6" path="res://scripts/data/GlobalPartData.gd" id="1"]
 [ext_resource type="Script" uid="uid://mf14x1dbtowp" path="res://scripts/data/GlobalPartEffect.gd" id="2"]
-[ext_resource type="PackedScene" uid="uid://cvisrv50hnhs5" path="res://scenes/ship_parts/dilapidated_tank_part.tscn" id="3"]
-[ext_resource type="PackedScene" path="res://scenes/ship_parts/ship_ground_parts/dilapidated_tank_ground.tscn" id="4"]
+[ext_resource type="PackedScene" uid="uid://c2aagd7togt5k" path="res://scenes/ship_parts/ship_ground_parts/dilapidated_fuel_tank_ground.tscn" id="3_sixo0"]
+[ext_resource type="PackedScene" uid="uid://cvisrv50hnhs5" path="res://scenes/ship_parts/dilapidated_fuel_tank_part.tscn" id="4_l5fcr"]
+[ext_resource type="Script" uid="uid://dbmf6jiisv031" path="res://scripts/data/GlobalPartVisualData.gd" id="4_vis"]
 
 [sub_resource type="Resource" id="eff_fm"]
 script = ExtResource("2")
@@ -13,11 +14,16 @@ stat = "fuel_max"
 script = ExtResource("2")
 stat = "fuel_drain_per_second"
 
+[sub_resource type="Resource" id="visuals_inline"]
+script = ExtResource("4_vis")
+ground_scene = ExtResource("3_sixo0")
+ship_scene = ExtResource("4_l5fcr")
+
 [resource]
 script = ExtResource("1")
-id = &"dilapidated_tank"
+id = &"dilapidated_fuel_tank"
 display_name = "Dilapidated"
-ground_scene = ExtResource("4")
-ship_scene = ExtResource("3")
+max_level = 2
+visuals = SubResource("visuals_inline")
 effects = Array[ExtResource("2")]([SubResource("eff_fm"), SubResource("eff_fd")])
 allowed_mine_type_ids = null
