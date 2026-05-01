@@ -34,6 +34,14 @@ const _GENERIC_GLOBAL_PART_GROUND_PICKUP := preload(
 	"res://scenes/ship_parts/ground/global_part_ground_pickup.tscn"
 )
 
+
+static func fog_dark_tint_for_mid(mid: Color) -> Color:
+	var r: float = mid.r * 0.09
+	var g: float = mid.g * 0.09
+	var b: float = mid.b * 0.09
+	return Color(clampf(r, 0.0, 1.0), clampf(g, 0.0, 1.0), clampf(b, 0.0, 1.0), 1.0)
+
+
 ## World-space center of the square covered by one chunk (`CHUNK_SIZE` cells per side).
 static func get_chunk_center_world(chunk: Vector2i) -> Vector2:
 	var s: float = float(CHUNK_SIZE) * CELL_SIZE_PX
@@ -68,7 +76,10 @@ var _reveal_image: Image
 var _mask_texture: ImageTexture
 var _type_texture: ImageTexture
 var _reveal_texture: ImageTexture
-var _visual_dirty: bool = true
+var _terrain_dirty: bool = true
+var _fog_dirty: bool = true
+var _fog_mid: Color = TYPE_COLOR[TYPE_DIRT]
+var _fog_dark: Color = fog_dark_tint_for_mid(TYPE_COLOR[TYPE_DIRT])
 
 var _reveal_dirty_chunks: Dictionary = {} # Vector2i -> true
 var _reveal_save_accum: float = 0.0
@@ -92,7 +103,6 @@ func apply_debug_fog_visibility() -> void:
 	var fog: Sprite2D = _fog_visual if _fog_visual else get_node_or_null("FogVisual") as Sprite2D
 	if fog:
 		fog.visible = not GameStatistics.debug_fog_disabled
-	_visual_dirty = true
 
 
 func _exit_tree() -> void:
@@ -127,7 +137,23 @@ func configure_stage_generation(new_stage_id: StringName, chunk_generator: Calla
 	_reveal_dirty_chunks.clear()
 	_reveal_save_accum = 0.0
 	_load_persisted_reveals()
-	_visual_dirty = true
+	_terrain_dirty = true
+	_fog_dirty = true
+
+
+## Sets the main fog tint and derives `fog_dark` as a deep, same-hue layer (e.g. planet1 → dirt).
+func set_fog_base_color(color: Color) -> void:
+	var rgb := Color(color.r, color.g, color.b, 1.0)
+	_fog_mid = rgb
+	_fog_dark = fog_dark_tint_for_mid(rgb)
+	_push_fog_shader_colors()
+
+
+## Sets both fog shader colors explicitly (matches `fog_mid` / `fog_dark` uniforms on `fog_of_war_marching.gdshader`).
+func set_fog_shader_colors(mid: Color, dark: Color) -> void:
+	_fog_mid = Color(mid.r, mid.g, mid.b, 1.0)
+	_fog_dark = Color(dark.r, dark.g, dark.b, 1.0)
+	_push_fog_shader_colors()
 
 
 func _floor_div(a: int, b: int) -> int:
@@ -179,6 +205,7 @@ func _ensure_chunk(chunk: Vector2i) -> void:
 		_chunk_generator.call(self, chunk, rng, chunk_data)
 	else:
 		fill_chunk_with_type(chunk_data, TYPE_DIRT)
+	_terrain_dirty = true
 
 
 func fill_chunk_with_type(chunk_data: Dictionary, type_id: int) -> void:
@@ -462,7 +489,7 @@ func stamp_dirt_chebyshev_from_world(world_pos: Vector2, radius_cells: int) -> v
 			var idx: int = _cell_to_local_in_chunk(c, ch)
 			cells_ba[idx] = TYPE_DIRT
 			hp_ba[idx] = dirt_hp
-	_visual_dirty = true
+	_terrain_dirty = true
 
 
 func _load_persisted_reveals() -> void:
@@ -476,7 +503,7 @@ func _load_persisted_reveals() -> void:
 		var lim: int = mini(rev.size(), barr.size())
 		for i in lim:
 			rev[i] = barr[i]
-	_visual_dirty = true
+	_fog_dirty = true
 
 
 ## Mineable block types for prep UI (per-stage list; uses TYPE_MAX_HP / TYPE_MONEY).
@@ -558,7 +585,7 @@ func mine_at_world(world_pos: Vector2, damage: int, mine_radius_px: float) -> in
 			hp_removed_total += _damage_cell_abs(c, damage)
 
 	if hp_removed_total > 0:
-		_visual_dirty = true
+		_terrain_dirty = true
 	return hp_removed_total
 
 
@@ -568,7 +595,7 @@ func mine_cell_at_world_point(world_pos: Vector2, damage: int) -> int:
 		return 0
 	var hp_removed: int = _damage_cell_abs(world_pos_to_cell(world_pos), damage)
 	if hp_removed > 0:
-		_visual_dirty = true
+		_terrain_dirty = true
 	return hp_removed
 
 
@@ -591,7 +618,7 @@ func mine_cells_under_hull_world(world_hull: PackedVector2Array, damage: int) ->
 			if _cell_world_rect_overlaps_hull(cx, cy, world_hull):
 				hp_removed_total += _damage_cell_abs(Vector2i(cx, cy), damage)
 	if hp_removed_total > 0:
-		_visual_dirty = true
+		_terrain_dirty = true
 	return hp_removed_total
 
 
@@ -715,7 +742,7 @@ func clear_solid_in_circle_world(center_world: Vector2, radius_world: float) -> 
 			if _set_cell_type_empty_silent(Vector2i(cx, cy)):
 				any = true
 	if any:
-		_visual_dirty = true
+		_terrain_dirty = true
 
 
 ## True if any solid cell’s world AABB intersects the circle (Chunks are ensured so overlap isn’t missed.)
@@ -773,7 +800,7 @@ func mine_solid_in_circle_world(
 					continue
 			hp_total += _damage_cell_abs(cell_v, damage)
 	if hp_total > 0:
-		_visual_dirty = true
+		_terrain_dirty = true
 	return hp_total
 
 
@@ -810,8 +837,6 @@ func _set_cell_type_empty_silent(cell: Vector2i) -> bool:
 
 
 func update_vision(center_world: Vector2, radius_cells: int) -> void:
-	if GameStatistics.debug_fog_disabled:
-		return
 	var cc := world_pos_to_cell(center_world)
 	var r2: int = radius_cells * radius_cells
 	var any_new: bool = false
@@ -834,7 +859,7 @@ func update_vision(center_world: Vector2, radius_cells: int) -> void:
 					GameSession.mark_block_type_discovered(stage_id, t)
 				any_new = true
 	if any_new:
-		_visual_dirty = true
+		_fog_dirty = true
 
 
 ## Visible world rectangle in pixels (SubViewport / camera space).
@@ -857,14 +882,18 @@ func set_camera_view_world_rect(rect: Rect2) -> void:
 	if size_changed:
 		_view_size_cells = new_size
 		_resize_view_textures(new_size.x, new_size.y)
-		_visual_dirty = true
+		_terrain_dirty = true
+		_fog_dirty = true
 
 	if origin_changed or size_changed:
 		_update_visual_positions()
-		_visual_dirty = true
+		_terrain_dirty = true
+		_fog_dirty = true
 
-	if _visual_dirty:
-		_rebuild_view_textures()
+	if _terrain_dirty:
+		_rebuild_terrain_textures()
+	if _fog_dirty:
+		_rebuild_fog_texture()
 
 
 func _resize_view_textures(w: int, h: int) -> void:
@@ -908,7 +937,10 @@ func _sync_shader_texture_params() -> void:
 		sm.set_shader_parameter("type_tex", _type_texture)
 		sm.set_shader_parameter("fuel_world_origin", Vector2(_view_origin_cell))
 	if _fog_visual != null and _fog_visual.material is ShaderMaterial:
-		(_fog_visual.material as ShaderMaterial).set_shader_parameter("reveal_tex", _reveal_texture)
+		var fsm: ShaderMaterial = _fog_visual.material as ShaderMaterial
+		fsm.set_shader_parameter("reveal_tex", _reveal_texture)
+		fsm.set_shader_parameter("fog_world_origin", Vector2(_view_origin_cell))
+		_push_fog_shader_colors()
 
 
 func _init_visuals() -> void:
@@ -929,10 +961,12 @@ func _init_visuals() -> void:
 
 	if _fog_visual:
 		var fsm := ShaderMaterial.new()
-		var fsh: Shader = load("res://shaders/fog_of_war.gdshader")
+		var fsh: Shader = load("res://shaders/fog_of_war_marching.gdshader")
 		if fsh:
 			fsm.shader = fsh
 			fsm.set_shader_parameter("reveal_tex", _reveal_texture)
+			fsm.set_shader_parameter("fog_world_origin", Vector2(_view_origin_cell))
+			_push_fog_shader_colors(fsm)
 		_fog_visual.material = fsm
 		_fog_visual.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		_update_visual_positions()
@@ -948,14 +982,24 @@ func _push_shader_type_colors(sm: ShaderMaterial) -> void:
 	sm.set_shader_parameter("type_colors", pc)
 
 
-func _rebuild_view_textures() -> void:
+func _push_fog_shader_colors(sm: ShaderMaterial = null) -> void:
+	var fsm: ShaderMaterial = sm
+	if fsm == null:
+		if _fog_visual == null or not (_fog_visual.material is ShaderMaterial):
+			return
+		fsm = _fog_visual.material as ShaderMaterial
+
+	fsm.set_shader_parameter("fog_mid", _fog_mid)
+	fsm.set_shader_parameter("fog_dark", _fog_dark)
+
+
+func _rebuild_terrain_textures() -> void:
 	if _mask_image == null or _view_size_cells.x < 1:
 		return
 	var ox: int = _view_origin_cell.x
 	var oy: int = _view_origin_cell.y
 	var w: int = _view_size_cells.x
 	var h: int = _view_size_cells.y
-	var debug_reveal_all: bool = GameStatistics.debug_fog_disabled
 
 	for iy in h:
 		for ix in w:
@@ -965,18 +1009,8 @@ func _rebuild_view_textures() -> void:
 			var data: Dictionary = _chunks[ch]
 			var cells: PackedByteArray = data["cells"]
 			var hparr: PackedByteArray = data["hp"]
-			var rev: PackedByteArray = data["revealed"]
 			var idx: int = _cell_to_local_in_chunk(wc, ch)
 			var t: int = int(cells[idx])
-			var revealed: bool = debug_reveal_all or int(rev[idx]) != 0
-
-			if not revealed:
-				_mask_image.set_pixel(ix, iy, Color(0, 0, 0, 1))
-				_type_image.set_pixel(ix, iy, Color(0, 0, 0, 1))
-				_reveal_image.set_pixel(ix, iy, Color(0, 0, 0, 1))
-				continue
-
-			_reveal_image.set_pixel(ix, iy, Color(1, 1, 1, 1))
 
 			if t == TYPE_EMPTY:
 				_mask_image.set_pixel(ix, iy, Color(0, 0, 0, 1))
@@ -991,10 +1025,34 @@ func _rebuild_view_textures() -> void:
 
 	_mask_texture.update(_mask_image)
 	_type_texture.update(_type_image)
+
+	_sync_shader_texture_params()
+	_terrain_dirty = false
+
+
+func _rebuild_fog_texture() -> void:
+	if _reveal_image == null or _view_size_cells.x < 1:
+		return
+	var ox: int = _view_origin_cell.x
+	var oy: int = _view_origin_cell.y
+	var w: int = _view_size_cells.x
+	var h: int = _view_size_cells.y
+
+	for iy in h:
+		for ix in w:
+			var wc := Vector2i(ox + ix, oy + iy)
+			var ch := _cell_to_chunk_coord(wc)
+			_ensure_chunk(ch)
+			var data: Dictionary = _chunks[ch]
+			var rev: PackedByteArray = data["revealed"]
+			var idx: int = _cell_to_local_in_chunk(wc, ch)
+			var revealed: bool = int(rev[idx]) != 0
+			_reveal_image.set_pixel(ix, iy, Color(1, 1, 1, 1) if revealed else Color(0, 0, 0, 1))
+
 	_reveal_texture.update(_reveal_image)
 
 	_sync_shader_texture_params()
-	_visual_dirty = false
+	_fog_dirty = false
 
 
 func stage_rng_seed(salt_a: int, salt_b: int = 0) -> int:

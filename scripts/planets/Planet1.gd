@@ -110,6 +110,7 @@ func _ready() -> void:
 	_apply_game_viewport_layout()
 	if _mining_world:
 		_mining_world.configure_stage_generation(planet_id, Callable(self, "_generate_mining_world_chunk"))
+		_mining_world.set_fog_base_color(MiningWorld.TYPE_COLOR[MiningWorld.TYPE_DIRT])
 	_spawn_mission_ship()
 	if _ship and _mining_world:
 		_ship.grid = _mining_world
