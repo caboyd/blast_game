@@ -42,8 +42,8 @@ func _draw() -> void:
 	if r <= 0.0:
 		return
 	var ctr: Vector2 = cs.position
-	draw_circle(ctr, r, Color(0.98, 0.78, 0.12, 0.2))
-	draw_arc(ctr, r, 0.0, TAU, 64, Color(1.0, 0.82, 0.18, 0.92), 2.0, true)
+	draw_circle(ctr, r, Color(0.39215687, 0.58431375, 0.92941177, 0.2))
+	draw_arc(ctr, r, 0.0, TAU, 64, Color(0.39215687, 0.58431375, 0.92941177,1) , 0.5, true)
 
 
 func _mount_visual_if_needed() -> void:
