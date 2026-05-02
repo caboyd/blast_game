@@ -3,9 +3,24 @@
 [ext_resource type="Script" uid="uid://cs655syhp8bid" path="res://scripts/world/MiningWorld.gd" id="1_gr8o2"]
 [ext_resource type="Script" uid="uid://dpu7mee800bqf" path="res://scripts/world/MiningCrackOverlay.gd" id="2_crack"]
 [ext_resource type="Texture2D" uid="uid://cxa1ejrpdmigu" path="res://assets/sprites/crack.png" id="3_cd1rj"]
+[ext_resource type="Script" uid="uid://bqwm82kxdevsf" path="res://scripts/world/MiningDebrisField.gd" id="4_debris"]
 
 [node name="World" type="Node2D" unique_id=1400227605]
 script = ExtResource("1_gr8o2")
+
+[node name="MiningDebrisField" type="Node2D" parent="." unique_id=1829439215]
+z_index = -1
+script = ExtResource("4_debris")
+max_total_particles = 1000
+particles_per_broken_cell = 4
+particle_despawn_interval_s = 0.2
+particle_despawns_per_tick = 20
+repel_radius_px = 24.0
+repel_strength = 920.0
+spring_strength = 10.0
+z_scale = 0.01
+shadow_offset = Vector2(0.3, 0.8)
+color_variation = 0.024
 
 [node name="WorldVisual" type="Sprite2D" parent="." unique_id=716519693]
 

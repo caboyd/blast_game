@@ -221,9 +221,10 @@ void fragment() {
 	vec4 base = type_colors[best_id];
 	vec3 rgb = base.rgb;
 	
-	// if (best_id == MATERIAL_FUEL) {
-	// 	rgb = fuel_cell_rgb(fuel_world_origin + p, hp_ratio, TIME, base.rgb);
-	// } else {
+	 if (best_id == MATERIAL_FUEL) {
+	 	rgb = fuel_cell_rgb(fuel_world_origin + p, 1.0, TIME, base.rgb);
+	 } 
+	// else {
 	// 	rgb = base.rgb * mix(0.45, 1.0, hp_ratio);
 	// }
 

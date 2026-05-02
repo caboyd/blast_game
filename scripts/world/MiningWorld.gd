@@ -129,6 +129,7 @@ var _run_cell_edits: Dictionary = {} # Vector2i -> Dictionary (local_cell_index 
 var _chunk_generator: Callable = Callable()
 
 @onready var _world_visual: Sprite2D = $WorldVisual
+@onready var _debris_field = $MiningDebrisField
 @onready var _fog_visual: Sprite2D = $FogVisual
 
 var _chunk_border_debug: Node2D
@@ -137,6 +138,9 @@ var _chunk_border_debug: Node2D
 func _ready() -> void:
 	add_to_group(&"mining_world")
 	_init_visuals()
+	if _debris_field:
+		_debris_field.setup(self)
+		block_broken.connect(_debris_field.on_block_broken)
 	if _fog_visual:
 		_fog_visual.z_index = 2
 	apply_debug_fog_visibility()
@@ -223,6 +227,8 @@ func _chunk_rng_seed(chunk: Vector2i) -> int:
 func configure_stage_generation(new_stage_id: StringName, chunk_generator: Callable) -> void:
 	stage_id = new_stage_id
 	_chunk_generator = chunk_generator
+	if _debris_field:
+		_debris_field.clear_all()
 	_chunks.clear()
 	_run_cell_edits.clear()
 	_reveal_dirty_chunks.clear()
@@ -270,6 +276,8 @@ func _persist_chunk_reveal_to_disk(chunk: Vector2i) -> void:
 
 
 func unload_chunk_for_streaming(chunk: Vector2i) -> void:
+	if _debris_field:
+		_debris_field.on_chunk_unloaded(chunk)
 	if not _chunks.has(chunk):
 		return
 	if _reveal_dirty_chunks.has(chunk):
@@ -1188,6 +1196,8 @@ func set_camera_view_world_rect(rect: Rect2) -> void:
 		_rebuild_fog_texture()
 	if GameStatistics.debug_world_visuals:
 		refresh_chunk_border_debug()
+	if _debris_field:
+		_debris_field.update_camera_rect(rect)
 
 
 func _resize_view_textures(w: int, h: int) -> void:
