@@ -51,6 +51,31 @@ var debug_world_visuals: bool = false
 ## Debug: temporarily reveals fog-of-war for the current mining mission only. Cleared in `GameSession.begin_run()`.
 var debug_fog_disabled: bool = false
 
+## Debug vehicle stat overrides (`DebugOverlay` / mission only). Cleared in `clear_mining_mission_vehicle_debug_overrides()`.
+const DEBUG_VEHICLE_OVERRIDE_MIN_FUEL_MAX := 1.0
+const DEBUG_VEHICLE_OVERRIDE_MIN_MOVE_PX := 1e-3
+const DEBUG_VEHICLE_OVERRIDE_MIN_MINE_DAMAGE := 1e-4
+const DEBUG_VEHICLE_OVERRIDE_MIN_MINE_INTERVAL_S := 0.01
+const DEBUG_VEHICLE_OVERRIDE_MIN_DRILL_RANGE_GAME_PX := 0.05
+
+var debug_fuel_max_override_enabled: bool = false
+var debug_fuel_max_override_value: float = 100.0
+var debug_move_speed_override_enabled: bool = false
+var debug_move_speed_override_value: float = 40.0
+var debug_mine_damage_override_enabled: bool = false
+var debug_mine_damage_override_value: float = 10.0
+## When enabled, overrides mining tick spacing (`mine_interval_s`). Lower interval = faster mining.
+var debug_mine_interval_override_enabled: bool = false
+var debug_mine_interval_override_value: float = 0.2
+## Effective drill radius in **game** pixels (before ship scale); replaces base + upgrade bonus.
+var debug_drill_range_game_px_override_enabled: bool = false
+var debug_drill_range_game_px_override_value: float = 16.0
+## Vision radius in grid cells (`update_vision`).
+var debug_vision_radius_cells_override_enabled: bool = false
+var debug_vision_radius_cells_override_value: int = 12
+var debug_turn_rate_rad_s_override_enabled: bool = false
+var debug_turn_rate_rad_s_override_value: float = 9.0
+
 
 func set_debug_fog_disabled(on: bool) -> void:
 	debug_fog_disabled = on
@@ -60,6 +85,82 @@ func set_debug_fog_disabled(on: bool) -> void:
 	for n in tree.get_nodes_in_group(&"mining_world"):
 		if n.has_method(&"apply_debug_fog_visibility"):
 			n.apply_debug_fog_visibility()
+
+
+func clear_mining_mission_vehicle_debug_overrides() -> void:
+	debug_fuel_max_override_enabled = false
+	debug_move_speed_override_enabled = false
+	debug_mine_damage_override_enabled = false
+	debug_mine_interval_override_enabled = false
+	debug_drill_range_game_px_override_enabled = false
+	debug_vision_radius_cells_override_enabled = false
+	debug_turn_rate_rad_s_override_enabled = false
+	_refit_live_fuel_max_preserving_fill()
+
+
+func notify_debug_fuel_max_override(enabled: bool, value: float) -> void:
+	debug_fuel_max_override_value = maxf(DEBUG_VEHICLE_OVERRIDE_MIN_FUEL_MAX, value)
+	debug_fuel_max_override_enabled = enabled
+	_refit_live_fuel_max_preserving_fill()
+
+
+func notify_debug_move_speed_override(enabled: bool, value: float) -> void:
+	debug_move_speed_override_value = maxf(DEBUG_VEHICLE_OVERRIDE_MIN_MOVE_PX, value)
+	debug_move_speed_override_enabled = enabled
+
+
+func notify_debug_mine_damage_override(enabled: bool, value: float) -> void:
+	debug_mine_damage_override_value = maxf(DEBUG_VEHICLE_OVERRIDE_MIN_MINE_DAMAGE, value)
+	debug_mine_damage_override_enabled = enabled
+
+
+func notify_debug_mine_interval_override(enabled: bool, value_s: float) -> void:
+	debug_mine_interval_override_value = clampf(
+		value_s,
+		DEBUG_VEHICLE_OVERRIDE_MIN_MINE_INTERVAL_S,
+		999.0,
+	)
+	debug_mine_interval_override_enabled = enabled
+
+
+func notify_debug_drill_range_game_px_override(enabled: bool, value_px: float) -> void:
+	debug_drill_range_game_px_override_value = clampf(
+		value_px,
+		DEBUG_VEHICLE_OVERRIDE_MIN_DRILL_RANGE_GAME_PX,
+		2048.0,
+	)
+	debug_drill_range_game_px_override_enabled = enabled
+
+
+func notify_debug_vision_radius_cells_override(enabled: bool, radius_cells: int) -> void:
+	debug_vision_radius_cells_override_value = clampi(radius_cells, 1, 99)
+	debug_vision_radius_cells_override_enabled = enabled
+
+
+func notify_debug_turn_rate_rad_s_override(enabled: bool, value_rad_s: float) -> void:
+	debug_turn_rate_rad_s_override_value = clampf(value_rad_s, 0.0, 1000.0)
+	debug_turn_rate_rad_s_override_enabled = enabled
+
+
+func _refit_live_fuel_max_preserving_fill() -> void:
+	var old_m: float = fuel_max
+	var new_m: float = effective_fuel_max()
+	var cap_abs := new_m * FUEL_ABSOLUTE_CAP_MUL
+	if old_m <= 0.0:
+		fuel_max = new_m
+		fuel = minf(fuel, cap_abs)
+	elif is_equal_approx(old_m, new_m):
+		if fuel > cap_abs:
+			fuel = cap_abs
+			fuel_changed.emit(fuel, fuel_max)
+			stats_changed.emit()
+		return
+	else:
+		var frac := fuel / old_m if old_m > 0.0 else 1.0
+		fuel_max = new_m
+		fuel = minf(new_m * frac, cap_abs)
+	fuel_changed.emit(fuel, fuel_max)
+	stats_changed.emit()
 
 
 func _ready() -> void:
@@ -255,9 +356,15 @@ func apply_active_ship_fuel_baseline() -> void:
 	stats_changed.emit()
 
 
-func effective_fuel_max() -> float:
+func nominal_effective_fuel_max() -> float:
 	var upgraded: float = ShipDataRegistry.apply_effects_for_stat(&"fuel_max", _base_fuel_max)
 	return PartRegistry.apply_effects_for_stat(&"fuel_max", upgraded)
+
+
+func effective_fuel_max() -> float:
+	if debug_fuel_max_override_enabled:
+		return maxf(DEBUG_VEHICLE_OVERRIDE_MIN_FUEL_MAX, debug_fuel_max_override_value)
+	return nominal_effective_fuel_max()
 
 
 func _on_parts_changed() -> void:

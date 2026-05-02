@@ -110,6 +110,8 @@ func _ready_follower_visual_only() -> void:
 
 
 func get_effective_mine_damage_per_tick() -> float:
+	if GameStatistics.debug_mine_damage_override_enabled:
+		return GameStatistics.debug_mine_damage_override_value
 	var v: float = ShipDataRegistry.apply_effects_for_stat(
 		&"mine_damage_per_tick", _base_mine_damage_per_tick
 	)
@@ -117,6 +119,8 @@ func get_effective_mine_damage_per_tick() -> float:
 
 
 func get_effective_vision_radius_cells() -> int:
+	if GameStatistics.debug_vision_radius_cells_override_enabled:
+		return GameStatistics.debug_vision_radius_cells_override_value
 	return maxi(
 		1,
 		ShipDataRegistry.apply_effects_for_stat_int(&"vision_radius_cells", _base_vision_radius_cells)
@@ -124,8 +128,16 @@ func get_effective_vision_radius_cells() -> int:
 
 
 func get_effective_move_speed_px_s() -> float:
+	if GameStatistics.debug_move_speed_override_enabled:
+		return GameStatistics.debug_move_speed_override_value
 	var v: float = ShipDataRegistry.apply_effects_for_stat(&"move_speed_px_s", _base_move_speed_px_s)
 	return PartRegistry.apply_effects_for_stat(&"move_speed_px_s", v)
+
+
+func get_effective_mine_interval_s() -> float:
+	if GameStatistics.debug_mine_interval_override_enabled:
+		return GameStatistics.debug_mine_interval_override_value
+	return mine_interval_s
 
 
 func get_effective_fuel_drain_per_second() -> float:
@@ -133,6 +145,8 @@ func get_effective_fuel_drain_per_second() -> float:
 
 
 func get_effective_turn_rate_rad_s() -> float:
+	if GameStatistics.debug_turn_rate_rad_s_override_enabled:
+		return GameStatistics.debug_turn_rate_rad_s_override_value
 	return maxf(
 		0.0,
 		ShipDataRegistry.apply_effects_for_stat(&"turn_rate_rad_s", _base_turn_rate_rad_s)
@@ -310,6 +324,8 @@ func get_drill_game_radius_px() -> float:
 
 
 func get_effective_drill_game_radius_px() -> float:
+	if GameStatistics.debug_drill_range_game_px_override_enabled:
+		return GameStatistics.debug_drill_range_game_px_override_value
 	var base_game: float = get_drill_game_radius_px()
 	var bonus: float = ShipDataRegistry.apply_effects_for_stat(&"drill_range_bonus_game_px", 0.0)
 	return base_game + bonus
@@ -418,8 +434,9 @@ func _tick_mining(delta: float) -> void:
 		return
 
 	_mine_accum_time += delta
-	while _mine_accum_time >= mine_interval_s:
-		_mine_accum_time -= mine_interval_s
+	var interval_s := get_effective_mine_interval_s()
+	while _mine_accum_time >= interval_s:
+		_mine_accum_time -= interval_s
 		_mine_pending_damage += get_effective_mine_damage_per_tick()
 		var whole: int = int(floor(_mine_pending_damage))
 		if whole <= 0:

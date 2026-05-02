@@ -269,6 +269,7 @@ func write_part_pickup_collected_to_config(c: ConfigFile) -> void:
 
 ## Call from Prep when starting a mission so HUD "blocks" counts this run only.
 func begin_run() -> void:
+	GameStatistics.clear_mining_mission_vehicle_debug_overrides()
 	GameStatistics.debug_fog_disabled = false
 	GameStatistics.set_blocks_run_baseline()
 	GameStatistics.reset_run_mining_economy_tracking()
@@ -377,6 +378,7 @@ func _delete_all_stage_reveal_files() -> void:
 
 ## Commit this run’s block count to career and load Prep (fuel out, manual exit from debug, etc.).
 func end_current_run_to_prep() -> void:
+	GameStatistics.clear_mining_mission_vehicle_debug_overrides()
 	career_blocks_destroyed += GameStatistics.get_blocks_destroyed_this_run()
 	_career_write_pending = false
 	_write_career_to_disk()
