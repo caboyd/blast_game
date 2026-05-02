@@ -5,8 +5,8 @@ uniform sampler2D mask_tex : source_color, filter_nearest;
 // R = type id / 255, G = hp ratio 0..1
 uniform sampler2D type_tex : source_color, filter_nearest;
 
-uniform int type_count : hint_range(0, 16) = 6;
-uniform vec4 type_colors[16];
+uniform int type_count : hint_range(0, 24) = 15;
+uniform vec4 type_colors[24];
 
 // Contour outline between differing materials / material vs empty.
 uniform vec4 edge_color : source_color = vec4(0.04, 0.04, 0.06, 1.0);
@@ -176,7 +176,7 @@ void fragment() {
 	float best_rank = -1.0;
 	float second_rank = -1.0;
 
-	for (int i = 1; i < 16; i++) {
+	for (int i = 1; i < 24; i++) {
 		if (i >= type_count) {
 			break;
 		}
@@ -246,5 +246,7 @@ void fragment() {
 	float e = clamp(max(inner_edge, outer_edge), 0.0, 1.0);
 	rgb = mix(rgb, edge_color.rgb, e * edge_color.a);
 
-	COLOR = vec4(rgb, base.a * alpha);
+	vec4 col = vec4(rgb, base.a * alpha);
+
+	COLOR = col;
 }

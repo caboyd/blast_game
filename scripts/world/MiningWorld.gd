@@ -1,7 +1,7 @@
 class_name MiningWorld
 extends Node2D
 
-const CHUNK_SIZE := 40
+const CHUNK_SIZE := 32
 const CELL_SIZE_PX := 8.0
 
 const TYPE_EMPTY := 0
@@ -10,10 +10,25 @@ const TYPE_STONE := 2
 const TYPE_GOLD := 3
 const TYPE_FUEL := 4
 const TYPE_RUBY := 5
-const TYPE_COUNT := 6
+const TYPE_PACKED_EARTH := 6
+const TYPE_CLAY := 7
+const TYPE_SHALE := 8
+const TYPE_COPPER := 9
+const TYPE_TIN := 10
+const TYPE_SANDSTONE := 11
+const TYPE_OBSIDIAN := 12
+const TYPE_IRON := 13
+const TYPE_SILVER := 14
+const TYPE_COUNT := 15
 
-static var TYPE_MAX_HP: PackedInt32Array = PackedInt32Array([0, 5, 50, 5, 1, 100])
-static var TYPE_MONEY: PackedInt32Array = PackedInt32Array([0, 1, 2, 15, 0, 1000])
+static var TYPE_MAX_HP: PackedInt32Array = PackedInt32Array([
+	0, 5, 50, 5, 1, 100,
+	12, 8, 35, 10, 14, 22, 80, 25, 12,
+])
+static var TYPE_MONEY: PackedInt32Array = PackedInt32Array([
+	0, 1, 2, 15, 0, 1000,
+	2, 2, 4, 8, 10, 3, 6, 12, 25,
+])
 static var TYPE_COLOR: PackedColorArray = PackedColorArray([
 	Color(0.0, 0.0, 0.0, 0.0),
 	Color(0.42, 0.28, 0.18, 1.0),
@@ -22,9 +37,16 @@ static var TYPE_COLOR: PackedColorArray = PackedColorArray([
 	# Fuel shader uses this as its tint anchor; brown preserves the current look.
 	Color(0.22, 0.15, 0.10, 1.0),
 	Color(0.92, 0.18, 0.38, 1.0),
+	Color(0.38, 0.32, 0.22, 1.0),
+	Color(0.55, 0.42, 0.30, 1.0),
+	Color(0.45, 0.46, 0.48, 1.0),
+	Color(0.72, 0.45, 0.22, 1.0),
+	Color(0.62, 0.66, 0.72, 1.0),
+	Color(0.78, 0.62, 0.38, 1.0),
+	Color(0.18, 0.12, 0.22, 1.0),
+	Color(0.48, 0.28, 0.22, 1.0),
+	Color(0.88, 0.90, 0.92, 1.0),
 ])
-
-const SHADER_TYPE_COLOR_MAX := 8
 const APRON_COLUMNS := 0
 
 const SPAWN_REVEAL_NORMAL := &"normal"
@@ -52,6 +74,10 @@ static func get_chunk_center_world(chunk: Vector2i) -> Vector2:
 @export var stage_seed: int = 0
 @export var view_margin_cells: int = 2
 @export var reveal_save_debounce_s: float = 1.0
+@export var terrain_shader_path: String = "res://shaders/planet1_marching.gdshader"
+@export_range(1, 32) var shader_type_color_max: int = 8
+@export_range(0, 12) var chunk_preload_radius_chunks: int = 2
+@export_range(0, 24) var chunk_unload_radius_chunks: int = 5
 
 
 const _VEIN_NEIGHBOR_DIRS: Array[Vector2i] = [
@@ -84,11 +110,17 @@ var _fog_dark: Color = fog_dark_tint_for_mid(TYPE_COLOR[TYPE_DIRT])
 
 var _reveal_dirty_chunks: Dictionary = {} # Vector2i -> true
 var _reveal_save_accum: float = 0.0
+## Reveal bytes loaded from disk; applied first time each chunk is generated this session.
+var _pending_reveal_masks: Dictionary = {} # Vector2i -> PackedByteArray
+## Current-run mined terrain; reapplied after a chunk is regenerated following unload.
+var _run_cell_edits: Dictionary = {} # Vector2i -> Dictionary (local_cell_index int -> Vector2i(type, hp))
 
 var _chunk_generator: Callable = Callable()
 
 @onready var _world_visual: Sprite2D = $WorldVisual
 @onready var _fog_visual: Sprite2D = $FogVisual
+
+var _chunk_border_debug: Node2D
 
 
 func _ready() -> void:
@@ -98,6 +130,52 @@ func _ready() -> void:
 		_fog_visual.z_index = 2
 	apply_debug_fog_visibility()
 	set_process(true)
+	var dbg := _ChunkBorderDebug.new()
+	dbg.z_index = 50
+	dbg.setup_chunk_border_debug(self)
+	add_child(dbg)
+	_chunk_border_debug = dbg
+
+
+func refresh_chunk_border_debug() -> void:
+	if _chunk_border_debug != null:
+		_chunk_border_debug.queue_redraw()
+
+
+func draw_chunk_border_debug(ci: CanvasItem) -> void:
+	if not GameStatistics.debug_world_visuals:
+		return
+	var ship_anchor: ShipBase = null
+	for lead in get_tree().get_nodes_in_group(&"leading_mining_ship"):
+		if lead is ShipBase:
+			var sb: ShipBase = lead as ShipBase
+			if sb.grid == self:
+				ship_anchor = sb
+				break
+	if ship_anchor == null:
+		for n in get_tree().get_nodes_in_group(&"mining_ship"):
+			var sb_: ShipBase = null
+			if n is ShipBase:
+				sb_ = n as ShipBase
+			else:
+				var par: Node = n.get_parent()
+				if par is ShipBase:
+					sb_ = par as ShipBase
+			if sb_ != null and sb_.grid == self and not sb_.follower_visual_only:
+				ship_anchor = sb_
+				break
+	if ship_anchor == null:
+		return
+	var origin_chunk: Vector2i = get_chunk_for_world_pos(ship_anchor.global_position)
+	const _CHUNK_BORDERS_HALF: int = 4
+	const _color_chunk_border: Color = Color(0.3, 0.65, 1.0, 0.88)
+	var chunk_side: float = float(CHUNK_SIZE) * CELL_SIZE_PX
+	for dcy in range(-_CHUNK_BORDERS_HALF, _CHUNK_BORDERS_HALF + 1):
+		for dcx in range(-_CHUNK_BORDERS_HALF, _CHUNK_BORDERS_HALF + 1):
+			var cchunk: Vector2i = origin_chunk + Vector2i(dcx, dcy)
+			var tl_cell := Vector2i(cchunk.x * CHUNK_SIZE, cchunk.y * CHUNK_SIZE)
+			var tl: Vector2 = cell_top_left_world(tl_cell)
+			ci.draw_rect(Rect2(tl, Vector2(chunk_side, chunk_side)), _color_chunk_border, false, 1.0)
 
 
 func apply_debug_fog_visibility() -> void:
@@ -135,14 +213,96 @@ func configure_stage_generation(new_stage_id: StringName, chunk_generator: Calla
 	stage_id = new_stage_id
 	_chunk_generator = chunk_generator
 	_chunks.clear()
+	_run_cell_edits.clear()
 	_reveal_dirty_chunks.clear()
 	_reveal_save_accum = 0.0
-	_load_persisted_reveals()
+	_pending_reveal_masks = GameSession.load_stage_reveal(stage_id)
 	_terrain_dirty = true
 	_fog_dirty = true
 
 
-## Sets per-material shader colors for this stage. Missing entries fall back to `TYPE_COLOR`.
+func _apply_pending_reveal_mask(chunk: Vector2i, chunk_data: Dictionary) -> void:
+	if not _pending_reveal_masks.has(chunk):
+		return
+	var barr: PackedByteArray = _pending_reveal_masks[chunk]
+	var rev: PackedByteArray = chunk_data["revealed"]
+	var lim: int = mini(rev.size(), barr.size())
+	for i in lim:
+		rev[i] = barr[i]
+	_pending_reveal_masks.erase(chunk)
+
+
+func _apply_run_cell_edits(chunk: Vector2i, chunk_data: Dictionary) -> void:
+	var edits_raw: Variant = _run_cell_edits.get(chunk)
+	if edits_raw == null or typeof(edits_raw) != TYPE_DICTIONARY:
+		return
+	var edits: Dictionary = edits_raw
+	var cells: PackedByteArray = chunk_data["cells"]
+	var hparr: PackedByteArray = chunk_data["hp"]
+	for idx_key in edits:
+		var idx: int = int(idx_key)
+		if idx < 0 or idx >= cells.size():
+			continue
+		var v_raw: Variant = edits[idx_key]
+		if typeof(v_raw) != TYPE_VECTOR2I:
+			continue
+		var vv: Vector2i = v_raw as Vector2i
+		cells[idx] = vv.x
+		hparr[idx] = clampi(vv.y, 0, 255)
+
+
+func _persist_chunk_reveal_to_disk(chunk: Vector2i) -> void:
+	var merged: Dictionary = GameSession.load_stage_reveal(stage_id)
+	if _chunks.has(chunk):
+		merged[chunk] = (_chunks[chunk]["revealed"] as PackedByteArray).duplicate()
+	GameSession.save_stage_reveal(stage_id, merged)
+
+
+func unload_chunk_for_streaming(chunk: Vector2i) -> void:
+	if not _chunks.has(chunk):
+		return
+	if _reveal_dirty_chunks.has(chunk):
+		_persist_chunk_reveal_to_disk(chunk)
+	_reveal_dirty_chunks.erase(chunk)
+	_chunks.erase(chunk)
+
+
+func _preload_chunks_near(cam_chunk: Vector2i, radius_chunks: int) -> void:
+	for dy in range(-radius_chunks, radius_chunks + 1):
+		for dx in range(-radius_chunks, radius_chunks + 1):
+			_ensure_chunk(cam_chunk + Vector2i(dx, dy))
+
+
+func _unload_chunks_farther_than(cam_chunk: Vector2i, unload_r: int) -> void:
+	var to_drop: Array[Vector2i] = []
+	for k in _chunks:
+		var ch: Vector2i = k as Vector2i
+		var d: int = maxi(abs(ch.x - cam_chunk.x), abs(ch.y - cam_chunk.y))
+		if d > unload_r:
+			to_drop.append(ch)
+	for ch in to_drop:
+		unload_chunk_for_streaming(ch)
+
+
+func _maintain_chunk_streaming(cam_chunk: Vector2i) -> void:
+	_preload_chunks_near(cam_chunk, chunk_preload_radius_chunks)
+	_unload_chunks_farther_than(cam_chunk, chunk_unload_radius_chunks)
+
+
+func _commit_run_edit_for_chunk_index(chunk: Vector2i, local_idx: int) -> void:
+	if not _chunks.has(chunk):
+		return
+	var data: Dictionary = _chunks[chunk]
+	var cells: PackedByteArray = data["cells"]
+	var hparr: PackedByteArray = data["hp"]
+	if local_idx < 0 or local_idx >= cells.size():
+		return
+	if not _run_cell_edits.has(chunk):
+		_run_cell_edits[chunk] = {}
+	var ed: Dictionary = _run_cell_edits[chunk]
+	ed[local_idx] = Vector2i(int(cells[local_idx]), int(hparr[local_idx]))
+
+
 func set_cell_material_colors(colors: PackedColorArray) -> void:
 	var normalized := PackedColorArray()
 	normalized.resize(TYPE_COUNT)
@@ -217,6 +377,8 @@ func _ensure_chunk(chunk: Vector2i) -> void:
 		_chunk_generator.call(self, chunk, rng, chunk_data)
 	else:
 		fill_chunk_with_type(chunk_data, TYPE_DIRT)
+	_apply_pending_reveal_mask(chunk, chunk_data)
+	_apply_run_cell_edits(chunk, chunk_data)
 	_terrain_dirty = true
 
 
@@ -501,32 +663,35 @@ func stamp_dirt_chebyshev_from_world(world_pos: Vector2, radius_cells: int) -> v
 			var idx: int = _cell_to_local_in_chunk(c, ch)
 			cells_ba[idx] = TYPE_DIRT
 			hp_ba[idx] = dirt_hp
+			_commit_run_edit_for_chunk_index(ch, idx)
 	_terrain_dirty = true
 
 
-func _load_persisted_reveals() -> void:
-	var loaded: Dictionary = GameSession.load_stage_reveal(stage_id)
-	for k in loaded:
-		var chunk: Vector2i = k
-		_ensure_chunk(chunk)
-		var barr: PackedByteArray = loaded[k]
-		var data: Dictionary = _chunks[chunk]
-		var rev: PackedByteArray = data["revealed"]
-		var lim: int = mini(rev.size(), barr.size())
-		for i in lim:
-			rev[i] = barr[i]
-	_fog_dirty = true
 
 
 ## Mineable block types for prep UI (per-stage list; uses TYPE_MAX_HP / TYPE_MONEY).
-static func get_stage_block_type_rows() -> Array[Dictionary]:
-	return [
-		{"type_id": TYPE_DIRT, "label": "Dirt"},
-		{"type_id": TYPE_STONE, "label": "Stone"},
-		{"type_id": TYPE_GOLD, "label": "Gold"},
-		{"type_id": TYPE_FUEL, "label": "Fuel cell"},
-		{"type_id": TYPE_RUBY, "label": "Ruby"},
-	]
+static func get_stage_block_type_rows(stage_id: StringName = &"planet1") -> Array[Dictionary]:
+	match stage_id:
+		&"planet2":
+			return [
+				{"type_id": TYPE_PACKED_EARTH, "label": "Packed Earth"},
+				{"type_id": TYPE_CLAY, "label": "Clay"},
+				{"type_id": TYPE_SHALE, "label": "Shale"},
+				{"type_id": TYPE_COPPER, "label": "Copper"},
+				{"type_id": TYPE_TIN, "label": "Tin"},
+				{"type_id": TYPE_SANDSTONE, "label": "Sandstone"},
+				{"type_id": TYPE_OBSIDIAN, "label": "Obsidian"},
+				{"type_id": TYPE_IRON, "label": "Iron"},
+				{"type_id": TYPE_SILVER, "label": "Silver"},
+			]
+		_:
+			return [
+				{"type_id": TYPE_DIRT, "label": "Dirt"},
+				{"type_id": TYPE_STONE, "label": "Stone"},
+				{"type_id": TYPE_GOLD, "label": "Gold"},
+				{"type_id": TYPE_FUEL, "label": "Fuel cell"},
+				{"type_id": TYPE_RUBY, "label": "Ruby"},
+			]
 
 
 func _flush_reveal_save() -> void:
@@ -565,6 +730,45 @@ func _peek_cell_type(cell: Vector2i) -> int:
 	var data: Dictionary = _chunks[ch]
 	var idx: int = _cell_to_local_in_chunk(cell, ch)
 	return int(data["cells"][idx])
+
+
+func get_cell_type_at(cell: Vector2i) -> int:
+	return _peek_cell_type(cell)
+
+func describe_cell_type(type_id: int) -> String:
+	match type_id:
+		TYPE_EMPTY:
+			return "empty"
+		TYPE_DIRT:
+			return "dirt"
+		TYPE_STONE:
+			return "stone"
+		TYPE_GOLD:
+			return "gold"
+		TYPE_FUEL:
+			return "fuel"
+		TYPE_RUBY:
+			return "ruby"
+		TYPE_PACKED_EARTH:
+			return "packed_earth"
+		TYPE_CLAY:
+			return "clay"
+		TYPE_SHALE:
+			return "shale"
+		TYPE_COPPER:
+			return "copper"
+		TYPE_TIN:
+			return "tin"
+		TYPE_SANDSTONE:
+			return "sandstone"
+		TYPE_OBSIDIAN:
+			return "obsidian"
+		TYPE_IRON:
+			return "iron"
+		TYPE_SILVER:
+			return "silver"
+		_:
+			return "unknown_%d" % type_id
 
 
 func is_solid_world(world: Vector2) -> bool:
@@ -681,7 +885,11 @@ func _cell_local_in_chunk_vec(cell: Vector2i, chunk: Vector2i) -> Vector2i:
 
 
 func _clear_fuel_cluster_if_cell_inside(
-	data: Dictionary, cells: PackedByteArray, hparr: PackedByteArray, cell_local: Vector2i
+	chunk_coord: Vector2i,
+	data: Dictionary,
+	cells: PackedByteArray,
+	hparr: PackedByteArray,
+	cell_local: Vector2i
 ) -> bool:
 	var rect: Rect2i = _fuel_cluster_local_rect(data)
 	if rect.size.x < 1 or not rect.has_point(cell_local):
@@ -692,6 +900,7 @@ func _clear_fuel_cluster_if_cell_inside(
 			if int(cells[li]) == TYPE_FUEL:
 				cells[li] = TYPE_EMPTY
 				hparr[li] = 0
+				_commit_run_edit_for_chunk_index(chunk_coord, li)
 	return true
 
 
@@ -713,7 +922,7 @@ func _damage_cell_abs(cell: Vector2i, amount: int) -> int:
 			var hp_f: int = int(hparr[idx])
 			var new_hp_f: int = hp_f - amount
 			if new_hp_f <= 0:
-				_clear_fuel_cluster_if_cell_inside(data, cells, hparr, cl)
+				_clear_fuel_cluster_if_cell_inside(ch, data, cells, hparr, cl)
 				GameStatistics.add_blocks_destroyed(1)
 				GameStatistics.apply_fuel_cell_pickup()
 				if TYPE_FUEL >= 0 and TYPE_FUEL < TYPE_MONEY.size():
@@ -721,6 +930,7 @@ func _damage_cell_abs(cell: Vector2i, amount: int) -> int:
 				return hp_f
 			var nh_f: int = clampi(new_hp_f, 0, 255)
 			hparr[idx] = nh_f
+			_commit_run_edit_for_chunk_index(ch, idx)
 			return hp_f - nh_f
 	var hp_before: int = int(hparr[idx])
 	var new_hp: int = hp_before - amount
@@ -730,9 +940,11 @@ func _damage_cell_abs(cell: Vector2i, amount: int) -> int:
 		GameStatistics.add_blocks_destroyed(1)
 		if t >= 0 and t < TYPE_MONEY.size():
 			GameStatistics.add_mined_cell_reward(int(TYPE_MONEY[t]))
+		_commit_run_edit_for_chunk_index(ch, idx)
 		return hp_before
 	var nh: int = clampi(new_hp, 0, 255)
 	hparr[idx] = nh
+	_commit_run_edit_for_chunk_index(ch, idx)
 	return hp_before - nh
 
 
@@ -841,10 +1053,11 @@ func _set_cell_type_empty_silent(cell: Vector2i) -> bool:
 		return false
 	if int(cells[idx]) == TYPE_FUEL:
 		var cl: Vector2i = _cell_local_in_chunk_vec(cell, ch)
-		if _clear_fuel_cluster_if_cell_inside(data, cells, hparr, cl):
+		if _clear_fuel_cluster_if_cell_inside(ch, data, cells, hparr, cl):
 			return true
 	cells[idx] = TYPE_EMPTY
 	hparr[idx] = 0
+	_commit_run_edit_for_chunk_index(ch, idx)
 	return true
 
 
@@ -876,6 +1089,9 @@ func update_vision(center_world: Vector2, radius_cells: int) -> void:
 
 ## Visible world rectangle in pixels (SubViewport / camera space).
 func set_camera_view_world_rect(rect: Rect2) -> void:
+	var center_px: Vector2 = rect.position + rect.size * 0.5
+	var cam_chunk: Vector2i = _cell_to_chunk_coord(world_pos_to_cell(center_px))
+	_maintain_chunk_streaming(cam_chunk)
 	# Size in cells must depend only on rect dimensions (constant for a given window + zoom).
 	# If we resized whenever the top-left *cell* moved with the camera, we would recreate
 	# ImageTextures every frame and break RenderingDevice shader versions.
@@ -906,6 +1122,8 @@ func set_camera_view_world_rect(rect: Rect2) -> void:
 		_rebuild_terrain_textures()
 	if _fog_dirty:
 		_rebuild_fog_texture()
+	if GameStatistics.debug_world_visuals:
+		refresh_chunk_border_debug()
 
 
 func _resize_view_textures(w: int, h: int) -> void:
@@ -961,7 +1179,10 @@ func _init_visuals() -> void:
 		return
 	_resize_view_textures(32, 32)
 	var sm := ShaderMaterial.new()
-	var sh: Shader = load("res://shaders/planet1_marching.gdshader")
+	var tpath := terrain_shader_path.strip_edges()
+	if tpath.is_empty():
+		tpath = "res://shaders/planet1_marching.gdshader"
+	var sh: Shader = load(tpath) as Shader
 	if sh:
 		sm.shader = sh
 		sm.set_shader_parameter("mask_tex", _mask_texture)
@@ -990,12 +1211,13 @@ func _push_shader_type_colors(sm: ShaderMaterial = null) -> void:
 		if _world_visual == null or not (_world_visual.material is ShaderMaterial):
 			return
 		target = _world_visual.material as ShaderMaterial
-	var n: int = mini(TYPE_COUNT, SHADER_TYPE_COLOR_MAX)
+	var cap: int = maxi(shader_type_color_max, 1)
+	var n: int = mini(TYPE_COUNT, cap)
 	target.set_shader_parameter("type_count", n)
 	var pc := PackedColorArray()
-	pc.resize(SHADER_TYPE_COLOR_MAX)
-	for i in range(SHADER_TYPE_COLOR_MAX):
-		pc[i] = _type_colors[i] if i < TYPE_COUNT else Color(0, 0, 0, 0)
+	pc.resize(cap)
+	for i in cap:
+		pc[i] = _type_colors[i] if i < _type_colors.size() else Color(0, 0, 0, 0)
 	target.set_shader_parameter("type_colors", pc)
 
 
@@ -1120,3 +1342,14 @@ func spawn_part_pickups_at_cells(
 		var reveal_mode: StringName = def.get("spawn_reveal_mode", SPAWN_REVEAL_NORMAL) as StringName
 		if reveal_mode == SPAWN_REVEAL_FULL:
 			update_vision(cw, 1)
+
+
+class _ChunkBorderDebug extends Node2D:
+	var _mining_world: MiningWorld
+
+	func setup_chunk_border_debug(mining_world: MiningWorld) -> void:
+		_mining_world = mining_world
+
+	func _draw() -> void:
+		if _mining_world != null:
+			_mining_world.draw_chunk_border_debug(self)

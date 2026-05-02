@@ -378,6 +378,10 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 6
 
+[node name="PrepStageOptionButton" type="OptionButton" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Stage/StageScroll/StageVBox" unique_id=738306153]
+unique_name_in_owner = true
+layout_mode = 2
+
 [node name="PrepStageSummaryLabel" type="Label" parent="Margin/RootVBox/Row/PreviewCol/ShipColumn/ShipTabs/Stage/StageScroll/StageVBox" unique_id=738306154]
 unique_name_in_owner = true
 layout_mode = 2

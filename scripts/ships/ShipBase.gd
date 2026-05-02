@@ -202,20 +202,8 @@ func _draw_mining_debug(ci: CanvasItem) -> void:
 	var color_hull_blocked: Color = Color(0.95, 0.2, 0.22, 0.9)
 	var color_mine_dot: Color = Color(1.0, 0.12, 0.12, 0.95)
 	var color_drill_bearing: Color = Color(1.0, 0.35, 0.35, 0.85)
-	var color_chunk_border: Color = Color(0.3, 0.65, 1.0, 0.88)
 
 	var cs: float = MiningWorld.CELL_SIZE_PX
-	var chunk_px: float = float(MiningWorld.CHUNK_SIZE) * cs
-	var origin_chunk: Vector2i = grid.get_chunk_for_world_pos(global_position)
-	const _CHUNK_BORDERS_HALF: int = 4
-	for dcy in range(-_CHUNK_BORDERS_HALF, _CHUNK_BORDERS_HALF + 1):
-		for dcx in range(-_CHUNK_BORDERS_HALF, _CHUNK_BORDERS_HALF + 1):
-			var cchunk: Vector2i = origin_chunk + Vector2i(dcx, dcy)
-			var tlx: float = float(cchunk.x * MiningWorld.CHUNK_SIZE) * cs
-			var tly: float = float(cchunk.y * MiningWorld.CHUNK_SIZE) * cs
-			_draw_world_rect_outline(
-				ci, Vector2(tlx, tly), chunk_px, chunk_px, color_chunk_border, 1.0
-			)
 	var hull_c_world: Vector2 = global_position
 	var rh: float = hull_radius_px
 	var rh_blocked: float = rh + maxf(0.0, hull_debug_blocked_pad_px)

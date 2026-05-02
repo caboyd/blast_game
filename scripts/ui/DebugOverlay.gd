@@ -88,6 +88,9 @@ func _apply_debug_visuals(on: bool) -> void:
 		for n in get_tree().get_nodes_in_group(&"pickup_debug_redraw"):
 			if n is CanvasItem:
 				(n as CanvasItem).queue_redraw()
+		for w in get_tree().get_nodes_in_group(&"mining_world"):
+			if w is MiningWorld:
+				(w as MiningWorld).refresh_chunk_border_debug()
 
 
 func _adjust_debug_zoom(step_delta: int) -> void:

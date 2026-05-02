@@ -8,12 +8,20 @@ const _PART_PICKUP_BY_TYPE_SECTION := "part_pickup_by_type"
 const _CAREER_KEY_BLOCKS := "total_blocks_destroyed"
 const _CAREER_KEY_MONEY := "money"
 const _CAREER_KEY_SELECTED_SHIP := "selected_ship_id"
+const _CAREER_KEY_SELECTED_STAGE := "selected_stage_id"
 
-const _STAGE_REVEAL_MAGIC := 0x52455631
-const _MINING_CHUNK_BYTES := 40 * 40
+const _STAGE_REVEAL_MAGIC := 0x52455632
+const _MINING_CHUNK_BYTES := 32 * 32
 const _BLOCK_DISCOVERY_SECTION := "block_discovery"
 
+## Stage id → mission planet scene path.
+const STAGE_PLANET_SCENES: Dictionary = {
+	&"planet1": "res://scenes/planets/Planet1.tscn",
+	&"planet2": "res://scenes/planets/Planet2.tscn",
+}
+
 var selected_ship_id: StringName = &"scout"
+var selected_stage_id: StringName = &"planet1"
 ## Reserved: slot index → turret type id; empty = no pre-mounted turrets from Prep.
 var mounted_turrets: Array[Dictionary] = []
 ## Default when Prep calls `go_to_planet(GameSession.next_planet_scene)`.
@@ -43,6 +51,16 @@ func go_to_planet(path: String) -> void:
 		push_error("GameSession.go_to_planet failed: %s" % error_string(err))
 
 
+func get_stage_planet_scene_path() -> String:
+	var sc: Variant = STAGE_PLANET_SCENES.get(selected_stage_id)
+	if typeof(sc) != TYPE_STRING:
+		sc = STAGE_PLANET_SCENES[&"planet1"]
+	var p: String = str(sc).strip_edges()
+	if p.is_empty():
+		return str(STAGE_PLANET_SCENES[&"planet1"])
+	return p
+
+
 func return_to_prep() -> void:
 	var err := get_tree().change_scene_to_file(PREP_SCENE)
 	if err != OK:
@@ -63,6 +81,10 @@ func _load_career() -> void:
 	selected_ship_id = StringName(
 		str(c.get_value(_CAREER_SECTION, _CAREER_KEY_SELECTED_SHIP, "scout"))
 	)
+	var stage_raw: String = str(c.get_value(_CAREER_SECTION, _CAREER_KEY_SELECTED_STAGE, "planet1"))
+	selected_stage_id = StringName(stage_raw)
+	if not STAGE_PLANET_SCENES.has(selected_stage_id):
+		selected_stage_id = &"planet1"
 	if ShipDataRegistry:
 		ShipDataRegistry.reload_active()
 	UpgradeBus.read_from_career_config(c)
@@ -91,6 +113,7 @@ func _write_career_to_disk() -> void:
 	c.set_value(_CAREER_SECTION, _CAREER_KEY_BLOCKS, career_blocks_destroyed)
 	c.set_value(_CAREER_SECTION, _CAREER_KEY_MONEY, GameStatistics.money)
 	c.set_value(_CAREER_SECTION, _CAREER_KEY_SELECTED_SHIP, String(selected_ship_id))
+	c.set_value(_CAREER_SECTION, _CAREER_KEY_SELECTED_STAGE, String(selected_stage_id))
 	UpgradeBus.write_to_career_config(c)
 	PartRegistry.write_to_config_file(c)
 	write_part_pickup_collected_to_config(c)
@@ -269,7 +292,7 @@ func _stage_reveal_path(stage_id: StringName) -> String:
 	return "user://stage_%s_reveal.dat" % sid
 
 
-## Returns Dictionary with Vector2i keys -> PackedByteArray reveal mask (40*40 bytes per chunk).
+## Returns Dictionary with Vector2i keys -> PackedByteArray reveal mask (`MiningWorld.CHUNK_SIZE²` bytes per chunk).
 func load_stage_reveal(stage_id: StringName) -> Dictionary:
 	var path := _stage_reveal_path(stage_id)
 	if not FileAccess.file_exists(path):
@@ -316,6 +339,7 @@ func save_stage_reveal(stage_id: StringName, reveals: Dictionary) -> void:
 func reset_all_progress() -> void:
 	career_blocks_destroyed = 0
 	selected_ship_id = &"scout"
+	selected_stage_id = &"planet1"
 	GameStatistics.money = 0
 	GameStatistics.total_blocks_destroyed = 0
 	GameStatistics._blocks_destroyed_run_baseline = 0
