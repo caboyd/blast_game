@@ -66,7 +66,7 @@ func _hover_detail_text(type_id: int) -> String:
 
 
 func _ready() -> void:
-	mouse_filter = Control.MOUSE_FILTER_STOP
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_theme_constant_override("margin_left", int(round(12.0 * _UI_SCALE)))
 	add_theme_constant_override("margin_top", int(round(2.0 * _UI_SCALE)))
 	add_theme_constant_override("margin_bottom", int(round(4.0 * _UI_SCALE)))

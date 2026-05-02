@@ -61,5 +61,5 @@ vertical_alignment = 1
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 0
-mouse_filter = 0
+mouse_filter = 2
 script = ExtResource("3")

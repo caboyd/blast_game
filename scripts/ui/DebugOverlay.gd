@@ -52,9 +52,13 @@ func _ready() -> void:
 
 	if _gold_give:
 		_gold_give.pressed.connect(_on_gold_give_pressed)
+	if _gold_spin:
+		_gold_spin.value = float(GameStatistics.debug_menu_gold_give_spin)
+		_gold_spin.value_changed.connect(_on_debug_gold_spin_changed)
 	if _return_to_prep:
 		_return_to_prep.pressed.connect(_on_return_to_prep_pressed)
 	if _debug_visuals:
+		_debug_visuals.button_pressed = GameStatistics.debug_world_visuals
 		_debug_visuals.toggled.connect(_on_debug_visuals_toggled)
 	if _disable_fog:
 		_disable_fog.button_pressed = GameStatistics.debug_fog_disabled
@@ -78,6 +82,11 @@ func _unhandled_key_input(event: InputEvent) -> void:
 func _on_gold_give_pressed() -> void:
 	if _gold_spin:
 		GameStatistics.add_money(int(_gold_spin.value))
+
+
+func _on_debug_gold_spin_changed(v: float) -> void:
+	GameStatistics.debug_menu_gold_give_spin = int(roundf(v))
+	GameStatistics.save_debug_preferences()
 
 
 func _on_return_to_prep_pressed() -> void:
@@ -238,6 +247,7 @@ func _apply_debug_visuals(on: bool) -> void:
 		for w in get_tree().get_nodes_in_group(&"mining_world"):
 			if w is MiningWorld:
 				(w as MiningWorld).refresh_chunk_border_debug()
+	GameStatistics.save_debug_preferences()
 
 
 func _adjust_debug_zoom(step_delta: int) -> void:

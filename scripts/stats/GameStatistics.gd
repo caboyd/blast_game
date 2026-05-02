@@ -47,11 +47,12 @@ var _run_mined_type_counts: Dictionary = {}
 var _run_mined_type_colors: Dictionary = {}
 
 ## Master switch for world gizmos (mining ship hull/drill debug, conveyor bounds, viewport label). Toggled from `DebugOverlay` on planet; default off so Prep (no overlay) is clean.
+## Persisted in `user://debug_prefs.cfg`.
 var debug_world_visuals: bool = false
-## Debug: temporarily reveals fog-of-war for the current mining mission only. Cleared in `GameSession.begin_run()`.
+## Debug: reveals fog-of-war when enabled. Persisted with debug prefs.
 var debug_fog_disabled: bool = false
 
-## Debug vehicle stat overrides (`DebugOverlay` / mission only). Cleared in `clear_mining_mission_vehicle_debug_overrides()`.
+## Debug vehicle stat overrides (`DebugOverlay`). Persisted; optional reset via `clear_mining_mission_vehicle_debug_overrides()`.
 const DEBUG_VEHICLE_OVERRIDE_MIN_FUEL_MAX := 1.0
 const DEBUG_VEHICLE_OVERRIDE_MIN_MOVE_PX := 1e-3
 const DEBUG_VEHICLE_OVERRIDE_MIN_MINE_DAMAGE := 1e-4
@@ -76,15 +77,120 @@ var debug_vision_radius_cells_override_value: int = 12
 var debug_turn_rate_rad_s_override_enabled: bool = false
 var debug_turn_rate_rad_s_override_value: float = 9.0
 
+## Debug camera zoom multiplier on mining planets (`DebugOverlay` +/-). Clamped 0.2..2.0 on load; same range as planet `adjust_debug_camera_zoom`.
+var debug_camera_zoom_multiplier: float = 1.0
+## Last value in the debug panel gold `SpinBox` (Give button).
+var debug_menu_gold_give_spin: int = 1000000
+
+const _DEBUG_PREFS_PATH := "user://debug_prefs.cfg"
+const _DEBUG_PREFS_SECTION := "debug"
+const _DEBUG_ZOOM_CLAMP_MIN := 0.2
+const _DEBUG_ZOOM_CLAMP_MAX := 2.0
+var _debug_prefs_write_pending: bool = false
+
+
+func load_debug_preferences() -> void:
+	var c := ConfigFile.new()
+	if c.load(_DEBUG_PREFS_PATH) != OK:
+		return
+	var sec := _DEBUG_PREFS_SECTION
+	debug_world_visuals = bool(c.get_value(sec, "world_visuals", debug_world_visuals))
+	debug_fog_disabled = bool(c.get_value(sec, "fog_disabled", debug_fog_disabled))
+	debug_camera_zoom_multiplier = clampf(
+		float(c.get_value(sec, "camera_zoom_mul", debug_camera_zoom_multiplier)),
+		_DEBUG_ZOOM_CLAMP_MIN,
+		_DEBUG_ZOOM_CLAMP_MAX,
+	)
+	debug_menu_gold_give_spin = int(c.get_value(sec, "gold_give_spin", debug_menu_gold_give_spin))
+	debug_fuel_max_override_enabled = bool(c.get_value(sec, "fuel_ovrd_en", debug_fuel_max_override_enabled))
+	debug_fuel_max_override_value = maxf(
+		DEBUG_VEHICLE_OVERRIDE_MIN_FUEL_MAX,
+		float(c.get_value(sec, "fuel_ovrd_val", debug_fuel_max_override_value)),
+	)
+	debug_move_speed_override_enabled = bool(c.get_value(sec, "speed_ovrd_en", debug_move_speed_override_enabled))
+	debug_move_speed_override_value = maxf(
+		DEBUG_VEHICLE_OVERRIDE_MIN_MOVE_PX,
+		float(c.get_value(sec, "speed_ovrd_val", debug_move_speed_override_value)),
+	)
+	debug_mine_damage_override_enabled = bool(c.get_value(sec, "mine_dmg_ovrd_en", debug_mine_damage_override_enabled))
+	debug_mine_damage_override_value = maxf(
+		DEBUG_VEHICLE_OVERRIDE_MIN_MINE_DAMAGE,
+		float(c.get_value(sec, "mine_dmg_ovrd_val", debug_mine_damage_override_value)),
+	)
+	debug_mine_interval_override_enabled = bool(c.get_value(sec, "mine_ivl_ovrd_en", debug_mine_interval_override_enabled))
+	debug_mine_interval_override_value = clampf(
+		float(c.get_value(sec, "mine_ivl_ovrd_val", debug_mine_interval_override_value)),
+		DEBUG_VEHICLE_OVERRIDE_MIN_MINE_INTERVAL_S,
+		999.0,
+	)
+	debug_drill_range_game_px_override_enabled = bool(
+		c.get_value(sec, "drill_px_ovrd_en", debug_drill_range_game_px_override_enabled)
+	)
+	debug_drill_range_game_px_override_value = clampf(
+		float(c.get_value(sec, "drill_px_ovrd_val", debug_drill_range_game_px_override_value)),
+		DEBUG_VEHICLE_OVERRIDE_MIN_DRILL_RANGE_GAME_PX,
+		2048.0,
+	)
+	debug_vision_radius_cells_override_enabled = bool(
+		c.get_value(sec, "vision_ovrd_en", debug_vision_radius_cells_override_enabled)
+	)
+	debug_vision_radius_cells_override_value = clampi(
+		int(c.get_value(sec, "vision_ovrd_val", debug_vision_radius_cells_override_value)),
+		1,
+		99,
+	)
+	debug_turn_rate_rad_s_override_enabled = bool(
+		c.get_value(sec, "turn_ovrd_en", debug_turn_rate_rad_s_override_enabled)
+	)
+	debug_turn_rate_rad_s_override_value = clampf(
+		float(c.get_value(sec, "turn_ovrd_val", debug_turn_rate_rad_s_override_value)),
+		0.0,
+		1000.0,
+	)
+
+
+func save_debug_preferences() -> void:
+	if _debug_prefs_write_pending:
+		return
+	_debug_prefs_write_pending = true
+	call_deferred("_flush_debug_prefs_write")
+
+
+func _flush_debug_prefs_write() -> void:
+	_debug_prefs_write_pending = false
+	var c := ConfigFile.new()
+	var sec := _DEBUG_PREFS_SECTION
+	c.set_value(sec, "world_visuals", debug_world_visuals)
+	c.set_value(sec, "fog_disabled", debug_fog_disabled)
+	c.set_value(sec, "camera_zoom_mul", debug_camera_zoom_multiplier)
+	c.set_value(sec, "gold_give_spin", debug_menu_gold_give_spin)
+	c.set_value(sec, "fuel_ovrd_en", debug_fuel_max_override_enabled)
+	c.set_value(sec, "fuel_ovrd_val", debug_fuel_max_override_value)
+	c.set_value(sec, "speed_ovrd_en", debug_move_speed_override_enabled)
+	c.set_value(sec, "speed_ovrd_val", debug_move_speed_override_value)
+	c.set_value(sec, "mine_dmg_ovrd_en", debug_mine_damage_override_enabled)
+	c.set_value(sec, "mine_dmg_ovrd_val", debug_mine_damage_override_value)
+	c.set_value(sec, "mine_ivl_ovrd_en", debug_mine_interval_override_enabled)
+	c.set_value(sec, "mine_ivl_ovrd_val", debug_mine_interval_override_value)
+	c.set_value(sec, "drill_px_ovrd_en", debug_drill_range_game_px_override_enabled)
+	c.set_value(sec, "drill_px_ovrd_val", debug_drill_range_game_px_override_value)
+	c.set_value(sec, "vision_ovrd_en", debug_vision_radius_cells_override_enabled)
+	c.set_value(sec, "vision_ovrd_val", debug_vision_radius_cells_override_value)
+	c.set_value(sec, "turn_ovrd_en", debug_turn_rate_rad_s_override_enabled)
+	c.set_value(sec, "turn_ovrd_val", debug_turn_rate_rad_s_override_value)
+	var err := c.save(_DEBUG_PREFS_PATH)
+	if err != OK:
+		push_error("GameStatistics._flush_debug_prefs_write failed: %s" % error_string(err))
+
 
 func set_debug_fog_disabled(on: bool) -> void:
 	debug_fog_disabled = on
 	var tree := get_tree()
-	if tree == null:
-		return
-	for n in tree.get_nodes_in_group(&"mining_world"):
-		if n.has_method(&"apply_debug_fog_visibility"):
-			n.apply_debug_fog_visibility()
+	if tree != null:
+		for n in tree.get_nodes_in_group(&"mining_world"):
+			if n.has_method(&"apply_debug_fog_visibility"):
+				n.apply_debug_fog_visibility()
+	save_debug_preferences()
 
 
 func clear_mining_mission_vehicle_debug_overrides() -> void:
@@ -96,22 +202,26 @@ func clear_mining_mission_vehicle_debug_overrides() -> void:
 	debug_vision_radius_cells_override_enabled = false
 	debug_turn_rate_rad_s_override_enabled = false
 	_refit_live_fuel_max_preserving_fill()
+	save_debug_preferences()
 
 
 func notify_debug_fuel_max_override(enabled: bool, value: float) -> void:
 	debug_fuel_max_override_value = maxf(DEBUG_VEHICLE_OVERRIDE_MIN_FUEL_MAX, value)
 	debug_fuel_max_override_enabled = enabled
 	_refit_live_fuel_max_preserving_fill()
+	save_debug_preferences()
 
 
 func notify_debug_move_speed_override(enabled: bool, value: float) -> void:
 	debug_move_speed_override_value = maxf(DEBUG_VEHICLE_OVERRIDE_MIN_MOVE_PX, value)
 	debug_move_speed_override_enabled = enabled
+	save_debug_preferences()
 
 
 func notify_debug_mine_damage_override(enabled: bool, value: float) -> void:
 	debug_mine_damage_override_value = maxf(DEBUG_VEHICLE_OVERRIDE_MIN_MINE_DAMAGE, value)
 	debug_mine_damage_override_enabled = enabled
+	save_debug_preferences()
 
 
 func notify_debug_mine_interval_override(enabled: bool, value_s: float) -> void:
@@ -121,6 +231,7 @@ func notify_debug_mine_interval_override(enabled: bool, value_s: float) -> void:
 		999.0,
 	)
 	debug_mine_interval_override_enabled = enabled
+	save_debug_preferences()
 
 
 func notify_debug_drill_range_game_px_override(enabled: bool, value_px: float) -> void:
@@ -130,16 +241,19 @@ func notify_debug_drill_range_game_px_override(enabled: bool, value_px: float) -
 		2048.0,
 	)
 	debug_drill_range_game_px_override_enabled = enabled
+	save_debug_preferences()
 
 
 func notify_debug_vision_radius_cells_override(enabled: bool, radius_cells: int) -> void:
 	debug_vision_radius_cells_override_value = clampi(radius_cells, 1, 99)
 	debug_vision_radius_cells_override_enabled = enabled
+	save_debug_preferences()
 
 
 func notify_debug_turn_rate_rad_s_override(enabled: bool, value_rad_s: float) -> void:
 	debug_turn_rate_rad_s_override_value = clampf(value_rad_s, 0.0, 1000.0)
 	debug_turn_rate_rad_s_override_enabled = enabled
+	save_debug_preferences()
 
 
 func _refit_live_fuel_max_preserving_fill() -> void:
@@ -164,6 +278,7 @@ func _refit_live_fuel_max_preserving_fill() -> void:
 
 
 func _ready() -> void:
+	load_debug_preferences()
 	_apply_ship_fuel_base()
 	if not UpgradeBus.upgrade_purchased.is_connected(_on_upgrade_purchased):
 		UpgradeBus.upgrade_purchased.connect(_on_upgrade_purchased)

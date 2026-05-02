@@ -111,7 +111,6 @@ var _vp_h: int = 720
 ## Vector2i chunk → monument definition for this save’s layout.
 var _monument_chunk_to_def: Dictionary = {}
 var _monument_layout_resolved: bool = false
-var _debug_camera_zoom_multiplier: float = 1.0
 
 
 func _ready() -> void:
@@ -813,22 +812,23 @@ func _apply_game_viewport_layout() -> void:
 	_vp_h = h
 	if _game_camera != null and w > 0 and h > 0:
 		var z: float = float(mini(w, h)) / (CELL_SIZE_PX * float(CELLS_PER_HALF_VIEW * 2))
-		_game_camera.zoom = Vector2(z, z) * _debug_camera_zoom_multiplier
+		_game_camera.zoom = Vector2(z, z) * GameStatistics.debug_camera_zoom_multiplier
 	_refresh_viewport_info()
 
 
 func adjust_debug_camera_zoom(step_delta: int) -> float:
-	_debug_camera_zoom_multiplier = clampf(
-		_debug_camera_zoom_multiplier * pow(DEBUG_CAMERA_ZOOM_STEP, float(step_delta)),
+	GameStatistics.debug_camera_zoom_multiplier = clampf(
+		GameStatistics.debug_camera_zoom_multiplier * pow(DEBUG_CAMERA_ZOOM_STEP, float(step_delta)),
 		DEBUG_CAMERA_ZOOM_MIN,
 		DEBUG_CAMERA_ZOOM_MAX
 	)
 	_apply_game_viewport_layout()
-	return _debug_camera_zoom_multiplier
+	GameStatistics.save_debug_preferences()
+	return GameStatistics.debug_camera_zoom_multiplier
 
 
 func get_debug_camera_zoom_multiplier() -> float:
-	return _debug_camera_zoom_multiplier
+	return GameStatistics.debug_camera_zoom_multiplier
 
 
 func _refresh_viewport_info() -> void:
