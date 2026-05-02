@@ -746,6 +746,54 @@ func _peek_cell_type(cell: Vector2i) -> int:
 func get_cell_type_at(cell: Vector2i) -> int:
 	return _peek_cell_type(cell)
 
+
+func get_cell_hp_at(cell: Vector2i) -> int:
+	var ch := _cell_to_chunk_coord(cell)
+	_ensure_chunk(ch)
+	var data: Dictionary = _chunks[ch]
+	var idx: int = _cell_to_local_in_chunk(cell, ch)
+	var t: int = int(data["cells"][idx])
+	if t == TYPE_EMPTY:
+		return 0
+	return int(data["hp"][idx])
+
+
+## Solid cells whose world AABB hits the circle, optionally filtered to `allowed_cell_types` (same rules as [method mine_solid_in_circle_world]).
+func get_mineable_cells_in_circle_world(
+	center_world: Vector2,
+	radius_world: float,
+	allowed_cell_types: PackedInt32Array = PackedInt32Array(),
+) -> Array[Vector2i]:
+	var result: Array[Vector2i] = []
+	if radius_world <= 0.0:
+		return result
+	var cs: float = CELL_SIZE_PX
+	var r: float = radius_world
+	var cx0: int = int(floor((center_world.x - r) / cs))
+	var cx1: int = int(floor((center_world.x + r) / cs))
+	var cy0: int = int(floor((center_world.y - r) / cs))
+	var cy1: int = int(floor((center_world.y + r) / cs))
+	var filter: bool = allowed_cell_types.size() > 0
+	for cy in range(cy0, cy1 + 1):
+		for cx in range(cx0, cx1 + 1):
+			if not _circle_overlaps_cell_aabb_world(center_world, r, cx, cy):
+				continue
+			var cell_v := Vector2i(cx, cy)
+			if filter:
+				var ct: int = _peek_cell_type(cell_v)
+				var allowed := false
+				for i in allowed_cell_types.size():
+					if int(allowed_cell_types[i]) == ct:
+						allowed = true
+						break
+				if not allowed:
+					continue
+			_ensure_chunk(_cell_to_chunk_coord(cell_v))
+			if _is_cell_solid(cell_v):
+				result.append(cell_v)
+	return result
+
+
 func describe_cell_type(type_id: int) -> String:
 	match type_id:
 		TYPE_EMPTY:

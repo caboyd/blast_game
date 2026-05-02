@@ -371,6 +371,10 @@ func _drill_center_world() -> Vector2:
 	return _front_world()
 
 
+func get_drill_center_world() -> Vector2:
+	return _drill_center_world()
+
+
 func _circle_overlaps_cell_rect(center: Vector2, radius: float, cell_x: int, cell_y: int) -> bool:
 	var cs: float = MiningWorld.CELL_SIZE_PX
 	var L: float = float(cell_x) * cs

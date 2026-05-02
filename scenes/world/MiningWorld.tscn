@@ -1,10 +1,18 @@
 [gd_scene format=3 uid="uid://wfvva5w2yqqq"]
 
 [ext_resource type="Script" uid="uid://cs655syhp8bid" path="res://scripts/world/MiningWorld.gd" id="1_gr8o2"]
+[ext_resource type="Script" uid="uid://dpu7mee800bqf" path="res://scripts/world/MiningCrackOverlay.gd" id="2_crack"]
+[ext_resource type="Texture2D" uid="uid://dub33e1jxu68k" path="res://assets/sprites/cracksmall.png" id="3_cd1rj"]
 
 [node name="World" type="Node2D" unique_id=1400227605]
 script = ExtResource("1_gr8o2")
 
 [node name="WorldVisual" type="Sprite2D" parent="." unique_id=716519693]
+
+[node name="MiningCrackOverlay" type="Node2D" parent="." unique_id=1420087612]
+z_index = 1
+script = ExtResource("2_crack")
+crack_texture = ExtResource("3_cd1rj")
+frame_count = 7
 
 [node name="FogVisual" type="Sprite2D" parent="." unique_id=1293813776]

@@ -93,6 +93,8 @@ func bind_world_audio_mount(mount: Node2D) -> void:
 		var old_m: Node2D = _world_audio_mount
 		if old_m.tree_exiting.is_connected(_world_mount_exit_cb):
 			old_m.tree_exiting.disconnect(_world_mount_exit_cb)
+	if mount == null:
+		stop_managed_world_audio()
 	_world_audio_mount = mount
 	var new_parent: Node = self
 	if mount != null and is_instance_valid(mount):
@@ -105,6 +107,21 @@ func bind_world_audio_mount(mount: Node2D) -> void:
 
 func _detach_world_mount_on_exit() -> void:
 	bind_world_audio_mount(null)
+
+
+## Stops drill + pooled dirt SFX immediately (called when leaving a mining scene / unbinding mount).
+func stop_managed_world_audio() -> void:
+	_drill_engaged = false
+	_drill_biting = false
+	_drill_linear_smooth = 0.0
+	if _drill_player != null and is_instance_valid(_drill_player):
+		_drill_player.volume_db = -80.0
+	for pl: AudioStreamPlayer2D in _dirtmine_players:
+		if pl != null and is_instance_valid(pl):
+			pl.stop()
+	for pl: AudioStreamPlayer2D in _dirtfall_players:
+		if pl != null and is_instance_valid(pl):
+			pl.stop()
 
 
 func _reparent_player_nodes(new_parent: Node) -> void:
