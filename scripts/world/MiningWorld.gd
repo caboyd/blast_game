@@ -1239,29 +1239,46 @@ func _rebuild_terrain_textures() -> void:
 	var oy: int = _view_origin_cell.y
 	var w: int = _view_size_cells.x
 	var h: int = _view_size_cells.y
+	var pixel_count: int = w * h
+	var mask_data := PackedByteArray()
+	mask_data.resize(pixel_count)
+	var type_data := PackedByteArray()
+	type_data.resize(pixel_count * 2)
 
 	for iy in h:
-		for ix in w:
-			var wc := Vector2i(ox + ix, oy + iy)
-			var ch := _cell_to_chunk_coord(wc)
+		var wy: int = oy + iy
+		var chunk_y: int = _floor_div(wy, CHUNK_SIZE)
+		var local_y: int = wy - chunk_y * CHUNK_SIZE
+		var ix: int = 0
+		while ix < w:
+			var wx: int = ox + ix
+			var chunk_x: int = _floor_div(wx, CHUNK_SIZE)
+			var local_x: int = wx - chunk_x * CHUNK_SIZE
+			var run_len: int = mini(w - ix, CHUNK_SIZE - local_x)
+			var ch := Vector2i(chunk_x, chunk_y)
 			_ensure_chunk(ch)
 			var data: Dictionary = _chunks[ch]
 			var cells: PackedByteArray = data["cells"]
 			var hparr: PackedByteArray = data["hp"]
-			var idx: int = _cell_to_local_in_chunk(wc, ch)
-			var t: int = int(cells[idx])
+			var chunk_idx: int = local_y * CHUNK_SIZE + local_x
+			var pixel_idx: int = iy * w + ix
+			var type_idx: int = pixel_idx * 2
 
-			if t == TYPE_EMPTY:
-				_mask_image.set_pixel(ix, iy, Color(0, 0, 0, 1))
-				_type_image.set_pixel(ix, iy, Color(0, 0, 0, 1))
-			else:
-				_mask_image.set_pixel(ix, iy, Color(1, 1, 1, 1))
-				var max_hp: int = maxi(1, int(TYPE_MAX_HP[t]))
-				var hp: int = clampi(int(hparr[idx]), 0, max_hp)
-				var hp_ratio: float = float(hp) / float(max_hp)
-				var type_r: float = clampf(float(t) / 255.0, 0.0, 1.0)
-				_type_image.set_pixel(ix, iy, Color(type_r, hp_ratio, 0, 1))
+			for _i in run_len:
+				var t: int = int(cells[chunk_idx])
+				if t != TYPE_EMPTY:
+					mask_data[pixel_idx] = 255
+					var max_hp: int = maxi(1, int(TYPE_MAX_HP[t]))
+					var hp: int = clampi(int(hparr[chunk_idx]), 0, max_hp)
+					type_data[type_idx] = t
+					type_data[type_idx + 1] = int(round(float(hp) * 255.0 / float(max_hp)))
+				chunk_idx += 1
+				pixel_idx += 1
+				type_idx += 2
+			ix += run_len
 
+	_mask_image.set_data(w, h, false, Image.FORMAT_L8, mask_data)
+	_type_image.set_data(w, h, false, Image.FORMAT_RG8, type_data)
 	_mask_texture.update(_mask_image)
 	_type_texture.update(_type_image)
 
@@ -1276,18 +1293,34 @@ func _rebuild_fog_texture() -> void:
 	var oy: int = _view_origin_cell.y
 	var w: int = _view_size_cells.x
 	var h: int = _view_size_cells.y
+	var reveal_data := PackedByteArray()
+	reveal_data.resize(w * h)
 
 	for iy in h:
-		for ix in w:
-			var wc := Vector2i(ox + ix, oy + iy)
-			var ch := _cell_to_chunk_coord(wc)
+		var wy: int = oy + iy
+		var chunk_y: int = _floor_div(wy, CHUNK_SIZE)
+		var local_y: int = wy - chunk_y * CHUNK_SIZE
+		var ix: int = 0
+		while ix < w:
+			var wx: int = ox + ix
+			var chunk_x: int = _floor_div(wx, CHUNK_SIZE)
+			var local_x: int = wx - chunk_x * CHUNK_SIZE
+			var run_len: int = mini(w - ix, CHUNK_SIZE - local_x)
+			var ch := Vector2i(chunk_x, chunk_y)
 			_ensure_chunk(ch)
 			var data: Dictionary = _chunks[ch]
 			var rev: PackedByteArray = data["revealed"]
-			var idx: int = _cell_to_local_in_chunk(wc, ch)
-			var revealed: bool = int(rev[idx]) != 0
-			_reveal_image.set_pixel(ix, iy, Color(1, 1, 1, 1) if revealed else Color(0, 0, 0, 1))
+			var chunk_idx: int = local_y * CHUNK_SIZE + local_x
+			var pixel_idx: int = iy * w + ix
 
+			for _i in run_len:
+				if int(rev[chunk_idx]) != 0:
+					reveal_data[pixel_idx] = 255
+				chunk_idx += 1
+				pixel_idx += 1
+			ix += run_len
+
+	_reveal_image.set_data(w, h, false, Image.FORMAT_L8, reveal_data)
 	_reveal_texture.update(_reveal_image)
 
 	_sync_shader_texture_params()
