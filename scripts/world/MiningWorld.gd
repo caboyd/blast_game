@@ -21,6 +21,7 @@ const TYPE_IRON := 13
 const TYPE_SILVER := 14
 const TYPE_COUNT := 15
 
+
 static var TYPE_MAX_HP: PackedInt32Array = PackedInt32Array([
 	0, 5, 50, 5, 1, 100,
 	12, 8, 35, 10, 14, 22, 80, 25, 12,
@@ -55,6 +56,14 @@ const SPAWN_REVEAL_FULL := &"full"
 const _GENERIC_PART_GROUND_PICKUP := preload(
 	"res://scenes/ship_parts/ground/part_ground_pickup.tscn"
 )
+
+
+func display_color_for_mined_type(type_id: int) -> Color:
+	if type_id > 0 and type_id < _type_colors.size():
+		return _type_colors[type_id]
+	if type_id > 0 and type_id < TYPE_COLOR.size():
+		return TYPE_COLOR[type_id]
+	return Color.WHITE
 
 
 static func fog_dark_tint_for_mid(mid: Color) -> Color:
@@ -923,6 +932,7 @@ func _damage_cell_abs(cell: Vector2i, amount: int) -> int:
 			var new_hp_f: int = hp_f - amount
 			if new_hp_f <= 0:
 				_clear_fuel_cluster_if_cell_inside(ch, data, cells, hparr, cl)
+				GameStatistics.register_fully_mined_block(TYPE_FUEL, display_color_for_mined_type(TYPE_FUEL))
 				GameStatistics.add_blocks_destroyed(1)
 				GameStatistics.apply_fuel_cell_pickup()
 				if TYPE_FUEL >= 0 and TYPE_FUEL < TYPE_MONEY.size():
@@ -937,6 +947,7 @@ func _damage_cell_abs(cell: Vector2i, amount: int) -> int:
 	if new_hp <= 0:
 		cells[idx] = TYPE_EMPTY
 		hparr[idx] = 0
+		GameStatistics.register_fully_mined_block(t, display_color_for_mined_type(t))
 		GameStatistics.add_blocks_destroyed(1)
 		if t >= 0 and t < TYPE_MONEY.size():
 			GameStatistics.add_mined_cell_reward(int(TYPE_MONEY[t]))

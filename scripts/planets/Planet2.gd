@@ -8,9 +8,8 @@ class _ShipChainFollowerTick extends Node:
 			host.call(&"update_mission_ship_chain_followers", delta)
 
 
-## Pixels at bottom of window reserved for `BottomHUD`; 2D gameplay only uses area above.
-const HUD_RESERVE_PX: int = 200
-const GAME_VIEWPORT_SIZE: Vector2i = Vector2i(1280, 720 - HUD_RESERVE_PX)
+## Internal SubViewport baseline; 16:9 ratio drives letterboxing via `AspectRatioContainer`.
+const GAME_VIEWPORT_SIZE: Vector2i = Vector2i(1280, 720)
 
 const CELLS_PER_HALF_VIEW: int = 10
 const CELL_SIZE_PX: float = 8.0
@@ -103,10 +102,12 @@ const _MISSION_SHIP_CHAIN_TAIL_TURN_RATE_MIN_RAD_S := 0.35
 @onready var _game_sub_viewport: SubViewport = %GameSubViewport
 @onready var _game_camera: Camera2D = %GameCamera2D
 @onready var _subviewport_container: SubViewportContainer = $GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer
-@onready var _bottom_hud: BottomHUD = get_node_or_null("UI/BottomHUD") as BottomHUD
+@onready var _bottom_player_stats: BottomPlayerStatsStrip = get_node_or_null(
+	"UI/BottomPlayerStats"
+) as BottomPlayerStatsStrip
 
 var _vp_w: int = 1280
-var _vp_h: int = 520
+var _vp_h: int = 720
 ## Vector2i chunk → monument definition for this save’s layout.
 var _monument_chunk_to_def: Dictionary = {}
 var _monument_layout_resolved: bool = false
@@ -138,15 +139,10 @@ func _ready() -> void:
 		_spawn_part_pickups(spawn_world)
 	if _ship and not _ship.out_of_fuel.is_connected(_on_ship_out_of_fuel):
 		_ship.out_of_fuel.connect(_on_ship_out_of_fuel)
+	if _bottom_player_stats != null:
+		_bottom_player_stats.bind_leading_ship(_ship)
 	if _subviewport_container != null and not _subviewport_container.resized.is_connected(_on_subviewport_container_resized):
 		_subviewport_container.resized.connect(_on_subviewport_container_resized)
-	if _bottom_hud != null:
-		if not _bottom_hud.resized.is_connected(_on_bottom_hud_layout_changed):
-			_bottom_hud.resized.connect(_on_bottom_hud_layout_changed)
-		if not _bottom_hud.item_rect_changed.is_connected(_on_bottom_hud_layout_changed):
-			_bottom_hud.item_rect_changed.connect(_on_bottom_hud_layout_changed)
-	if not MiningMissionUI.top_fuel_layout_changed.is_connected(_on_top_fuel_bar_layout_changed):
-		MiningMissionUI.top_fuel_layout_changed.connect(_on_top_fuel_bar_layout_changed)
 	if not resized.is_connected(_on_main_resized_for_viewport):
 		resized.connect(_on_main_resized_for_viewport)
 	if not get_viewport().size_changed.is_connected(_on_main_resized_for_viewport):
@@ -790,33 +786,15 @@ func _on_subviewport_container_resized() -> void:
 	_apply_game_viewport_layout()
 
 
-func _on_bottom_hud_layout_changed() -> void:
-	call_deferred("_apply_game_viewport_layout")
-
-
-func _on_top_fuel_bar_layout_changed() -> void:
-	call_deferred("_apply_game_viewport_layout")
-
-
 func _on_main_resized_for_viewport() -> void:
 	call_deferred("_apply_game_viewport_layout")
-
-
-func _hud_bottom_reserve_px() -> float:
-	if _bottom_hud != null and _bottom_hud.is_inside_tree():
-		return float(_bottom_hud.get_occlusion_bottom_reserve_px())
-	return float(HUD_RESERVE_PX)
-
-
-func _top_fuel_band_px() -> float:
-	return MiningMissionUI.get_top_fuel_band_px()
 
 
 func _apply_game_viewport_layout() -> void:
 	var block := get_node_or_null("GameplayBlock") as Control
 	if block != null:
-		block.offset_top = _top_fuel_band_px()
-		block.offset_bottom = -_hud_bottom_reserve_px()
+		block.offset_top = 0.0
+		block.offset_bottom = 0.0
 	var ar := get_node_or_null("GameplayBlock/AspectRatioContainer") as AspectRatioContainer
 	if ar != null:
 		ar.ratio = float(GAME_VIEWPORT_SIZE.x) / float(GAME_VIEWPORT_SIZE.y)

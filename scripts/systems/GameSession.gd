@@ -271,6 +271,8 @@ func write_part_pickup_collected_to_config(c: ConfigFile) -> void:
 func begin_run() -> void:
 	GameStatistics.debug_fog_disabled = false
 	GameStatistics.set_blocks_run_baseline()
+	GameStatistics.reset_run_mining_economy_tracking()
+	GameStatistics.reset_run_mined_resources()
 	GameStatistics.reset_fuel_for_run()
 
 
@@ -344,6 +346,7 @@ func reset_all_progress() -> void:
 	GameStatistics.total_blocks_destroyed = 0
 	GameStatistics._blocks_destroyed_run_baseline = 0
 	GameStatistics.furthest_depth_cells = 0
+	GameStatistics.reset_run_mined_resources()
 	UpgradeBus._levels.clear()
 	clear_part_pickup_collected_by_type()
 	PartRegistry.reset_to_t0_defaults()

@@ -1,8 +1,8 @@
 extends CanvasLayer
 
-## Global mining-mission HUD (fuel bar). Autoload: show while a mining planet scene is active.
+## Global mining-mission HUD (fuel bar + run stats pill). Autoload: show while a mining planet scene is active.
 
-const _BAR_SCENE := preload("res://scenes/ui/MiningFuelBar.tscn")
+const _BAR_SCENE := preload("res://scenes/ui/TopMiningRunHud.tscn")
 
 signal top_fuel_layout_changed
 
@@ -10,7 +10,7 @@ var _bar: Control
 
 
 func _ready() -> void:
-	layer = 1
+	layer = 10
 	_bar = _BAR_SCENE.instantiate() as Control
 	add_child(_bar)
 	_bar.visible = false
@@ -20,6 +20,13 @@ func _ready() -> void:
 
 func _emit_top_layout() -> void:
 	top_fuel_layout_changed.emit()
+
+
+## Call when a child of `TopMiningRunHud` changes height so planets can re-read `get_top_fuel_band_px()`.
+func notify_top_hud_layout_dirty() -> void:
+	if _bar != null and _bar.has_method(&"refit_band_height"):
+		_bar.refit_band_height()
+	_emit_top_layout()
 
 
 ## Call from any mining planet root in `_ready()` so the fuel bar stays visible across planet scenes.
