@@ -1,11 +1,11 @@
 extends Node2D
 
 @export var crack_texture: Texture2D
-@export var frame_count: int = 5
-@export_range(0.0, 1.0) var crack_alpha: float = 0.7
+@export var frame_count: int = 10
+@export_range(0.0, 1.0) var crack_alpha: float = 1.0
 ## Uniform scale multiplier range applied on each axis (stable per grid cell).
-@export var jitter_scale_min: float = 0.8
-@export var jitter_scale_max: float = 0.99
+@export var jitter_scale_min: float = 0.92
+@export var jitter_scale_max: float = 1.08
 ## Max absolute rotation (degrees); sign/random per cell, stable for that cell.
 @export var jitter_rotation_degrees_max: float = 90.0
 

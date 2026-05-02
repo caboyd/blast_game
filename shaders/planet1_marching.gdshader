@@ -216,16 +216,16 @@ void fragment() {
 		discard;
 	}
 
-	float hp_ratio = clamp(best_hp_sum / max(best_w, 1e-5), 0.0, 1.0);
-	float damage_taken = 1.0 - hp_ratio;
+	// float hp_ratio = clamp(best_hp_sum / max(best_w, 1e-5), 0.0, 1.0);
+	// float damage_taken = 1.0 - hp_ratio;
 	vec4 base = type_colors[best_id];
-	vec3 rgb;
+	vec3 rgb = base.rgb;
 	
-	if (best_id == MATERIAL_FUEL) {
-		rgb = fuel_cell_rgb(fuel_world_origin + p, hp_ratio, TIME, base.rgb);
-	} else {
-		rgb = base.rgb * mix(0.45, 1.0, hp_ratio);
-	}
+	// if (best_id == MATERIAL_FUEL) {
+	// 	rgb = fuel_cell_rgb(fuel_world_origin + p, hp_ratio, TIME, base.rgb);
+	// } else {
+	// 	rgb = base.rgb * mix(0.45, 1.0, hp_ratio);
+	// }
 
 	// Outline at contour between differing materials, or along outer boundary.
 	// Inner contour: best vs second using rank (matches color choice).

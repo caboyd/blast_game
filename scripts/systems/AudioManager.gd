@@ -13,8 +13,8 @@ const _DIRTFALL_PEAK_DB := -12.0
 const _DRILL_LINEAR_IDLE_MULT := 0.35 ## volume multiplier when idle
 const _DRILL_VOLUME_SLEW := 24.0 ## units per second toward target linear
 
-const _PITCH_LOW := 0.92
-const _PITCH_HIGH := 1.08
+const _PITCH_LOW := 0.8
+const _PITCH_HIGH := 1.2
 
 const _DIRTMINE_CAP := 3
 const _DIRTMINE_COOLDOWN_S := 0.04
