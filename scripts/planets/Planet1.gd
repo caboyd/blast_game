@@ -132,6 +132,7 @@ var _generation_monument: Node2D = null
 
 
 func _ready() -> void:
+	AudioManager.set_drilling(false, Vector2.ZERO, false)
 	MiningMissionUI.attach_fuel_bar_for_mining_host(self)
 	GameSession.start_mission_timer()
 	_apply_game_viewport_layout()
@@ -140,6 +141,8 @@ func _ready() -> void:
 		var cell_colors: PackedColorArray = _cell_material_colors_packed()
 		_mining_world.set_cell_material_colors(cell_colors)
 		_mining_world.set_fog_base_color(cell_colors[PRIMARY_MATERIAL_TYPE])
+		if not _mining_world.block_broken.is_connected(_on_mining_block_broken_audio):
+			_mining_world.block_broken.connect(_on_mining_block_broken_audio)
 	_spawn_mission_ship()
 	if _ship and _mining_world:
 		_ship.grid = _mining_world
@@ -450,6 +453,10 @@ func update_mission_ship_chain_followers(delta: float) -> void:
 			turn_cap = maxf(turn_cap, _MISSION_SHIP_CHAIN_TAIL_TURN_RATE_MIN_RAD_S)
 			tail.rotation = rotate_toward(tail.rotation, target_rot, turn_cap * delta)
 		chain_i += 1
+
+
+func _on_mining_block_broken_audio(world_pos: Vector2, _type_id: int) -> void:
+	AudioManager.play_dirt_fall(world_pos)
 
 
 func _on_ship_out_of_fuel() -> void:

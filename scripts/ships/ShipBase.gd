@@ -429,7 +429,9 @@ func _move_with_collision(step: Vector2) -> void:
 func _tick_mining(delta: float) -> void:
 	var drill_c: Vector2 = _drill_center_world()
 	var drill_r: float = get_effective_drill_world_radius_px()
-	if not grid.has_solid_overlapping_circle_world(drill_c, drill_r):
+	var biting: bool = grid.has_solid_overlapping_circle_world(drill_c, drill_r)
+	AudioManager.set_drilling(true, drill_c, biting)
+	if not biting:
 		_mine_accum_time = 0.0
 		return
 
@@ -445,7 +447,9 @@ func _tick_mining(delta: float) -> void:
 		drill_c = _drill_center_world()
 		drill_r = get_effective_drill_world_radius_px()
 		var allowed := PartRegistry.get_drill_allowed_mine_type_ids()
-		grid.mine_solid_in_circle_world(drill_c, drill_r, whole, allowed)
+		var hp_removed: int = grid.mine_solid_in_circle_world(drill_c, drill_r, whole, allowed)
+		if hp_removed > 0:
+			AudioManager.play_dirt_mine(drill_c)
 
 
 class _MiningDebugLayer extends Node2D:

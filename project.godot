@@ -27,6 +27,7 @@ ShipDataRegistry="*res://scripts/systems/ShipDataRegistry.gd"
 UpgradeBus="*res://scripts/systems/UpgradeBus.gd"
 GameStatistics="*res://scripts/stats/GameStatistics.gd"
 MiningMissionUI="*res://scripts/systems/MiningMissionUI.gd"
+AudioManager="*res://scripts/systems/AudioManager.gd"
 
 [display]
 

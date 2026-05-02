@@ -1,6 +1,8 @@
 class_name MiningWorld
 extends Node2D
 
+signal block_broken(world_pos: Vector2, type_id: int)
+
 const CHUNK_SIZE := 32
 const CELL_SIZE_PX := 8.0
 
@@ -937,6 +939,7 @@ func _damage_cell_abs(cell: Vector2i, amount: int) -> int:
 				GameStatistics.apply_fuel_cell_pickup()
 				if TYPE_FUEL >= 0 and TYPE_FUEL < TYPE_MONEY.size():
 					GameStatistics.add_mined_cell_reward(int(TYPE_MONEY[TYPE_FUEL]))
+				block_broken.emit(cell_center_world(cell), TYPE_FUEL)
 				return hp_f
 			var nh_f: int = clampi(new_hp_f, 0, 255)
 			hparr[idx] = nh_f
@@ -945,6 +948,7 @@ func _damage_cell_abs(cell: Vector2i, amount: int) -> int:
 	var hp_before: int = int(hparr[idx])
 	var new_hp: int = hp_before - amount
 	if new_hp <= 0:
+		var broken_type_id: int = t
 		cells[idx] = TYPE_EMPTY
 		hparr[idx] = 0
 		GameStatistics.register_fully_mined_block(t, display_color_for_mined_type(t))
@@ -952,6 +956,7 @@ func _damage_cell_abs(cell: Vector2i, amount: int) -> int:
 		if t >= 0 and t < TYPE_MONEY.size():
 			GameStatistics.add_mined_cell_reward(int(TYPE_MONEY[t]))
 		_commit_run_edit_for_chunk_index(ch, idx)
+		block_broken.emit(cell_center_world(cell), broken_type_id)
 		return hp_before
 	var nh: int = clampi(new_hp, 0, 255)
 	hparr[idx] = nh
