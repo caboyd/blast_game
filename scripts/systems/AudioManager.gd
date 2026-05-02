@@ -40,8 +40,13 @@ var _dirtfall_players: Array[AudioStreamPlayer2D] = []
 var _dirtfall_start_unix: PackedFloat64Array = PackedFloat64Array()
 var _dirtfall_next_allowed := 0.0
 
+## When set, all 2D players live under this node (game SubViewport). Prevents root-viewport / letterbox mismatch.
+var _world_audio_mount: Node2D = null
+var _world_mount_exit_cb: Callable
+
 
 func _ready() -> void:
+	_world_mount_exit_cb = Callable(self, "_detach_world_mount_on_exit")
 	_rng.randomize()
 	set_process(true)
 	_drill_player = AudioStreamPlayer2D.new()
@@ -79,6 +84,39 @@ func set_overall_volume(v: float) -> void:
 
 func set_sfx_volume(v: float) -> void:
 	sfx_volume = clampf(v, 0.0, 1.0)
+
+
+## Reparent 2D SFX under `mount` (e.g. `MiningWorld`) so world pixel coords match the game SubViewport.
+## Also reconnects automatically when `mount` exits the scene tree (`MiningWorld` before `Planet` root).
+func bind_world_audio_mount(mount: Node2D) -> void:
+	if _world_audio_mount != null and is_instance_valid(_world_audio_mount):
+		var old_m: Node2D = _world_audio_mount
+		if old_m.tree_exiting.is_connected(_world_mount_exit_cb):
+			old_m.tree_exiting.disconnect(_world_mount_exit_cb)
+	_world_audio_mount = mount
+	var new_parent: Node = self
+	if mount != null and is_instance_valid(mount):
+		new_parent = mount as Node
+		var m: Node = mount as Node
+		if not m.tree_exiting.is_connected(_world_mount_exit_cb):
+			m.tree_exiting.connect(_world_mount_exit_cb)
+	_reparent_player_nodes(new_parent)
+
+
+func _detach_world_mount_on_exit() -> void:
+	bind_world_audio_mount(null)
+
+
+func _reparent_player_nodes(new_parent: Node) -> void:
+	if _drill_player != null and is_instance_valid(_drill_player):
+		if _drill_player.get_parent() != new_parent:
+			new_parent.add_child(_drill_player)
+	for pl: AudioStreamPlayer2D in _dirtmine_players:
+		if pl != null and is_instance_valid(pl) and pl.get_parent() != new_parent:
+			new_parent.add_child(pl)
+	for pl: AudioStreamPlayer2D in _dirtfall_players:
+		if pl != null and is_instance_valid(pl) and pl.get_parent() != new_parent:
+			new_parent.add_child(pl)
 
 
 func set_drilling(active: bool, world_pos: Vector2, biting_terrain: bool = false) -> void:

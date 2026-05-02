@@ -36,6 +36,7 @@ var _debug_layer: Node2D
 
 var _tread_cycle_t: float = 0.0
 var _tread_stopping: bool = false
+var _audio_listener_2d: AudioListener2D
 
 
 func _ready() -> void:
@@ -75,6 +76,9 @@ func _ready() -> void:
 	add_child(_debug_layer)
 	_debug_layer.add_to_group(&"mining_ship")
 	_setup_pickup_overlap_area()
+	_audio_listener_2d = AudioListener2D.new()
+	_audio_listener_2d.name = &"AudioListener2D"
+	add_child(_audio_listener_2d)
 
 
 func _setup_pickup_overlap_area() -> void:
@@ -162,6 +166,8 @@ func carve_hull_terrain_on_spawn() -> void:
 func _physics_process(delta: float) -> void:
 	if grid == null:
 		return
+	if _audio_listener_2d != null:
+		_audio_listener_2d.make_current()
 	var mouse := get_global_mouse_position()
 	var dir := mouse - global_position
 	if dir.length_squared() > 0.0001:

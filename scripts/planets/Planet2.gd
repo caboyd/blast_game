@@ -125,6 +125,7 @@ func _ready() -> void:
 		_mining_world.set_fog_base_color(cell_colors[PRIMARY_MATERIAL_TYPE])
 		if not _mining_world.block_broken.is_connected(_on_mining_block_broken_audio):
 			_mining_world.block_broken.connect(_on_mining_block_broken_audio)
+		AudioManager.bind_world_audio_mount(_mining_world)
 	_spawn_mission_ship()
 	if _ship and _mining_world:
 		_ship.grid = _mining_world
@@ -150,6 +151,10 @@ func _ready() -> void:
 	if not get_viewport().size_changed.is_connected(_on_main_resized_for_viewport):
 		get_viewport().size_changed.connect(_on_main_resized_for_viewport)
 	call_deferred("_apply_game_viewport_layout")
+
+
+func _exit_tree() -> void:
+	AudioManager.bind_world_audio_mount(null)
 
 
 func _generate_mining_world_chunk(
