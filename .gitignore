@@ -2,6 +2,7 @@
 .godot/
 .nomedia
 .vscode/settings.json
+.agents/
 
 # Godot-specific ignores
 .import/

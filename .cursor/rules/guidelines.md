@@ -68,3 +68,11 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 ---
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+
+## Living Systems Map
+
+Root `systems.md` is the living developer/agent-facing map of current project systems.
+
+- Read it before changes that affect system boundaries, runtime flow, persistence, major scene ownership, or cross-system dependencies.
+- Update it in the same change when a system is added, removed, renamed, or meaningfully changes responsibility or collaborators.
+- Keep components grouped under their owning system; do not promote small reusable components to systems unless they become architectural hubs.
