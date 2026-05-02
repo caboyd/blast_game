@@ -127,13 +127,15 @@ func stop_managed_world_audio() -> void:
 func _reparent_player_nodes(new_parent: Node) -> void:
 	if _drill_player != null and is_instance_valid(_drill_player):
 		if _drill_player.get_parent() != new_parent:
-			new_parent.add_child(_drill_player)
+			_drill_player.reparent(new_parent)
+			if not _drill_player.playing:
+				_drill_player.play()
 	for pl: AudioStreamPlayer2D in _dirtmine_players:
 		if pl != null and is_instance_valid(pl) and pl.get_parent() != new_parent:
-			new_parent.add_child(pl)
+			pl.reparent(new_parent)
 	for pl: AudioStreamPlayer2D in _dirtfall_players:
 		if pl != null and is_instance_valid(pl) and pl.get_parent() != new_parent:
-			new_parent.add_child(pl)
+			pl.reparent(new_parent)
 
 
 func set_drilling(active: bool, world_pos: Vector2, biting_terrain: bool = false) -> void:
@@ -249,4 +251,3 @@ func _process(delta: float) -> void:
 		_drill_player.volume_db = -80.0
 	else:
 		_drill_player.volume_db = linear_to_db(maxf(_drill_linear_smooth, 1e-8))
-
