@@ -79,6 +79,19 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
+func _unhandled_input(event: InputEvent) -> void:
+	if not visible:
+		return
+	if event is InputEventMouseButton and event.pressed:
+		match event.button_index:
+			MOUSE_BUTTON_WHEEL_UP:
+				_adjust_debug_zoom(1)
+				get_viewport().set_input_as_handled()
+			MOUSE_BUTTON_WHEEL_DOWN:
+				_adjust_debug_zoom(-1)
+				get_viewport().set_input_as_handled()
+
+
 func _on_gold_give_pressed() -> void:
 	if _gold_spin:
 		GameStatistics.add_money(int(_gold_spin.value))

@@ -689,8 +689,8 @@ func stamp_dirt_chebyshev_from_world(world_pos: Vector2, radius_cells: int) -> v
 
 
 ## Mineable block types for prep UI (per-stage list; uses TYPE_MAX_HP / TYPE_MONEY).
-static func get_stage_block_type_rows(stage_id: StringName = &"planet1") -> Array[Dictionary]:
-	match stage_id:
+static func get_stage_block_type_rows(p_stage_id: StringName = &"planet1") -> Array[Dictionary]:
+	match p_stage_id:
 		&"planet2":
 			return [
 				{"type_id": TYPE_PACKED_EARTH, "label": "Packed Earth"},
