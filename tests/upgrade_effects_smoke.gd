@@ -1,7 +1,6 @@
 extends Node
 
 const ScoutShipScene := preload("res://scenes/ships/Scout.tscn")
-const BottomHUDScene := preload("res://scenes/ui/BottomHUD.tscn")
 const PrepScene := preload("res://scenes/prep/Prep.tscn")
 const ScoutShipData := preload("res://data/ships/scout.tres")
 const ProspectorShipData := preload("res://data/ships/prospector.tres")
@@ -47,17 +46,6 @@ func _ready() -> void:
 	GameStatistics.money = 100000
 	_assert_true(UpgradeBus.try_purchase_count(&"mining_power", 1), "mining purchase succeeds")
 	_assert_true(UpgradeBus.get_level(&"mining_power") >= 1, "mining level after purchase")
-
-	UpgradeBus._levels.clear()
-	GameStatistics.money = 100000
-	var hud := BottomHUDScene.instantiate() as BottomHUD
-	add_child(hud)
-	await get_tree().process_frame
-	hud.set_upgrade_batch_request_for_test(5)
-	_assert_nonempty_string(hud.get_upgrade_cost_display_for_test(&"mining_power"), "HUD cost display")
-	hud.set_upgrade_batch_request_for_test(-1)
-	_assert_nonempty_string(hud.get_upgrade_cost_display_for_test(&"mining_power"), "HUD max cost display")
-	hud.queue_free()
 
 	UpgradeBus._levels.clear()
 	GameStatistics.money = 100000

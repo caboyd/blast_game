@@ -1,7 +1,6 @@
 extends Control
 class_name BottomPlayerStatsStrip
 
-@onready var _panel: PanelContainer = $Center/Panel
 @onready var _label: Label = $Center/Panel/Margin/Label
 
 var _lead: ShipBase = null
@@ -60,28 +59,3 @@ func _format_drill(v: float) -> String:
 	if is_equal_approx(v, r):
 		return str(int(r))
 	return "%.1f" % v
-
-
-## Pixels from bottom of viewport to topmost visible strip pixel (for gameplay letterbox).
-func get_occlusion_bottom_reserve_px() -> int:
-	if not is_inside_tree():
-		return _occlusion_reserve_fallback_px()
-	var r: Rect2 = get_global_rect()
-	for c in get_children():
-		if c is Control and (c as Control).visible:
-			r = r.merge((c as Control).get_global_rect())
-	var vp: Viewport = get_viewport()
-	if vp == null:
-		return maxi(ceili(r.size.y), 1)
-	var vis: Rect2 = vp.get_visible_rect()
-	var top_y: float = r.position.y
-	var reserve: float = vis.end.y - top_y
-	return maxi(ceili(reserve), 1)
-
-
-func _occlusion_reserve_fallback_px() -> int:
-	var h: float = 0.0
-	if _panel != null:
-		h = maxf(h, _panel.get_combined_minimum_size().y)
-	h += 24.0
-	return maxi(ceili(h), 1)

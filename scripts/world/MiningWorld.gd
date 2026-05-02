@@ -340,13 +340,6 @@ func set_fog_base_color(color: Color) -> void:
 	_push_fog_shader_colors()
 
 
-## Sets both fog shader colors explicitly (matches `fog_mid` / `fog_dark` uniforms on `fog_of_war_marching.gdshader`).
-func set_fog_shader_colors(mid: Color, dark: Color) -> void:
-	_fog_mid = Color(mid.r, mid.g, mid.b, 1.0)
-	_fog_dark = Color(dark.r, dark.g, dark.b, 1.0)
-	_push_fog_shader_colors()
-
-
 func _floor_div(a: int, b: int) -> int:
 	return int(floor(float(a) / float(b)))
 

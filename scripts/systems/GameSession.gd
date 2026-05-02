@@ -22,10 +22,6 @@ const STAGE_PLANET_SCENES: Dictionary = {
 
 var selected_ship_id: StringName = &"scout"
 var selected_stage_id: StringName = &"planet1"
-## Reserved: slot index → turret type id; empty = no pre-mounted turrets from Prep.
-var mounted_turrets: Array[Dictionary] = []
-## Default when Prep calls `go_to_planet(GameSession.next_planet_scene)`.
-var next_planet_scene: String = "res://scenes/planets/Planet1.tscn"
 ## Cumulative blocks destroyed across completed runs; saved to disk.
 var career_blocks_destroyed: int = 0
 var _career_write_pending: bool = false
@@ -90,7 +86,6 @@ func _load_career() -> void:
 	UpgradeBus.read_from_career_config(c)
 	PartRegistry.load_from_config_file(c)
 	load_part_pickup_collected_from_config(c)
-	PartRegistry.migrate_legacy_pickup_ids_to_game_session_pickup_slots()
 	GameStatistics.apply_fuel_max_from_career_load()
 	_load_block_discovery_from_config(c)
 
@@ -381,7 +376,3 @@ func end_current_run_to_prep() -> void:
 	_write_career_to_disk()
 	GameStatistics.set_blocks_run_baseline()
 	call_deferred("return_to_prep")
-
-
-func on_ship_destroyed() -> void:
-	end_current_run_to_prep()

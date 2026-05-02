@@ -15,12 +15,6 @@ func fuel_hard_cap_absolute() -> float:
 func fuel_overflow_budget() -> float:
 	return fuel_max * (FUEL_ABSOLUTE_CAP_MUL - 1.0)
 
-const DAMAGE_SOURCE_CLICK := &"click"
-
-const CLICK_FIRE_RATE_START_MS := 500.0
-const CLICK_FIRE_RATE_MIN_MS := 25.0
-const CLICK_FIRE_RATE_STEP := 0.95
-
 ## Window for rolling mining `$ / s` on the run HUD (`get_run_rolling_money_per_second`).
 const RUN_MINING_ROLLING_MONEY_MS := 10000
 
@@ -52,7 +46,7 @@ var debug_world_visuals: bool = false
 ## Debug: reveals fog-of-war when enabled. Persisted with debug prefs.
 var debug_fog_disabled: bool = false
 
-## Debug vehicle stat overrides (`DebugOverlay`). Persisted; optional reset via `clear_mining_mission_vehicle_debug_overrides()`.
+## Debug vehicle stat overrides (`DebugOverlay`). Persisted with debug prefs.
 const DEBUG_VEHICLE_OVERRIDE_MIN_FUEL_MAX := 1.0
 const DEBUG_VEHICLE_OVERRIDE_MIN_MOVE_PX := 1e-3
 const DEBUG_VEHICLE_OVERRIDE_MIN_MINE_DAMAGE := 1e-4
@@ -190,18 +184,6 @@ func set_debug_fog_disabled(on: bool) -> void:
 		for n in tree.get_nodes_in_group(&"mining_world"):
 			if n.has_method(&"apply_debug_fog_visibility"):
 				n.apply_debug_fog_visibility()
-	save_debug_preferences()
-
-
-func clear_mining_mission_vehicle_debug_overrides() -> void:
-	debug_fuel_max_override_enabled = false
-	debug_move_speed_override_enabled = false
-	debug_mine_damage_override_enabled = false
-	debug_mine_interval_override_enabled = false
-	debug_drill_range_game_px_override_enabled = false
-	debug_vision_radius_cells_override_enabled = false
-	debug_turn_rate_rad_s_override_enabled = false
-	_refit_live_fuel_max_preserving_fill()
 	save_debug_preferences()
 
 
