@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://b8431vs7scjj6" path="res://scripts/data/PartData.gd" id="1"]
 [ext_resource type="Script" uid="uid://b2fxsetlvl01u" path="res://scripts/data/PartEffectSet.gd" id="1_0cvbw"]
 [ext_resource type="Script" uid="uid://drjo0qypkcvo3" path="res://scripts/data/ShipUpgradeEffect.gd" id="2"]
+[ext_resource type="Script" uid="uid://mf14x1dbtowp" path="res://scripts/data/PartEffect.gd" id="2_ufeqp"]
 [ext_resource type="PackedScene" uid="uid://c2aagd7togt5k" path="res://scenes/ship_parts/fuel_tank/ground/part_fuel_tank_t1_ground.tscn" id="3_sixo0"]
 [ext_resource type="PackedScene" uid="uid://cvisrv50hnhs5" path="res://scenes/ship_parts/fuel_tank/part_fuel_tank_t1.tscn" id="4_l5fcr"]
 [ext_resource type="Script" uid="uid://dbmf6jiisv031" path="res://scripts/data/PartVisualData.gd" id="4_vis"]
@@ -23,7 +24,7 @@ metadata/_custom_type_script = "uid://drjo0qypkcvo3"
 
 [sub_resource type="Resource" id="Resource_58bcc"]
 script = ExtResource("1_0cvbw")
-effects = Array[ExtResource("2")]([SubResource("Resource_ndris"), SubResource("Resource_ae1dh")])
+effects = Array[ExtResource("2_ufeqp")]([SubResource("Resource_ndris"), SubResource("Resource_ae1dh")])
 metadata/_custom_type_script = "uid://b2fxsetlvl01u"
 
 [sub_resource type="Resource" id="Resource_f0iw0"]
@@ -42,7 +43,7 @@ metadata/_custom_type_script = "uid://drjo0qypkcvo3"
 
 [sub_resource type="Resource" id="Resource_mxm5l"]
 script = ExtResource("1_0cvbw")
-effects = Array[ExtResource("2")]([SubResource("Resource_f0iw0"), SubResource("Resource_acgmw")])
+effects = Array[ExtResource("2_ufeqp")]([SubResource("Resource_f0iw0"), SubResource("Resource_acgmw")])
 metadata/_custom_type_script = "uid://b2fxsetlvl01u"
 
 [sub_resource type="Resource" id="visuals_inline"]
