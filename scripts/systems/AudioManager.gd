@@ -15,7 +15,7 @@ const _DIRTFALL_LAYER_PEAK_DB := -2.0 ## layered with block_pop; tune for balanc
 const _DRILL_LINEAR_IDLE_MULT := 0.3 ## volume multiplier when idle
 ## First-order smoothing time constant (seconds): larger = **slower** transition toward target.
 const _DRILL_VOLUME_ATTACK_TAU_S := 0.1
-const _DRILL_VOLUME_RELEASE_TAU_S := 1
+const _DRILL_VOLUME_RELEASE_TAU_S := 1.0
 
 const _DRILL_BLOCK_LINEAR_IDLE_MULT := 0.0 ## dirt mine loop voices: silent when not biting terrain
 const _DRILL_BLOCK_ATTACK_TAU_S := 0.1

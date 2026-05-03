@@ -7,11 +7,13 @@ const _Self := preload("res://scripts/bootstrap/Bootstrap.gd")
 
 func _ready() -> void:
 	_Self.ensure_initialized()
+	call_deferred("_go_to_prep")
+
+func _go_to_prep() -> void:
 	var err := get_tree().change_scene_to_file(GameSession.PREP_SCENE)
 	if err != OK:
 		push_error("Bootstrap failed to load Prep: %s" % error_string(err))
-
-
+		
 static func ensure_initialized() -> void:
 	if GameSession.initialized:
 		return
