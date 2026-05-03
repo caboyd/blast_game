@@ -1,14 +1,11 @@
 [gd_scene format=3 uid="uid://bdrdono5r2i5f"]
 
+[ext_resource type="Texture2D" uid="uid://cgfenbt5g8osa" path="res://assets/sprites/prospector/parts/Tread.png" id="1_tread"]
+
 [node name="PartTreadsT1" type="Node2D" unique_id=753111176]
-z_index = -1
+z_index = -2
 
-[node name="Left" type="Polygon2D" parent="." unique_id=1366138787]
-position = Vector2(0, 3.5)
-color = Color(0.55, 0.52, 0.48, 1)
-polygon = PackedVector2Array(-3.5, -2, 4, -2, 4, 2, -3.5, 2)
-
-[node name="Right" type="Polygon2D" parent="." unique_id=824052445]
-position = Vector2(0, -3.5)
-color = Color(0.55, 0.52, 0.48, 1)
-polygon = PackedVector2Array(-3.5, -2, 4, -2, 4, 2, -3.5, 2)
+[node name="Sprite" type="Sprite2D" parent="." unique_id=1366138787]
+modulate = Color(1, 0.92, 0.92, 1)
+scale = Vector2(0.021484375, 0.021484375)
+texture = ExtResource("1_tread")

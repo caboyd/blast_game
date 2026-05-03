@@ -23,7 +23,7 @@ static var _BLOCK_TYPE_NAMES: PackedStringArray = PackedStringArray([
 	"Packed earth",
 	"Clay",
 	"Shale",
-	"Copper",
+	"Copper",	
 	"Tin",
 	"Sandstone",
 	"Obsidian",

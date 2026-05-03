@@ -1,8 +1,10 @@
 [gd_scene format=3 uid="uid://cvisrv50hnhs5"]
 
+[ext_resource type="Texture2D" uid="uid://dcpq50f35dmud" path="res://assets/sprites/prospector/parts/Tank.png" id="1_tank"]
+
 [node name="PartFuelTankT1" type="Node2D" unique_id=123611795]
 
-[node name="Blob" type="Polygon2D" parent="." unique_id=2011504271]
-position = Vector2(-4, 0)
-color = Color(0.8980392, 0.16078432, 0.16862746, 1)
-polygon = PackedVector2Array(0, 0, 4, 0, 4, 4, 0, 4)
+[node name="Sprite" type="Sprite2D" parent="." unique_id=2011504271]
+modulate = Color(1, 0.86, 0.86, 1)
+scale = Vector2(0.021484375, 0.021484375)
+texture = ExtResource("1_tank")

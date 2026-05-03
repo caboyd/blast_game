@@ -1,9 +1,12 @@
 [gd_scene format=3 uid="uid://dhfr4u06mdoje"]
 
-[node name="PartDrillT0" type="Node2D" unique_id=1154518272]
-z_index = -2
-position = Vector2(4, 0)
+[ext_resource type="Texture2D" uid="uid://b7xfqocq2a1k3" path="res://assets/sprites/prospector/parts/Drill.png" id="1_drill"]
 
-[node name="Bit" type="Polygon2D" parent="." unique_id=1883839176]
-color = Color(0.72, 0.72, 0.78, 1)
-polygon = PackedVector2Array(-2, -3, 6, 0, -2, 3)
+[node name="PartDrillT0" type="Node2D" unique_id=1154518272]
+
+[node name="Sprite" type="Sprite2D" parent="." unique_id=1883839176]
+texture = ExtResource("1_drill")
+scale = Vector2(0.021484375, 0.021484375)
+offset = Vector2(-46.25, -52)
+flip_h = true
+modulate = Color(1, 0.78, 0.72, 1)

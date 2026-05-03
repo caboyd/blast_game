@@ -1,15 +1,10 @@
 [gd_scene format=3 uid="uid://div80xfq6s8go"]
 
+[ext_resource type="Texture2D" uid="uid://dcpq50f35dmud" path="res://assets/sprites/prospector/parts/Tank.png" id="1_tank"]
+
 [node name="PartFuelTankT0" type="Node2D" unique_id=1056444723]
 
-[node name="Blob" type="Polygon2D" parent="." unique_id=724591013]
-position = Vector2(-4, 0)
-color = Color(0.8980392, 0.16078432, 0.16862746, 1)
-polygon = PackedVector2Array(0, 0, 4, 0, 4, 4, 0, 4)
-
-[node name="Line2D" type="Line2D" parent="Blob" unique_id=1536126000]
-position = Vector2(1.69, 1.7)
-scale = Vector2(0.51, 0.51)
-points = PackedVector2Array(-3.3137257, 4.509804, -3, 4, -1.3529413, 2.5490196, -1.3529413, 0.58823514, 0.60784316, 2.5490196, 1, 0, -1.3529413, -1.3725493, 0.60784316, -1.3725493, 2.5686276, -3.3333337)
-width = 0.385
-default_color = Color(0, 0, 0, 1)
+[node name="Sprite" type="Sprite2D" parent="." unique_id=724591013]
+modulate = Color(1, 0.86, 0.86, 1)
+scale = Vector2(0.021484375, 0.021484375)
+texture = ExtResource("1_tank")

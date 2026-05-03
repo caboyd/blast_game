@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b0c8k55mablk7"
-path="res://.godot/imported/full_vehicle.jpg-e4595edf88e5bf2743b48a559b64a745.ctex"
+uid="uid://dcpq50f35dmud"
+path="res://.godot/imported/Tank.png-12c32ae923d60eb041ceeb8c5f2acc08.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/prospector/full_vehicle.jpg"
-dest_files=["res://.godot/imported/full_vehicle.jpg-e4595edf88e5bf2743b48a559b64a745.ctex"]
+source_file="res://assets/sprites/prospector/parts/Tank.png"
+dest_files=["res://.godot/imported/Tank.png-12c32ae923d60eb041ceeb8c5f2acc08.ctex"]
 
 [params]
 

@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://ckkcuopr688ih"]
 
 [ext_resource type="Script" uid="uid://cw75kam5jsm6e" path="res://scripts/ships/ShipBase.gd" id="1_base"]
+[ext_resource type="Texture2D" uid="uid://qx61jbeojbvf" path="res://assets/sprites/prospector/prospector_body.png" id="2_body"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_yiq1f"]
 radius = 3.0000005
@@ -14,8 +15,13 @@ script = ExtResource("1_base")
 [node name="Attachment_Treads" type="Marker2D" parent="." unique_id=900020001]
 unique_name_in_owner = true
 
+[node name="BodySprite" type="Sprite2D" parent="." unique_id=245121809]
+scale = Vector2(0.021484375, 0.021484375)
+texture = ExtResource("2_body")
+
 [node name="Attachment_Drill" type="Marker2D" parent="." unique_id=900020002]
 unique_name_in_owner = true
+position = Vector2(2.6, 0)
 
 [node name="Drill" type="Polygon2D" parent="." unique_id=500210448]
 visible = false
@@ -29,6 +35,7 @@ position = Vector2(4, -2.646978e-23)
 shape = SubResource("CircleShape2D_yiq1f")
 
 [node name="Hull" type="Polygon2D" parent="." unique_id=1828735210]
+visible = false
 scale = Vector2(1.0999999, 1.020408)
 color = Color(0.95, 0.55, 0.2, 1)
 polygon = PackedVector2Array(-4, -4, 4, -4, 4, 4, -4, 4)

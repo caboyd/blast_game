@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dsonxxb0n3mh5"
-path="res://.godot/imported/vehicle_no_parts.jpg-31df7119aff0750b0c2456c7e227ad6d.ctex"
+uid="uid://cgfenbt5g8osa"
+path="res://.godot/imported/Tread.png-5b85f824163d48f8286902e4c1257e01.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/prospector/vehicle_no_parts.jpg"
-dest_files=["res://.godot/imported/vehicle_no_parts.jpg-31df7119aff0750b0c2456c7e227ad6d.ctex"]
+source_file="res://assets/sprites/prospector/parts/Tread.png"
+dest_files=["res://.godot/imported/Tread.png-5b85f824163d48f8286902e4c1257e01.ctex"]
 
 [params]
 
