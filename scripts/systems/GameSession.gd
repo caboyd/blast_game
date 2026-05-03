@@ -1,5 +1,8 @@
 extends Node
 
+## Emitted once when `init()` completes (idempotent).
+signal session_ready
+
 ## Persists run selection across Prep → planet scenes. Autoload.
 const PREP_SCENE := "res://scenes/prep/Prep.tscn"
 const _CAREER_SAVE_PATH := "user://career.cfg"
@@ -13,11 +16,17 @@ const _CAREER_KEY_SELECTED_STAGE := "selected_stage_id"
 const _STAGE_REVEAL_MAGIC := 0x52455632
 const _MINING_CHUNK_BYTES := 32 * 32
 const _BLOCK_DISCOVERY_SECTION := "block_discovery"
+const _PLANET1_SCENE := preload("res://scenes/planets/Planet1.tscn")
+const _PLANET2_SCENE := preload("res://scenes/planets/Planet2.tscn")
 
 ## Stage id → mission planet scene path.
-const STAGE_PLANET_SCENES: Dictionary = {
+const STAGE_PLANET_SCENE_PATHS: Dictionary = {
 	&"planet1": "res://scenes/planets/Planet1.tscn",
 	&"planet2": "res://scenes/planets/Planet2.tscn",
+}
+const STAGE_PLANET_SCENES: Dictionary = {
+	&"planet1": _PLANET1_SCENE,
+	&"planet2": _PLANET2_SCENE,
 }
 
 var selected_ship_id: StringName = &"scout"
@@ -32,29 +41,42 @@ var _stage_block_types_found: Dictionary = {}
 ## String slot key (`fuel_tank` / `drill` / `treads`) → dict composite key `"%d|%d" % [tier, pickup_index]` → true
 var _part_pickups_by_type: Dictionary = {}
 
+var initialized := false
 
-func _ready() -> void:
-	# Defer so `ShipDataRegistry` (and other autoloads) finish `_ready` before career applies upgrade keys.
-	call_deferred("_load_career")
+
+func init() -> void:
+	if initialized:
+		return
+	_load_career()
+	initialized = true
+	session_ready.emit()
 
 
 func go_to_planet(path: String) -> void:
 	if path.is_empty():
 		push_error("GameSession.go_to_planet: path empty")
 		return
-	var err := get_tree().change_scene_to_file(path)
+	var scene := _get_preloaded_planet_scene_for_path(path)
+	var err := get_tree().change_scene_to_packed(scene) if scene != null else get_tree().change_scene_to_file(path)
 	if err != OK:
 		push_error("GameSession.go_to_planet failed: %s" % error_string(err))
 
 
 func get_stage_planet_scene_path() -> String:
-	var sc: Variant = STAGE_PLANET_SCENES.get(selected_stage_id)
+	var sc: Variant = STAGE_PLANET_SCENE_PATHS.get(selected_stage_id)
 	if typeof(sc) != TYPE_STRING:
-		sc = STAGE_PLANET_SCENES[&"planet1"]
+		sc = STAGE_PLANET_SCENE_PATHS[&"planet1"]
 	var p: String = str(sc).strip_edges()
 	if p.is_empty():
-		return str(STAGE_PLANET_SCENES[&"planet1"])
+		return str(STAGE_PLANET_SCENE_PATHS[&"planet1"])
 	return p
+
+
+func _get_preloaded_planet_scene_for_path(path: String) -> PackedScene:
+	for sid in STAGE_PLANET_SCENE_PATHS:
+		if STAGE_PLANET_SCENE_PATHS[sid] == path:
+			return STAGE_PLANET_SCENES.get(sid) as PackedScene
+	return null
 
 
 func return_to_prep() -> void:

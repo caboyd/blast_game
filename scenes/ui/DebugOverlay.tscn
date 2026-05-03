@@ -1,8 +1,9 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3 uid="uid://73t7gbc5ro3t"]
 
-[ext_resource type="Script" path="res://scripts/ui/DebugOverlay.gd" id="1"]
+[ext_resource type="Script" uid="uid://wyv4mdj8ak7r" path="res://scripts/ui/DebugOverlay.gd" id="1"]
 
-[node name="DebugOverlay" type="Control"]
+[node name="DebugOverlay" type="Control" unique_id=1594639427]
+visible = false
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -10,10 +11,9 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-visible = false
 script = ExtResource("1")
 
-[node name="Panel" type="PanelContainer" parent="."]
+[node name="Panel" type="PanelContainer" parent="." unique_id=207579055]
 layout_mode = 1
 anchors_preset = 3
 anchor_left = 1.0
@@ -26,173 +26,167 @@ offset_right = -8.0
 offset_bottom = -8.0
 grow_horizontal = 0
 grow_vertical = 0
-mouse_filter = 0
 
-[node name="VBox" type="VBoxContainer" parent="Panel"]
+[node name="VBox" type="VBoxContainer" parent="Panel" unique_id=696706796]
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="Title" type="Label" parent="Panel/VBox"]
+[node name="Title" type="Label" parent="Panel/VBox" unique_id=885333897]
 layout_mode = 2
 text = "DEBUG [F3]"
 
-[node name="GoldRow" type="HBoxContainer" parent="Panel/VBox"]
+[node name="GoldRow" type="HBoxContainer" parent="Panel/VBox" unique_id=1188624888]
 layout_mode = 2
 
-[node name="GoldLabel" type="Label" parent="Panel/VBox/GoldRow"]
+[node name="GoldLabel" type="Label" parent="Panel/VBox/GoldRow" unique_id=1371695850]
 layout_mode = 2
 text = "Gold"
 
-[node name="GoldSpin" type="SpinBox" parent="Panel/VBox/GoldRow"]
+[node name="GoldSpin" type="SpinBox" parent="Panel/VBox/GoldRow" unique_id=487406794]
 layout_mode = 2
 size_flags_horizontal = 3
-min_value = 0.0
 max_value = 2147483647.0
-step = 1.0
 value = 1000000.0
 
-[node name="GoldGive" type="Button" parent="Panel/VBox/GoldRow"]
+[node name="GoldGive" type="Button" parent="Panel/VBox/GoldRow" unique_id=1180994645]
 layout_mode = 2
 text = "Give"
 
-[node name="ReturnToPrep" type="Button" parent="Panel/VBox"]
+[node name="ReturnToPrep" type="Button" parent="Panel/VBox" unique_id=1495068995]
 layout_mode = 2
 text = "Return to Prep"
 
-[node name="DebugVisuals" type="CheckButton" parent="Panel/VBox"]
+[node name="DebugVisuals" type="CheckButton" parent="Panel/VBox" unique_id=361601294]
 layout_mode = 2
 button_pressed = true
 text = "Show Debug Visuals"
 
-[node name="DisableFog" type="CheckButton" parent="Panel/VBox"]
+[node name="DisableFog" type="CheckButton" parent="Panel/VBox" unique_id=1072849007]
 layout_mode = 2
 text = "Hide fog overlay"
 
-[node name="DbgFuelRow" type="HBoxContainer" parent="Panel/VBox"]
+[node name="DbgFuelRow" type="HBoxContainer" parent="Panel/VBox" unique_id=1868244679]
 layout_mode = 2
 
-[node name="DbgFuelOvrd" type="CheckBox" parent="Panel/VBox/DbgFuelRow"]
+[node name="DbgFuelOvrd" type="CheckBox" parent="Panel/VBox/DbgFuelRow" unique_id=1194792539]
 layout_mode = 2
 text = "Override fuel max"
 
-[node name="DbgFuelSpin" type="SpinBox" parent="Panel/VBox/DbgFuelRow"]
+[node name="DbgFuelSpin" type="SpinBox" parent="Panel/VBox/DbgFuelRow" unique_id=482043036]
 layout_mode = 2
 size_flags_horizontal = 3
 min_value = 1.0
 max_value = 999999.0
-step = 1.0
 value = 100.0
 
-[node name="DbgSpeedRow" type="HBoxContainer" parent="Panel/VBox"]
+[node name="DbgSpeedRow" type="HBoxContainer" parent="Panel/VBox" unique_id=523480180]
 layout_mode = 2
 
-[node name="DbgSpeedOvrd" type="CheckBox" parent="Panel/VBox/DbgSpeedRow"]
+[node name="DbgSpeedOvrd" type="CheckBox" parent="Panel/VBox/DbgSpeedRow" unique_id=384142672]
 layout_mode = 2
 text = "Override speed"
 
-[node name="DbgSpeedSpin" type="SpinBox" parent="Panel/VBox/DbgSpeedRow"]
+[node name="DbgSpeedSpin" type="SpinBox" parent="Panel/VBox/DbgSpeedRow" unique_id=87176293]
 layout_mode = 2
 size_flags_horizontal = 3
 min_value = 0.01
 max_value = 9999.0
 step = 0.1
-value = 40.0
+value = 40.01
 
-[node name="DbgMineRow" type="HBoxContainer" parent="Panel/VBox"]
+[node name="DbgMineRow" type="HBoxContainer" parent="Panel/VBox" unique_id=536650946]
 layout_mode = 2
 
-[node name="DbgMineOvrd" type="CheckBox" parent="Panel/VBox/DbgMineRow"]
+[node name="DbgMineOvrd" type="CheckBox" parent="Panel/VBox/DbgMineRow" unique_id=1307751107]
 layout_mode = 2
 text = "Override mine dmg"
 
-[node name="DbgMineSpin" type="SpinBox" parent="Panel/VBox/DbgMineRow"]
+[node name="DbgMineSpin" type="SpinBox" parent="Panel/VBox/DbgMineRow" unique_id=142837338]
 layout_mode = 2
 size_flags_horizontal = 3
 min_value = 0.0001
 max_value = 9999.0
 step = 0.1
-value = 10.0
+value = 10.0001
 
-[node name="DbgMineRateRow" type="HBoxContainer" parent="Panel/VBox"]
+[node name="DbgMineRateRow" type="HBoxContainer" parent="Panel/VBox" unique_id=135341839]
 layout_mode = 2
 
-[node name="DbgMineRateOvrd" type="CheckBox" parent="Panel/VBox/DbgMineRateRow"]
+[node name="DbgMineRateOvrd" type="CheckBox" parent="Panel/VBox/DbgMineRateRow" unique_id=371805628]
 layout_mode = 2
 text = "Override mining rate"
 
-[node name="DbgMineRateSpin" type="SpinBox" parent="Panel/VBox/DbgMineRateRow"]
+[node name="DbgMineRateSpin" type="SpinBox" parent="Panel/VBox/DbgMineRateRow" unique_id=760603649]
 layout_mode = 2
 size_flags_horizontal = 3
 min_value = 0.01
 max_value = 999.0
 step = 0.05
+value = 0.21000000000000002
 suffix = "s"
-value = 0.2
 
-[node name="DbgDrillRangeRow" type="HBoxContainer" parent="Panel/VBox"]
+[node name="DbgDrillRangeRow" type="HBoxContainer" parent="Panel/VBox" unique_id=1366972047]
 layout_mode = 2
 
-[node name="DbgDrillOvrd" type="CheckBox" parent="Panel/VBox/DbgDrillRangeRow"]
+[node name="DbgDrillOvrd" type="CheckBox" parent="Panel/VBox/DbgDrillRangeRow" unique_id=2086742698]
 layout_mode = 2
 text = "Override mining range"
 
-[node name="DbgDrillSpin" type="SpinBox" parent="Panel/VBox/DbgDrillRangeRow"]
+[node name="DbgDrillSpin" type="SpinBox" parent="Panel/VBox/DbgDrillRangeRow" unique_id=1476236474]
 layout_mode = 2
 size_flags_horizontal = 3
 min_value = 0.05
 max_value = 2048.0
 step = 0.25
+value = 16.05
 suffix = " px"
-value = 16.0
 
-[node name="DbgVisionRow" type="HBoxContainer" parent="Panel/VBox"]
+[node name="DbgVisionRow" type="HBoxContainer" parent="Panel/VBox" unique_id=2144511408]
 layout_mode = 2
 
-[node name="DbgVisionOvrd" type="CheckBox" parent="Panel/VBox/DbgVisionRow"]
+[node name="DbgVisionOvrd" type="CheckBox" parent="Panel/VBox/DbgVisionRow" unique_id=1403090714]
 layout_mode = 2
 text = "Override cell visibility"
 
-[node name="DbgVisionSpin" type="SpinBox" parent="Panel/VBox/DbgVisionRow"]
+[node name="DbgVisionSpin" type="SpinBox" parent="Panel/VBox/DbgVisionRow" unique_id=2067396952]
 layout_mode = 2
 size_flags_horizontal = 3
 min_value = 1.0
 max_value = 99.0
-step = 1.0
 value = 12.0
 
-[node name="DbgTurnRow" type="HBoxContainer" parent="Panel/VBox"]
+[node name="DbgTurnRow" type="HBoxContainer" parent="Panel/VBox" unique_id=993596543]
 layout_mode = 2
 
-[node name="DbgTurnOvrd" type="CheckBox" parent="Panel/VBox/DbgTurnRow"]
+[node name="DbgTurnOvrd" type="CheckBox" parent="Panel/VBox/DbgTurnRow" unique_id=498577819]
 layout_mode = 2
 text = "Override turn rate"
 
-[node name="DbgTurnSpin" type="SpinBox" parent="Panel/VBox/DbgTurnRow"]
+[node name="DbgTurnSpin" type="SpinBox" parent="Panel/VBox/DbgTurnRow" unique_id=561536142]
 layout_mode = 2
 size_flags_horizontal = 3
-min_value = 0.0
 max_value = 1000.0
 step = 0.25
-suffix = "rad/s"
 value = 9.0
+suffix = "rad/s"
 
-[node name="ZoomRow" type="HBoxContainer" parent="Panel/VBox"]
+[node name="ZoomRow" type="HBoxContainer" parent="Panel/VBox" unique_id=1008943240]
 layout_mode = 2
 
-[node name="ZoomLabel" type="Label" parent="Panel/VBox/ZoomRow"]
+[node name="ZoomLabel" type="Label" parent="Panel/VBox/ZoomRow" unique_id=685405115]
 layout_mode = 2
 text = "Zoom"
 
-[node name="ZoomOut" type="Button" parent="Panel/VBox/ZoomRow"]
+[node name="ZoomOut" type="Button" parent="Panel/VBox/ZoomRow" unique_id=1226975457]
 layout_mode = 2
 text = "-"
 
-[node name="ZoomValue" type="Label" parent="Panel/VBox/ZoomRow"]
+[node name="ZoomValue" type="Label" parent="Panel/VBox/ZoomRow" unique_id=667992576]
 custom_minimum_size = Vector2(48, 0)
 layout_mode = 2
-horizontal_alignment = 1
 text = "100%"
+horizontal_alignment = 1
 
-[node name="ZoomIn" type="Button" parent="Panel/VBox/ZoomRow"]
+[node name="ZoomIn" type="Button" parent="Panel/VBox/ZoomRow" unique_id=1793995525]
 layout_mode = 2
 text = "+"

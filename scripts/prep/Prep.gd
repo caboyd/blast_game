@@ -1,5 +1,6 @@
 extends Control
 
+const _Bootstrap := preload("res://scripts/bootstrap/Bootstrap.gd")
 const _PREP_PART_TOOLTIP_SCENE := preload("res://scenes/prep/prep_part_hover_tooltip.tscn")
 
 
@@ -121,16 +122,17 @@ func _ready() -> void:
 		if not _stage_option.item_selected.is_connected(_on_prep_stage_choice_selected):
 			_stage_option.item_selected.connect(_on_prep_stage_choice_selected)
 		_sync_prep_stage_option_from_session()
+	_Bootstrap.ensure_initialized()
+	_prep_bootstrap_after_registry_and_career()
+
+
+func _prep_bootstrap_after_registry_and_career() -> void:
 	ShipDataRegistry.reload_active()
 	GameStatistics.apply_active_ship_fuel_baseline()
 	_apply_prep_parts_overlay_layout()
 	_ensure_ship_picker_buttons()
 	_rebuild_preview_ship()
 	_refresh_all()
-	# `GameSession._load_career` is deferred and runs after this `_ready`; it restores
-	# `selected_ship_id` and emits `stats_changed` (labels refresh) but does not rebuild
-	# the viewport. Rebuild once more after career apply so the preview matches the ship.
-	call_deferred("_rebuild_preview_ship")
 	call_deferred("_update_ship_picker_scroll_state")
 	call_deferred("_rebuild_parts_strip")
 	call_deferred("_sync_prep_stage_option_from_session")

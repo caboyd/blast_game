@@ -1,5 +1,8 @@
 extends Node
 
+## Emitted once when `init()` completes (idempotent; subsequent `init()` does not emit again).
+signal stats_ready
+
 signal stats_changed
 signal fuel_changed(current: float, max_fuel: float)
 signal run_mined_resources_changed
@@ -81,6 +84,21 @@ const _DEBUG_PREFS_SECTION := "debug"
 const _DEBUG_ZOOM_CLAMP_MIN := 0.2
 const _DEBUG_ZOOM_CLAMP_MAX := 2.0
 var _debug_prefs_write_pending: bool = false
+
+var initialized := false
+
+
+func init() -> void:
+	if initialized:
+		return
+	load_debug_preferences()
+	if not UpgradeBus.upgrade_purchased.is_connected(_on_upgrade_purchased):
+		UpgradeBus.upgrade_purchased.connect(_on_upgrade_purchased)
+	if not PartRegistry.parts_changed.is_connected(_on_parts_changed):
+		PartRegistry.parts_changed.connect(_on_parts_changed)
+	_apply_ship_fuel_base()
+	initialized = true
+	stats_ready.emit()
 
 
 func load_debug_preferences() -> void:
@@ -259,20 +277,10 @@ func _refit_live_fuel_max_preserving_fill() -> void:
 	stats_changed.emit()
 
 
-func _ready() -> void:
-	load_debug_preferences()
-	_apply_ship_fuel_base()
-	if not UpgradeBus.upgrade_purchased.is_connected(_on_upgrade_purchased):
-		UpgradeBus.upgrade_purchased.connect(_on_upgrade_purchased)
-	if not PartRegistry.parts_changed.is_connected(_on_parts_changed):
-		PartRegistry.parts_changed.connect(_on_parts_changed)
-
-
 func _apply_ship_fuel_base() -> void:
 	var sd: Resource = ShipDataRegistry.get_active()
 	if sd == null:
 		push_error("ShipDataRegistry.get_active() returned null")
-		assert(false)
 		return
 
 	_base_fuel_max = float(sd.get("fuel_max_base"))

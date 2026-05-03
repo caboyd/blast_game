@@ -1,6 +1,8 @@
 extends Node
 
 signal parts_changed
+## Emitted once when `init()` completes (idempotent; subsequent `init()` does not emit again).
+signal registry_ready
 
 const _PARTS_DIR := "res://data/parts/"
 const _CONFIG_SECTION_PARTS := "parts"
@@ -19,8 +21,19 @@ const PICKUP_PERSISTENCE_RESPAWNABLE := &"respawnable"
 
 const _PartDataScript = preload("res://scripts/data/PartData.gd")
 const _PartMovementPenaltyEffect = preload("res://scripts/data/PartMovementPenaltyEffect.gd")
+const _PART_DATA_MANIFEST: Array[Resource] = [
+	preload("res://data/parts/drill/part_drill_t0.tres"),
+	preload("res://data/parts/drill/part_drill_t1.tres"),
+	preload("res://data/parts/fuel_tank/part_fuel_tank_t0.tres"),
+	preload("res://data/parts/fuel_tank/part_fuel_tank_t1.tres"),
+	preload("res://data/parts/treads/part_treads_t0.tres"),
+	preload("res://data/parts/treads/part_treads_t1.tres"),
+]
 
 var _parts_by_id: Dictionary = {} # StringName -> PartData
+var _loaded := false
+var _loading := false
+var initialized := false
 
 var equipped_fuel_tank_id: StringName = DEFAULT_FUEL_TANK
 var equipped_drill_id: StringName = DEFAULT_DRILL
@@ -30,13 +43,31 @@ var equipped_treads_id: StringName = DEFAULT_TREADS
 var _part_levels: Dictionary = {}
 
 
-func _ready() -> void:
-	_reload_definitions()
+func init() -> void:
+	if initialized:
+		return
+	ensure_loaded()
+	initialized = true
+	registry_ready.emit()
 
 
 func _reload_definitions() -> void:
+	if _loading:
+		return
+	_loading = true
 	_parts_by_id.clear()
+	_loaded = false
 	_load_definitions_in_dir(_PARTS_DIR)
+	for res in _PART_DATA_MANIFEST:
+		_register_part_data_resource(res, str(res.resource_path))
+	_loaded = true
+	_loading = false
+
+
+func ensure_loaded() -> void:
+	if _loaded or _loading:
+		return
+	_reload_definitions()
 
 
 func _load_definitions_in_dir(dir_path: String) -> void:
@@ -50,20 +81,40 @@ func _load_definitions_in_dir(dir_path: String) -> void:
 		if dir.current_is_dir():
 			if not fname.begins_with("."):
 				_load_definitions_in_dir(dir_path.path_join(fname))
-		elif fname.ends_with(".tres"):
-			var path: String = dir_path.path_join(fname)
+		elif _is_part_resource_file(fname):
+			var path: String = dir_path.path_join(_resource_path_from_dir_entry(fname))
 			var res: Resource = ResourceLoader.load(path, "", ResourceLoader.CACHE_MODE_REUSE)
-			if res != null and res.get_script() == _PartDataScript:
-				var pid: StringName = res.get("id") as StringName
-				if String(pid).is_empty():
-					push_error("PartRegistry: part id empty in %s" % path)
-				else:
-					_parts_by_id[pid] = res
+			_register_part_data_resource(res, path)
 		fname = dir.get_next()
 	dir.list_dir_end()
 
 
+func _is_part_resource_file(fname: String) -> bool:
+	return fname.ends_with(".tres") or fname.ends_with(".tres.remap")
+
+
+func _resource_path_from_dir_entry(fname: String) -> String:
+	if fname.ends_with(".remap"):
+		return fname.trim_suffix(".remap")
+	return fname
+
+
+func _is_part_data_resource(res: Resource) -> bool:
+	return res != null and (res is PartData or res.get_script() == _PartDataScript)
+
+
+func _register_part_data_resource(res: Resource, path: String) -> void:
+	if not _is_part_data_resource(res):
+		return
+	var pid: StringName = res.get("id") as StringName
+	if String(pid).is_empty():
+		push_error("PartRegistry: part id empty in %s" % path)
+	else:
+		_parts_by_id[pid] = res
+
+
 func reset_to_t0_defaults() -> void:
+	ensure_loaded()
 	equipped_fuel_tank_id = DEFAULT_FUEL_TANK
 	equipped_drill_id = DEFAULT_DRILL
 	equipped_treads_id = DEFAULT_TREADS
@@ -73,6 +124,7 @@ func reset_to_t0_defaults() -> void:
 
 
 func load_from_config_file(c: ConfigFile) -> void:
+	ensure_loaded()
 	if c.has_section(_CONFIG_SECTION_PARTS):
 		var fuel_from_save: Variant = null
 		if c.has_section_key(_CONFIG_SECTION_PARTS, String(KEY_FUEL_TANK)):
@@ -128,6 +180,7 @@ func write_to_config_file(c: ConfigFile) -> void:
 
 
 func get_part_data(part_id: StringName) -> PartData:
+	ensure_loaded()
 	return _parts_by_id.get(part_id) as PartData
 
 
@@ -217,6 +270,7 @@ func equip_part(part_id: StringName) -> void:
 
 ## After upgrades: `base` is already ship-upgrade-adjusted.
 func apply_effects_for_stat(stat: StringName, base: float) -> float:
+	ensure_loaded()
 	var st := ShipUpgradeEffect.normalize_stat_id(stat)
 	var v: float = base
 	for pk in [KEY_FUEL_TANK, KEY_DRILL, KEY_TREADS]:

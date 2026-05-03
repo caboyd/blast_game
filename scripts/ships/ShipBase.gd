@@ -46,7 +46,6 @@ func _ready() -> void:
 	var sd: Resource = ShipDataRegistry.get_active()
 	if sd == null:
 		push_error("ShipDataRegistry.get_active() returned null")
-		assert(false)
 		return
 	move_speed_px_s = float(sd.get("move_speed_px_s"))
 	turn_rate_rad_s = float(sd.get("turn_rate_rad_s"))
