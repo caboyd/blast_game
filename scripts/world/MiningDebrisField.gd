@@ -133,9 +133,7 @@ func _ensure_pool() -> void:
 func _repeller_world_pos(ship: ShipBase) -> Vector2:
 	if ship == null:
 		return _cam_rect.get_center()
-	if ship.has_method(&"get_drill_center_world"):
-		return ship.call(&"get_drill_center_world") as Vector2
-	return ship.global_position
+	return ship.get_hull_center_world()
 
 
 func _repeller_ship_forward(ship: ShipBase) -> Vector2:

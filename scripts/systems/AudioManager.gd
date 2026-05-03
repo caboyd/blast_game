@@ -3,23 +3,31 @@ extends Node
 ## Centralizes SFX; future UI calls `set_overall_volume` / `set_sfx_volume`.
 
 const STREAM_DRILL: AudioStream = preload("res://audio/drill.wav")
-const STREAM_DIRTMINE: AudioStream = preload("res://audio/dirtmine.wav")
+const STREAM_DRILL_BLOCK: AudioStream = preload("res://audio/dirtmine.wav")
+const STREAM_BLOCK_POP: AudioStream = preload("res://audio/block_pop.wav")
 const STREAM_DIRTFALL: AudioStream = preload("res://audio/dirtfall.wav")
 
-const _DRILL_PEAK_DB := -10.0
-const _DIRTMINE_PEAK_DB := -16.0
-const _DIRTFALL_PEAK_DB := -12.0
+const _DRILL_PEAK_DB := -8.0
+const _DRILL_BLOCK_PEAK_DB := -16.0
+const _BLOCK_POP_PEAK_DB := -36.0
+const _DIRTFALL_LAYER_PEAK_DB := -2.0 ## layered with block_pop; tune for balance
 
-const _DRILL_LINEAR_IDLE_MULT := 0.35 ## volume multiplier when idle
-const _DRILL_VOLUME_SLEW := 24.0 ## units per second toward target linear
+const _DRILL_LINEAR_IDLE_MULT := 0.3 ## volume multiplier when idle
+## First-order smoothing time constant (seconds): larger = **slower** transition toward target.
+const _DRILL_VOLUME_ATTACK_TAU_S := 0.1
+const _DRILL_VOLUME_RELEASE_TAU_S := 1
 
-const _PITCH_LOW := 0.8
-const _PITCH_HIGH := 1.2
+const _DRILL_BLOCK_LINEAR_IDLE_MULT := 0.0 ## dirt mine loop voices: silent when not biting terrain
+const _DRILL_BLOCK_ATTACK_TAU_S := 0.1
+const _DRILL_BLOCK_RELEASE_TAU_S := 0.8
 
-const _DIRTMINE_CAP := 3
-const _DIRTMINE_COOLDOWN_S := 0.04
-const _DIRTFALL_CAP := 5
-const _DIRTFALL_COOLDOWN_S := 0.03
+const _PITCH_LOW := 1.0
+const _PITCH_HIGH := 1.3
+
+const _DRILL_BLOCK_CAP := 4
+const _DRILL_BLOCK_COOLDOWN_S := 0.04
+const _BLOCK_POP_CAP := 8
+const _BLOCK_POP_COOLDOWN_S := 0.03
 
 var overall_volume := 1.0
 var sfx_volume := 1.0
@@ -34,10 +42,14 @@ var _drill_linear_smooth := 0.0 ## post–peak-linear target smoothing
 
 var _dirtmine_players: Array[AudioStreamPlayer2D] = []
 var _dirtmine_start_unix: PackedFloat64Array = PackedFloat64Array()
+var _dirtmine_peak_linear: PackedFloat64Array = PackedFloat64Array()
+var _dirtmine_linear_smooth: PackedFloat64Array = PackedFloat64Array()
 var _dirtmine_next_allowed := 0.0
 
 var _dirtfall_players: Array[AudioStreamPlayer2D] = []
 var _dirtfall_start_unix: PackedFloat64Array = PackedFloat64Array()
+var _dirtfall_layer_players: Array[AudioStreamPlayer2D] = []
+var _dirtfall_layer_start_unix: PackedFloat64Array = PackedFloat64Array()
 var _dirtfall_next_allowed := 0.0
 
 ## When set, all 2D players live under this node (game SubViewport). Prevents root-viewport / letterbox mismatch.
@@ -57,8 +69,11 @@ func _ready() -> void:
 	_drill_player.bus = &"Master"
 	if not _drill_player.playing:
 		_drill_player.play()
-	_prep_pool(_dirtmine_players, _dirtmine_start_unix, STREAM_DIRTMINE, _DIRTMINE_CAP)
-	_prep_pool(_dirtfall_players, _dirtfall_start_unix, STREAM_DIRTFALL, _DIRTFALL_CAP)
+	_prep_pool(_dirtmine_players, _dirtmine_start_unix, STREAM_DRILL_BLOCK, _DRILL_BLOCK_CAP)
+	_dirtmine_peak_linear.resize(_DRILL_BLOCK_CAP)
+	_dirtmine_linear_smooth.resize(_DRILL_BLOCK_CAP)
+	_prep_pool(_dirtfall_players, _dirtfall_start_unix, STREAM_BLOCK_POP, _BLOCK_POP_CAP)
+	_prep_pool(_dirtfall_layer_players, _dirtfall_layer_start_unix, STREAM_DIRTFALL, _BLOCK_POP_CAP)
 
 
 func _prep_pool(
@@ -116,10 +131,18 @@ func stop_managed_world_audio() -> void:
 	_drill_linear_smooth = 0.0
 	if _drill_player != null and is_instance_valid(_drill_player):
 		_drill_player.volume_db = -80.0
-	for pl: AudioStreamPlayer2D in _dirtmine_players:
+	for i in _dirtmine_players.size():
+		var pl: AudioStreamPlayer2D = _dirtmine_players[i]
 		if pl != null and is_instance_valid(pl):
 			pl.stop()
+			if i < _dirtmine_peak_linear.size():
+				_dirtmine_peak_linear[i] = 0.0
+			if i < _dirtmine_linear_smooth.size():
+				_dirtmine_linear_smooth[i] = 0.0
 	for pl: AudioStreamPlayer2D in _dirtfall_players:
+		if pl != null and is_instance_valid(pl):
+			pl.stop()
+	for pl: AudioStreamPlayer2D in _dirtfall_layer_players:
 		if pl != null and is_instance_valid(pl):
 			pl.stop()
 
@@ -136,6 +159,9 @@ func _reparent_player_nodes(new_parent: Node) -> void:
 	for pl: AudioStreamPlayer2D in _dirtfall_players:
 		if pl != null and is_instance_valid(pl) and pl.get_parent() != new_parent:
 			pl.reparent(new_parent)
+	for pl: AudioStreamPlayer2D in _dirtfall_layer_players:
+		if pl != null and is_instance_valid(pl) and pl.get_parent() != new_parent:
+			pl.reparent(new_parent)
 
 
 func set_drilling(active: bool, world_pos: Vector2, biting_terrain: bool = false) -> void:
@@ -148,20 +174,32 @@ func play_dirt_mine(world_pos: Vector2) -> void:
 	var now := _unix_time_s()
 	if now < _dirtmine_next_allowed:
 		return
-	if _play_pooled(
-		STREAM_DIRTMINE, world_pos, _DIRTMINE_PEAK_DB, _dirtmine_players, _dirtmine_start_unix
-	):
-		_dirtmine_next_allowed = now + _DIRTMINE_COOLDOWN_S
+	var ix := _play_pooled(
+		STREAM_DRILL_BLOCK, world_pos, _DRILL_BLOCK_PEAK_DB, _dirtmine_players, _dirtmine_start_unix
+	)
+	if ix >= 0:
+		_dirtmine_next_allowed = now + _DRILL_BLOCK_COOLDOWN_S
+		var pl: AudioStreamPlayer2D = _dirtmine_players[ix]
+		var lin: float = db_to_linear(pl.volume_db)
+		_dirtmine_peak_linear[ix] = lin
+		_dirtmine_linear_smooth[ix] = lin
 
 
 func play_dirt_fall(world_pos: Vector2) -> void:
 	var now := _unix_time_s()
 	if now < _dirtfall_next_allowed:
 		return
+	var any := false
 	if _play_pooled(
-		STREAM_DIRTFALL, world_pos, _DIRTFALL_PEAK_DB, _dirtfall_players, _dirtfall_start_unix
-	):
-		_dirtfall_next_allowed = now + _DIRTFALL_COOLDOWN_S
+		STREAM_BLOCK_POP, world_pos, _BLOCK_POP_PEAK_DB, _dirtfall_players, _dirtfall_start_unix
+	) >= 0:
+		any = true
+	if _play_pooled(
+		STREAM_DIRTFALL, world_pos, _DIRTFALL_LAYER_PEAK_DB, _dirtfall_layer_players, _dirtfall_layer_start_unix
+	) >= 0:
+		any = true
+	if any:
+		_dirtfall_next_allowed = now + _BLOCK_POP_COOLDOWN_S
 
 
 func _play_pooled(
@@ -170,13 +208,13 @@ func _play_pooled(
 	peak_db: float,
 	players: Array[AudioStreamPlayer2D],
 	times_arr: PackedFloat64Array,
-) -> bool:
+) -> int:
 	var now := _unix_time_s()
 	var mute_db := linear_to_db(0.0001)
 
 	var ix := _allocate_pool_voice(players, times_arr, now, mute_db)
 	if ix < 0:
-		return false
+		return -1
 	var pl: AudioStreamPlayer2D = players[ix]
 	pl.stop()
 	pl.stream = stream_res
@@ -187,7 +225,7 @@ func _play_pooled(
 	pl.volume_db = linear_to_db(maxf(lin, 1e-5))
 	pl.play()
 	times_arr[ix] = now
-	return true
+	return ix
 
 
 ## Returns idle index or index of reused voice; minus one if aborted.
@@ -239,15 +277,48 @@ func _drill_target_peak_linear() -> float:
 	return db_to_linear(_DRILL_PEAK_DB) * bite_mult * _combined_linear_amp()
 
 
-func _process(delta: float) -> void:
-	if _drill_player == null:
-		return
-	var tgt := 0.0 if not _drill_engaged else _drill_target_peak_linear()
-	var a: float = 1.0 - exp(-_DRILL_VOLUME_SLEW * delta)
-	_drill_linear_smooth = lerpf(_drill_linear_smooth, tgt, a)
+func _smoothing_alpha(delta: float, tau_s: float) -> float:
+	var tau := maxf(tau_s, 1e-9)
+	return 1.0 - exp(-delta / tau)
 
-	_drill_player.global_position = _drill_world_pos
-	if _drill_linear_smooth <= 1e-6:
-		_drill_player.volume_db = -80.0
-	else:
-		_drill_player.volume_db = linear_to_db(maxf(_drill_linear_smooth, 1e-8))
+
+func _process(delta: float) -> void:
+	if _drill_player != null:
+		var tgt_d := 0.0 if not _drill_engaged else _drill_target_peak_linear()
+		var tau_drill: float = (
+			_DRILL_VOLUME_ATTACK_TAU_S
+			if tgt_d > _drill_linear_smooth
+			else _DRILL_VOLUME_RELEASE_TAU_S
+		)
+		var a_drill: float = _smoothing_alpha(delta, tau_drill)
+		_drill_linear_smooth = lerpf(_drill_linear_smooth, tgt_d, a_drill)
+		_drill_player.global_position = _drill_world_pos
+		if _drill_linear_smooth <= 1e-6:
+			_drill_player.volume_db = -80.0
+		else:
+			_drill_player.volume_db = linear_to_db(maxf(_drill_linear_smooth, 1e-8))
+
+	var block_bite_mult := 1.0 if (_drill_engaged and _drill_biting) else _DRILL_BLOCK_LINEAR_IDLE_MULT
+	for i in _dirtmine_players.size():
+		var pl_b: AudioStreamPlayer2D = _dirtmine_players[i]
+		if pl_b == null or not is_instance_valid(pl_b):
+			continue
+		if not pl_b.playing:
+			_dirtmine_linear_smooth[i] = 0.0
+			_dirtmine_peak_linear[i] = 0.0
+			continue
+		var tgt_b := _dirtmine_peak_linear[i] * block_bite_mult
+		var tau_b: float = (
+			_DRILL_BLOCK_ATTACK_TAU_S
+			if tgt_b > _dirtmine_linear_smooth[i]
+			else _DRILL_BLOCK_RELEASE_TAU_S
+		)
+		var a_b: float = _smoothing_alpha(delta, tau_b)
+		_dirtmine_linear_smooth[i] = lerpf(_dirtmine_linear_smooth[i], tgt_b, a_b)
+		if _dirtmine_linear_smooth[i] <= 1e-6:
+			pl_b.stop()
+			pl_b.volume_db = -80.0
+			_dirtmine_linear_smooth[i] = 0.0
+			_dirtmine_peak_linear[i] = 0.0
+		else:
+			pl_b.volume_db = linear_to_db(maxf(_dirtmine_linear_smooth[i], 1e-8))
