@@ -228,6 +228,7 @@ func configure_stage_generation(new_stage_id: StringName, chunk_generator: Calla
 	stage_id = new_stage_id
 	_chunk_generator = chunk_generator
 	if _debris_field:
+		_debris_field.refresh_debris_backend_for_stage()
 		_debris_field.clear_all()
 	_chunks.clear()
 	_run_cell_edits.clear()
@@ -930,6 +931,16 @@ func _cell_world_rect_overlaps_hull(cx: int, cy: int, hull_world: PackedVector2A
 	return false
 
 
+func _try_queue_black_hole_mined_reward(base_amount: int, spawn_world: Vector2) -> bool:
+	if stage_id != &"planet2" or base_amount <= 0:
+		return false
+	var mgr := get_tree().get_first_node_in_group(&"black_hole_currency_mgr")
+	if mgr == null or not mgr.has_method(&"queue_mined_reward"):
+		return false
+	mgr.queue_mined_reward(base_amount, spawn_world)
+	return true
+
+
 func _fuel_cluster_local_rect(data: Dictionary) -> Rect2i:
 	var anchor: Variant = data.get("fuel_anchor", null)
 	if anchor == null or not anchor is Vector2i:
@@ -1003,7 +1014,13 @@ func _damage_cell_abs(cell: Vector2i, amount: int) -> int:
 		GameStatistics.register_fully_mined_block(t, display_color_for_mined_type(t))
 		GameStatistics.add_blocks_destroyed(1)
 		if t >= 0 and t < TYPE_MONEY.size():
-			GameStatistics.add_mined_cell_reward(int(TYPE_MONEY[t]))
+			var amt: int = int(TYPE_MONEY[t])
+			var spawn_world: Vector2 = cell_center_world(cell)
+			var queued_bh: bool = false
+			if amt > 0:
+				queued_bh = _try_queue_black_hole_mined_reward(amt, spawn_world)
+			if not queued_bh:
+				GameStatistics.add_mined_cell_reward(amt)
 		_commit_run_edit_for_chunk_index(ch, idx)
 		block_broken.emit(cell_center_world(cell), broken_type_id)
 		return hp_before

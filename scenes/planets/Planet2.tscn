@@ -1,9 +1,12 @@
 [gd_scene format=3 uid="uid://dbddxgkqbh86a"]
 
-[ext_resource type="Script" path="res://scripts/planets/Planet2.gd" id="1"]
+[ext_resource type="Script" uid="uid://c15v6bdd815i3" path="res://scripts/planets/Planet2.gd" id="1"]
 [ext_resource type="PackedScene" uid="uid://wfvva5w2yqqq" path="res://scenes/world/MiningWorld.tscn" id="2"]
-[ext_resource type="PackedScene" uid="uid://b8statsstrip001" path="res://scenes/ui/BottomPlayerStatsStrip.tscn" id="4"]
-[ext_resource type="PackedScene" path="res://scenes/ui/DebugOverlay.tscn" id="5"]
+[ext_resource type="PackedScene" uid="uid://1xvfat41l4vs" path="res://scenes/ui/BottomPlayerStatsStrip.tscn" id="4"]
+[ext_resource type="PackedScene" uid="uid://73t7gbc5ro3t" path="res://scenes/ui/DebugOverlay.tscn" id="5"]
+[ext_resource type="Script" uid="uid://cu2mvnckh1g2m" path="res://scripts/world/BlackHoleSphere.gd" id="6"]
+[ext_resource type="Script" uid="uid://cm2ubkcy7mqdm" path="res://scripts/world/BlackHoleDebrisEmitter.gd" id="7"]
+[ext_resource type="Script" uid="uid://xk4c6nvxdw4v" path="res://scripts/world/BlackHoleCurrencyManager.gd" id="8"]
 
 [node name="Planet2" type="Control" unique_id=803336066]
 layout_mode = 3
@@ -47,9 +50,9 @@ stretch = true
 [node name="GameSubViewport" type="SubViewport" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer" unique_id=993360703]
 unique_name_in_owner = true
 handle_input_locally = false
-audio_listener_enable_2d = true
 msaa_2d = 3
-size = Vector2i(1280, 720)
+audio_listener_enable_2d = true
+size = Vector2i(1280, 719)
 render_target_update_mode = 4
 
 [node name="GameCamera2D" type="Camera2D" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport" unique_id=302616392]
@@ -57,8 +60,27 @@ unique_name_in_owner = true
 
 [node name="World2D" type="Node2D" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport" unique_id=264430991]
 
+[node name="BlackHoleSphere" type="Node2D" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport/World2D" unique_id=1842101001]
+unique_name_in_owner = true
+z_index = 1
+script = ExtResource("6")
+
+[node name="BlackHoleDebrisEmitter" type="GPUParticles2D" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport/World2D" unique_id=1842101002]
+unique_name_in_owner = true
+z_index = 2
+script = ExtResource("7")
+particles_per_broken_cell = 12
+spawn_half_extent_px = 12.0
+burst_outward_velocity_min = 0.0
+burst_outward_velocity_max = 0.0
+
+[node name="BlackHoleCurrencyManager" type="Node" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport/World2D" unique_id=1842101003]
+unique_name_in_owner = true
+script = ExtResource("8")
+
 [node name="MiningWorld" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport/World2D" unique_id=1384592697 instance=ExtResource("2")]
 unique_name_in_owner = true
+stage_id = &"planet2"
 terrain_shader_path = "res://shaders/planet2_marching.gdshader"
 shader_type_color_max = 24
 
@@ -81,9 +103,7 @@ editor_only = false
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 2
-anchor_left = 0.0
 anchor_top = 1.0
-anchor_right = 0.0
 anchor_bottom = 1.0
 offset_left = 6.0
 offset_top = -54.0
@@ -101,9 +121,7 @@ text = "—"
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 2
-anchor_left = 0.0
 anchor_top = 1.0
-anchor_right = 0.0
 anchor_bottom = 1.0
 offset_left = 6.0
 offset_top = -82.0
@@ -111,12 +129,10 @@ offset_right = 486.0
 offset_bottom = -58.0
 grow_horizontal = 0
 grow_vertical = 0
-horizontal_alignment = 0
 theme_override_colors/font_color = Color(0.92, 0.96, 1, 0.95)
 theme_override_colors/font_outline_color = Color(0.05, 0.05, 0.12, 0.92)
 theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 14
-text = ""
 
 [node name="UI" type="CanvasLayer" parent="." unique_id=508636688]
 

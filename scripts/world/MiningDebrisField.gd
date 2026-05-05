@@ -27,6 +27,9 @@ const _DEBRIS_CIRCLE_SHADER: Shader = preload("res://shaders/debris_particle_cir
 
 var _world: MiningWorld
 var _pool: GlobalDebrisPool
+var _planet2_gpu_black_hole: bool = false
+## Planet2 QA: revert to circular MultiMesh + repel debris if true.
+@export var force_planet2_legacy_multimesh: bool = false
 var _cam_rect: Rect2 = Rect2()
 
 var _white: ImageTexture
@@ -49,7 +52,29 @@ func setup(world: MiningWorld) -> void:
 		img.fill(Color.WHITE)
 		_white = ImageTexture.create_from_image(img)
 	_ensure_debris_circle_material()
-	_ensure_pool()
+	refresh_debris_backend_for_stage()
+
+
+func refresh_debris_backend_for_stage() -> void:
+	var want_gpu := _compute_planet2_gpu_black_hole()
+	var had_gpu := _planet2_gpu_black_hole
+	_planet2_gpu_black_hole = want_gpu
+	if want_gpu != had_gpu:
+		if _pool != null:
+			_pool.free_renderers()
+			_pool = null
+	if not want_gpu:
+		_ensure_pool()
+
+
+func _compute_planet2_gpu_black_hole() -> bool:
+	if force_planet2_legacy_multimesh:
+		return false
+	if _world == null:
+		return false
+	if _world.stage_id != &"planet2":
+		return false
+	return get_tree().get_first_node_in_group(&"planet2_black_hole_debris") != null
 
 
 func _ensure_debris_circle_material(render_shadow: bool = false) -> ShaderMaterial:
@@ -67,6 +92,11 @@ func _ensure_debris_circle_material(render_shadow: bool = false) -> ShaderMateri
 
 
 func clear_all() -> void:
+	if _planet2_gpu_black_hole:
+		var emitter := get_tree().get_first_node_in_group(&"planet2_black_hole_debris")
+		if emitter != null and emitter.has_method(&"restart"):
+			emitter.restart(false)
+		return
 	if _pool != null:
 		_pool.clear_particles()
 
@@ -82,6 +112,11 @@ func update_camera_rect(rect: Rect2) -> void:
 func on_block_broken(world_pos: Vector2, type_id: int) -> void:
 	if _world == null:
 		return
+	if _planet2_gpu_black_hole:
+		var emitter := get_tree().get_first_node_in_group(&"planet2_black_hole_debris")
+		if emitter != null and emitter.has_method(&"emit_burst"):
+			emitter.emit_burst(world_pos, type_id)
+		return
 	_ensure_pool()
 	var n: int = _spawn_count_for_type(type_id)
 	var base_col: Color = _world.display_color_for_mined_type(type_id)
@@ -94,6 +129,8 @@ func on_block_broken(world_pos: Vector2, type_id: int) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if _planet2_gpu_black_hole:
+		return
 	if _world == null:
 		_last_repeller_valid = false
 		return
@@ -122,6 +159,8 @@ func _physics_process(delta: float) -> void:
 
 
 func _ensure_pool() -> void:
+	if _planet2_gpu_black_hole:
+		return
 	if _pool != null and _pool.capacity() == max_total_particles:
 		return
 	if _pool != null:
@@ -216,6 +255,35 @@ func _spawn_count_for_type(type_id: int) -> int:
 
 
 func _spawn_size_mul_for_type(type_id: int) -> float:
+	match type_id:
+		MiningWorld.TYPE_DIRT, MiningWorld.TYPE_PACKED_EARTH, MiningWorld.TYPE_CLAY, MiningWorld.TYPE_SANDSTONE:
+			return 0.4
+		MiningWorld.TYPE_STONE, MiningWorld.TYPE_SHALE, MiningWorld.TYPE_OBSIDIAN:
+			return 0.8
+		MiningWorld.TYPE_GOLD, MiningWorld.TYPE_RUBY, MiningWorld.TYPE_COPPER, MiningWorld.TYPE_TIN, MiningWorld.TYPE_IRON, MiningWorld.TYPE_SILVER:
+			return 0.15
+		_:
+			return 1.0
+
+
+static func black_hole_burst_count(type_id: int, particles_per_cell: int) -> int:
+	if type_id == MiningWorld.TYPE_FUEL:
+		return 0
+	var base_i: int = particles_per_cell
+	var mul: float = 1.0
+	match type_id:
+		MiningWorld.TYPE_DIRT, MiningWorld.TYPE_PACKED_EARTH, MiningWorld.TYPE_CLAY, MiningWorld.TYPE_SANDSTONE:
+			mul = 1.35
+		MiningWorld.TYPE_STONE, MiningWorld.TYPE_SHALE, MiningWorld.TYPE_OBSIDIAN:
+			mul = 0.55
+		MiningWorld.TYPE_GOLD, MiningWorld.TYPE_RUBY, MiningWorld.TYPE_COPPER, MiningWorld.TYPE_TIN, MiningWorld.TYPE_IRON, MiningWorld.TYPE_SILVER:
+			mul = 0.65
+		_:
+			mul = 1.0
+	return maxi(1, int(round(float(base_i) * mul)))
+
+
+static func black_hole_burst_size_multiplier(type_id: int) -> float:
 	match type_id:
 		MiningWorld.TYPE_DIRT, MiningWorld.TYPE_PACKED_EARTH, MiningWorld.TYPE_CLAY, MiningWorld.TYPE_SANDSTONE:
 			return 0.4

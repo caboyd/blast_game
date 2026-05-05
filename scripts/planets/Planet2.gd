@@ -80,6 +80,9 @@ const PART_PICKUP_DEFS: Array[Dictionary] = []
 @export var planet_id: StringName = &"planet2"
 
 @onready var _mining_world: MiningWorld = %MiningWorld
+@onready var _black_hole_sphere: BlackHoleSphere = %BlackHoleSphere
+@onready var _black_hole_emitter: BlackHoleDebrisEmitter = %BlackHoleDebrisEmitter
+@onready var _black_hole_currency_mgr: Node = %BlackHoleCurrencyManager
 @onready var _ship_spawn: Node2D = %ShipSpawn
 var _ship: Node2D
 var _ship_chain_followers: Array[ShipBase] = []
@@ -126,6 +129,7 @@ func _ready() -> void:
 		if not _mining_world.block_broken.is_connected(_on_mining_block_broken_audio):
 			_mining_world.block_broken.connect(_on_mining_block_broken_audio)
 		AudioManager.bind_world_audio_mount(_mining_world)
+		_configure_black_hole_scene()
 	_spawn_mission_ship()
 	if _ship and _mining_world:
 		_ship.grid = _mining_world
@@ -155,6 +159,21 @@ func _ready() -> void:
 
 func _exit_tree() -> void:
 	AudioManager.bind_world_audio_mount(null)
+
+
+func _configure_black_hole_scene() -> void:
+	if _mining_world == null:
+		return
+	var hole := MiningWorld.get_chunk_center_world(Vector2i.ZERO)
+	var bh_radius := float(MiningWorld.CHUNK_SIZE) * MiningWorld.CELL_SIZE_PX * 0.25
+	if _black_hole_sphere != null:
+		_black_hole_sphere.global_position = hole
+		_black_hole_sphere.configure_radius(bh_radius)
+	if _black_hole_emitter != null:
+		_black_hole_emitter.global_position = hole
+		_black_hole_emitter.bind_mining_world(_mining_world)
+	if _black_hole_currency_mgr != null and _black_hole_currency_mgr.has_method(&"configure_hole_world_position"):
+		_black_hole_currency_mgr.configure_hole_world_position(hole)
 
 
 func _generate_mining_world_chunk(
