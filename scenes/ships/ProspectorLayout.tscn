@@ -1,4 +1,4 @@
-[gd_scene format=3 uid="uid://bmwb6h05vgajp"]
+[gd_scene format=3 uid="uid://w8dpuoklf3bg"]
 
 [ext_resource type="Texture2D" uid="uid://qx61jbeojbvf" path="res://assets/sprites/prospector/prospector_body.png" id="1_body"]
 [ext_resource type="PackedScene" uid="uid://o8vri577j4ui" path="res://scenes/ship_parts/treads/part_treads_t0.tscn" id="2_treads"]
@@ -6,7 +6,8 @@
 [ext_resource type="PackedScene" uid="uid://div80xfq6s8go" path="res://scenes/ship_parts/fuel_tank/part_fuel_tank_t0.tscn" id="4_fuel"]
 
 [node name="ProspectorLayout" type="Node2D" unique_id=670840748]
-editor_description = "Composer: Adjust each Marker2D (attachment point) and/or part instance transform. Mirror Attachment_* marker transforms to scenes/ships/Prospector.tscn for gameplay. To change part sprites, right-click an instance → Open in Editor (edits the part .tscn); property overrides on instances in this scene alone do not affect the running game."
+editor_description = "Composer/runtime layout: Adjust each Marker2D attachment point and default part instance transform here. scenes/ships/Prospector.tscn instances this scene; runtime equipped part visuals inherit these placeholder transforms. To change part sprites, right-click an instance → Open in Editor (edits the part .tscn)."
+scale = Vector2(2.24, 2.24)
 
 [node name="BodySprite" type="Sprite2D" parent="." unique_id=318791278]
 scale = Vector2(0.021484375, 0.021484375)
@@ -19,7 +20,8 @@ unique_name_in_owner = true
 
 [node name="Attachment_Drill" type="Marker2D" parent="." unique_id=1237021628]
 unique_name_in_owner = true
-position = Vector2(2.6, 0)
+position = Vector2(2.2321432, 0)
+scale = Vector2(2.0357141, 2.0357141)
 
 [node name="PartDrillT0" parent="Attachment_Drill" unique_id=1067662828 instance=ExtResource("3_drill")]
 position = Vector2(1.8, 1)

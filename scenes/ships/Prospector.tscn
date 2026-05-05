@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://ckkcuopr688ih"]
 
 [ext_resource type="Script" uid="uid://cw75kam5jsm6e" path="res://scripts/ships/ShipBase.gd" id="1_base"]
-[ext_resource type="Texture2D" uid="uid://qx61jbeojbvf" path="res://assets/sprites/prospector/prospector_body.png" id="2_body"]
+[ext_resource type="PackedScene" uid="uid://w8dpuoklf3bg" path="res://scenes/ships/ProspectorLayout.tscn" id="2_layout"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_yiq1f"]
 radius = 3.0000005
@@ -10,38 +10,29 @@ radius = 3.0000005
 radius = 3.0
 
 [node name="Prospector" type="Node2D" unique_id=1100789382]
+scale = Vector2(2.713022, 2.7282915)
 script = ExtResource("1_base")
 
-[node name="Attachment_Treads" type="Marker2D" parent="." unique_id=900020001]
-unique_name_in_owner = true
-
-[node name="BodySprite" type="Sprite2D" parent="." unique_id=245121809]
-scale = Vector2(0.021484375, 0.021484375)
-texture = ExtResource("2_body")
-
-[node name="Attachment_Drill" type="Marker2D" parent="." unique_id=900020002]
-unique_name_in_owner = true
-position = Vector2(2.6, 0)
+[node name="ProspectorLayout" parent="." unique_id=344749851 instance=ExtResource("2_layout")]
+scale = Vector2(1.3999999, 1.3999999)
 
 [node name="Drill" type="Polygon2D" parent="." unique_id=500210448]
 visible = false
 position = Vector2(0.99999994, 2.646978e-23)
-scale = Vector2(0.99999994, 0.99999994)
+scale = Vector2(1.3096185, 0.7507598)
 color = Color(1, 0.72, 0.35, 1)
 polygon = PackedVector2Array(5.9604645e-08, 4, 5.9604645e-08, -4, 5, 0)
 
 [node name="DrillCollider" type="CollisionShape2D" parent="Drill" unique_id=1467381388]
-position = Vector2(4, -2.646978e-23)
+position = Vector2(2.3323731, -3.5257324e-23)
+scale = Vector2(1.241364, 1.1134186)
 shape = SubResource("CircleShape2D_yiq1f")
 
 [node name="Hull" type="Polygon2D" parent="." unique_id=1828735210]
 visible = false
-scale = Vector2(1.0999999, 1.020408)
+scale = Vector2(1.041025, 0.77116793)
 color = Color(0.95, 0.55, 0.2, 1)
 polygon = PackedVector2Array(-4, -4, 4, -4, 4, 4, -4, 4)
 
 [node name="HullCollider" type="CollisionShape2D" parent="Hull" unique_id=1768726885]
 shape = SubResource("CircleShape2D_iwkxr")
-
-[node name="Attachment_FuelTank" type="Marker2D" parent="." unique_id=900020003]
-unique_name_in_owner = true
