@@ -3,12 +3,25 @@ class_name BlackHoleDebrisEmitter
 ## Central planet2 debris sink: bursts from emit_particle + inward spiral ParticleProcessMaterial.
 
 const GROUP := &"planet2_black_hole_debris"
+const SHADER_PATH := "res://shaders/black_hole_particle.gdshader"
 
-@export_range(4, 32) var particles_per_broken_cell: int = 6
-@export_range(0.0, 32.0) var spawn_half_extent_px: float = 4.8
-@export_range(0.0, 8000.0) var burst_outward_velocity_min: float = 140.0
-@export_range(0.0, 8000.0) var burst_outward_velocity_max: float = 420.0
+@export_range(0, 32) var particles_per_broken_cell: int = 0
+@export_range(0.0, 32.0) var random_spawn_half_radius: float = 4.8
+
+@export_range(0.0, 5000000.0) var gravity_strength: float = 180000.0
+@export_range(1.0, 256.0) var gravity_softening: float = 24.0
+@export_range(1.0, 2.0) var event_horizon_falloff_radius_mult = 1.08
+@export_range(0.0, 8.0) var tangential_boost: float = 1.6
+@export_range(-1.0, 1.0) var swirl_bias: float = 1.0
+@export_range(0.0, 16.0) var radial_damping: float = 0.0
+@export_range(0.0, 20000.0) var max_speed: float = 6000.0
+
+@export_range(-1.0, 10.0) var burst_inward_bias: float = 0.35
+@export_range(1.0, 12.0) var spaghetti_stretch: float = 3.4
 @export_range(0.0, 120.0) var color_variation: float = 0.08
+
+var event_horizon_radius_px: float = 16.0
+var event_horizon_falloff_radius_px: float = 18.0
 
 var _mining_world: MiningWorld
 var _spawn_rng := RandomNumberGenerator.new()
@@ -21,19 +34,48 @@ var _flags_emit := GPUParticles2D.EMIT_FLAG_POSITION \
 func _ready() -> void:
 	add_to_group(GROUP)
 	amount = 20000
-	fixed_fps = 0
-	local_coords = false
 	emitting = false
-	explosiveness = 0.0
-	randomness = 0.0
-	interp_to_end = 0.0
 	draw_order = GPUParticles2D.DRAW_ORDER_REVERSE_LIFETIME
-	lifetime = 5.25
-	process_material = _build_process_material()
+	lifetime = 600 #the engine stops rendering particles after this time even if they are still alive
 	visibility_rect = Rect2(-16384.0, -16384.0, 32768.0, 32768.0)
-	texture = _make_white_px_texture()
+	texture = _make_sphere_texture()
+	material = _build_canvas_material()
 	z_as_relative = false
+
 	z_index = 2
+	_push_horizon_uniforms()
+
+
+func configure_event_horizon(radius_px: float) -> void:
+	event_horizon_radius_px = maxf(radius_px, 1.0)
+	event_horizon_falloff_radius_px = event_horizon_radius_px * event_horizon_falloff_radius_mult
+	_push_horizon_uniforms()
+
+
+func _push_horizon_uniforms() -> void:
+	var mat := material as ShaderMaterial
+	if mat != null:
+		mat.set_shader_parameter(&"hole_center", global_position)
+		mat.set_shader_parameter(&"event_horizon_radius", event_horizon_radius_px)
+		mat.set_shader_parameter(&"event_horizon_falloff_radius", event_horizon_falloff_radius_px)
+		mat.set_shader_parameter(&"stretch_intensity", spaghetti_stretch)
+	var pm := process_material as ShaderMaterial
+	if pm != null:
+		pm.set_shader_parameter(&"hole_center", global_position)
+		pm.set_shader_parameter(&"event_horizon_radius", event_horizon_radius_px)
+		pm.set_shader_parameter(&"event_horizon_falloff_radius", event_horizon_falloff_radius_px)
+		pm.set_shader_parameter(&"gravity_strength", gravity_strength)
+		pm.set_shader_parameter(&"gravity_softening", gravity_softening)
+		pm.set_shader_parameter(&"burst_inward_bias", burst_inward_bias)
+		pm.set_shader_parameter(&"tangential_boost", tangential_boost)
+		pm.set_shader_parameter(&"swirl_bias", swirl_bias)
+		pm.set_shader_parameter(&"radial_damping", radial_damping)
+		pm.set_shader_parameter(&"max_speed", max_speed)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_TRANSFORM_CHANGED:
+		_push_horizon_uniforms()
 
 
 func bind_mining_world(world: MiningWorld) -> void:
@@ -48,21 +90,26 @@ func emit_burst(world_pos: Vector2, type_id: int) -> void:
 		return
 	var base_col: Color = _mining_world.display_color_for_mined_type(type_id)
 	var sz_mul := MiningDebrisField.black_hole_burst_size_multiplier(type_id)
-	var half_extent: float = spawn_half_extent_px
+	var hole := global_position
 	for i in n:
 		var seed_i := hash(Vector4(world_pos.x, world_pos.y, float(type_id), float(i)))
 		var col := _vary_color(base_col, seed_i)
 		_spawn_rng.seed = seed_i
 		var offset := Vector2(
-			_spawn_rng.randf_range(-half_extent, half_extent),
-			_spawn_rng.randf_range(-half_extent, half_extent))
+			_spawn_rng.randf_range(-random_spawn_half_radius, random_spawn_half_radius),
+			_spawn_rng.randf_range(-random_spawn_half_radius, random_spawn_half_radius))
 		var p := world_pos + offset
-		var ang := _spawn_rng.randf() * TAU
-		var sp := _spawn_rng.randf_range(burst_outward_velocity_min, burst_outward_velocity_max)
-		var vel := Vector2.from_angle(ang) * sp
-		var rot := _spawn_rng.randf_range(-0.45, 0.45)
-		var sx := _spawn_rng.randf_range(4.8, 7.8) * sz_mul
-		var sy := sx * 1.06
+		var to_hole := hole - p
+		var dist := maxf(to_hole.length(), 0.001)
+		var radial_dir := to_hole / dist
+		var tangent_dir := Vector2(-radial_dir.y, radial_dir.x)
+		if _spawn_rng.randf() < 0.5:
+			tangent_dir = -tangent_dir
+		# Spawn at rest: process shader pulls particle into the hole.
+		var vel := Vector2.ZERO
+		var rot := tangent_dir.angle()
+		var sx := _spawn_rng.randf_range(0.2, 0.25) * sz_mul 
+		var sy := sx
 		var xf := _xf_rot_scale_pos(rot, sx, sy, p)
 		emit_particle(xf, vel, col, Color(0.0, 0.0, 0.0, 0.0), _flags_emit)
 
@@ -78,54 +125,26 @@ func _vary_color(base: Color, seed_i: int) -> Color:
 	)
 
 
-func _build_process_material() -> ParticleProcessMaterial:
-	var ppm := ParticleProcessMaterial.new()
-	ppm.particle_flag_disable_z = true
-	ppm.particle_flag_align_y = true
-	ppm.lifetime_randomness = 0.32
-	ppm.direction = Vector3.ZERO
-	ppm.spread = 180.0
-	ppm.initial_velocity_min = 1.0
-	ppm.initial_velocity_max = 1.5
-	ppm.angular_velocity_min = -14.0
-	ppm.angular_velocity_max = 14.0
-	ppm.radial_accel_min = -760.0
-	ppm.radial_accel_max = -420.0
-	ppm.orbit_velocity_min = 0.12
-	ppm.orbit_velocity_max = 0.52
-	ppm.tangential_accel_min = 24.0
-	ppm.tangential_accel_max = 110.0
-	ppm.linear_accel_min = -10.0
-	ppm.linear_accel_max = -2.0
-	ppm.damping_min = 0.25
-	ppm.damping_max = 0.9
 
-	var scale_curve := Curve.new()
-	scale_curve.add_point(Vector2(0.0, 0.06))
-	scale_curve.add_point(Vector2(0.45, 2.05))
-	scale_curve.add_point(Vector2(1.0, 0.02))
-	var scale_tex := CurveTexture.new()
-	scale_tex.curve = scale_curve
-	ppm.scale_min = 0.75
-	ppm.scale_max = 1.08
-	ppm.scale_curve = scale_tex
-
-	var grad := Gradient.new()
-	grad.add_point(0.0, Color(1.0, 1.0, 1.0, 1.0))
-	grad.add_point(0.25, Color(1.0, 1.0, 1.0, 0.94))
-	grad.add_point(0.78, Color(1.0, 1.0, 1.0, 1.0))
-	grad.add_point(1.0, Color(1.0, 1.0, 1.0, 0.0))
-	var grad_tex := GradientTexture1D.new()
-	grad_tex.gradient = grad
-	ppm.color_ramp = grad_tex
-
-	return ppm
-
-
-func _make_white_px_texture() -> Texture2D:
-	var img := Image.create(4, 4, false, Image.FORMAT_RGBA8)
-	img.fill(Color.WHITE)
+func _make_sphere_texture() -> Texture2D:
+	var size := 32
+	var img := Image.create(size, size, false, Image.FORMAT_RGBA8)
+	var c := float(size - 1) * 0.5
+	var r := c
+	for y in size:
+		for x in size:
+			var dx := float(x) - c
+			var dy := float(y) - c
+			var d := sqrt(dx * dx + dy * dy) / r
+			var a := clampf(1.0 - smoothstep(0.86, 1.0, d), 0.0, 1.0)
+			img.set_pixel(x, y, Color(1.0, 1.0, 1.0, a))
 	return ImageTexture.create_from_image(img)
+
+
+func _build_canvas_material() -> ShaderMaterial:
+	var mat := ShaderMaterial.new()
+	mat.shader = load(SHADER_PATH) as Shader
+	return mat
 
 
 func _xf_rot_scale_pos(rot: float, sx: float, sy: float, origin: Vector2) -> Transform2D:

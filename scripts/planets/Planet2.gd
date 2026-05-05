@@ -172,6 +172,7 @@ func _configure_black_hole_scene() -> void:
 	if _black_hole_emitter != null:
 		_black_hole_emitter.global_position = hole
 		_black_hole_emitter.bind_mining_world(_mining_world)
+		_black_hole_emitter.configure_event_horizon(bh_radius)
 	if _black_hole_currency_mgr != null and _black_hole_currency_mgr.has_method(&"configure_hole_world_position"):
 		_black_hole_currency_mgr.configure_hole_world_position(hole)
 

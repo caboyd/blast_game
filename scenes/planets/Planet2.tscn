@@ -2,11 +2,26 @@
 
 [ext_resource type="Script" uid="uid://c15v6bdd815i3" path="res://scripts/planets/Planet2.gd" id="1"]
 [ext_resource type="PackedScene" uid="uid://wfvva5w2yqqq" path="res://scenes/world/MiningWorld.tscn" id="2"]
+[ext_resource type="Shader" uid="uid://jm5cy4rqdfdd" path="res://shaders/black_hole_process.gdshader" id="3_ywat3"]
 [ext_resource type="PackedScene" uid="uid://1xvfat41l4vs" path="res://scenes/ui/BottomPlayerStatsStrip.tscn" id="4"]
 [ext_resource type="PackedScene" uid="uid://73t7gbc5ro3t" path="res://scenes/ui/DebugOverlay.tscn" id="5"]
 [ext_resource type="Script" uid="uid://cu2mvnckh1g2m" path="res://scripts/world/BlackHoleSphere.gd" id="6"]
 [ext_resource type="Script" uid="uid://cm2ubkcy7mqdm" path="res://scripts/world/BlackHoleDebrisEmitter.gd" id="7"]
 [ext_resource type="Script" uid="uid://xk4c6nvxdw4v" path="res://scripts/world/BlackHoleCurrencyManager.gd" id="8"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_q5l78"]
+shader = ExtResource("3_ywat3")
+shader_parameter/hole_center = Vector2(0, 0)
+shader_parameter/event_horizon_radius = 16.0
+shader_parameter/event_horizon_falloff_radius = 16.0
+shader_parameter/gravity_strength = 180000.0
+shader_parameter/gravity_softening = 24.0
+shader_parameter/burst_inward_bias = 0.0
+shader_parameter/swirl_bias = 1.0
+shader_parameter/tangential_boost = 1.6
+shader_parameter/radial_damping = 0.0
+shader_parameter/max_speed = 6000.0
+shader_parameter/spawn_jitter = 0.0
 
 [node name="Planet2" type="Control" unique_id=803336066]
 layout_mode = 3
@@ -16,6 +31,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1")
+planet_id = null
 
 [node name="GameplayBlock" type="Control" parent="." unique_id=1248247386]
 layout_mode = 1
@@ -62,17 +78,21 @@ unique_name_in_owner = true
 
 [node name="BlackHoleSphere" type="Node2D" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport/World2D" unique_id=1842101001]
 unique_name_in_owner = true
-z_index = 1
+z_index = 5
 script = ExtResource("6")
 
 [node name="BlackHoleDebrisEmitter" type="GPUParticles2D" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport/World2D" unique_id=1842101002]
 unique_name_in_owner = true
-z_index = 2
+z_index = 4
+z_as_relative = false
+process_material = SubResource("ShaderMaterial_q5l78")
 script = ExtResource("7")
-particles_per_broken_cell = 12
-spawn_half_extent_px = 12.0
-burst_outward_velocity_min = 0.0
-burst_outward_velocity_max = 0.0
+particles_per_broken_cell = 6
+gravity_softening = 2.0
+tangential_boost = 0.8
+burst_inward_bias = 10.0
+spaghetti_stretch = 3.0
+color_variation = 0.025
 
 [node name="BlackHoleCurrencyManager" type="Node" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport/World2D" unique_id=1842101003]
 unique_name_in_owner = true
