@@ -93,6 +93,8 @@ tangential_boost = 0.8
 burst_inward_bias = 10.0
 spaghetti_stretch = 3.0
 color_variation = 0.025
+shadow_offset = Vector2(0.6, 2.8)
+shadow_squish = 0.8500000000000001
 
 [node name="BlackHoleCurrencyManager" type="Node" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport/World2D" unique_id=1842101003]
 unique_name_in_owner = true

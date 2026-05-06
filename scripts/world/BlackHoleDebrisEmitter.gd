@@ -20,11 +20,17 @@ const SHADER_PATH := "res://shaders/black_hole_particle.gdshader"
 @export_range(1.0, 12.0) var spaghetti_stretch: float = 3.4
 @export_range(0.0, 120.0) var color_variation: float = 0.08
 
+@export var shadow_offset: Vector2 = Vector2(1.2, 2.4)
+@export_range(0.05, 1.0) var shadow_squish: float = 0.45
+@export_range(0.0, 1.0) var shadow_alpha: float = 0.35
+@export var shadow_color: Color = Color(0.0, 0.0, 0.0, 1.0)
+
 var event_horizon_radius_px: float = 16.0
 var event_horizon_falloff_radius_px: float = 18.0
 
 var _mining_world: MiningWorld
 var _spawn_rng := RandomNumberGenerator.new()
+var _shadow_emitter: GPUParticles2D
 var _flags_emit := GPUParticles2D.EMIT_FLAG_POSITION \
 		| GPUParticles2D.EMIT_FLAG_VELOCITY \
 		| GPUParticles2D.EMIT_FLAG_COLOR \
@@ -39,11 +45,35 @@ func _ready() -> void:
 	lifetime = 600 #the engine stops rendering particles after this time even if they are still alive
 	visibility_rect = Rect2(-16384.0, -16384.0, 32768.0, 32768.0)
 	texture = _make_sphere_texture()
-	material = _build_canvas_material()
+	material = _build_canvas_material(false)
 	z_as_relative = false
 
 	z_index = 2
+	_build_shadow_emitter()
 	_push_horizon_uniforms()
+
+
+func _build_shadow_emitter() -> void:
+	# Sibling particle node renders the shadow pass. Shares process_material
+	# so its GPU simulation stays perfectly in lockstep with the main pass;
+	# we mirror every emit_particle call into it so spawns match too.
+	_shadow_emitter = GPUParticles2D.new()
+	_shadow_emitter.name = "ShadowPass"
+	_shadow_emitter.amount = amount
+	_shadow_emitter.emitting = false
+	_shadow_emitter.draw_order = draw_order
+	_shadow_emitter.lifetime = lifetime
+	_shadow_emitter.visibility_rect = visibility_rect
+	_shadow_emitter.texture = texture
+	_shadow_emitter.material = _build_canvas_material(true)
+	_shadow_emitter.z_as_relative = false
+	# Drawn first (lower z) so the real particles always sit on top.
+	_shadow_emitter.z_index = z_index - 1
+	# Share process_material so the GPU sim runs identically on both passes;
+	# combined with mirrored emit_particle() calls this keeps shadows locked
+	# to their owning particles every frame.
+	_shadow_emitter.process_material = process_material
+	add_child(_shadow_emitter)
 
 
 func configure_event_horizon(radius_px: float) -> void:
@@ -53,12 +83,23 @@ func configure_event_horizon(radius_px: float) -> void:
 
 
 func _push_horizon_uniforms() -> void:
+	var mats: Array[ShaderMaterial] = []
 	var mat := material as ShaderMaterial
 	if mat != null:
-		mat.set_shader_parameter(&"hole_center", global_position)
-		mat.set_shader_parameter(&"event_horizon_radius", event_horizon_radius_px)
-		mat.set_shader_parameter(&"event_horizon_falloff_radius", event_horizon_falloff_radius_px)
-		mat.set_shader_parameter(&"stretch_intensity", spaghetti_stretch)
+		mats.append(mat)
+	if _shadow_emitter != null:
+		var smat := _shadow_emitter.material as ShaderMaterial
+		if smat != null:
+			mats.append(smat)
+	for m in mats:
+		m.set_shader_parameter(&"hole_center", global_position)
+		m.set_shader_parameter(&"event_horizon_radius", event_horizon_radius_px)
+		m.set_shader_parameter(&"event_horizon_falloff_radius", event_horizon_falloff_radius_px)
+		m.set_shader_parameter(&"stretch_intensity", spaghetti_stretch)
+		m.set_shader_parameter(&"shadow_offset", shadow_offset)
+		m.set_shader_parameter(&"shadow_squish", shadow_squish)
+		m.set_shader_parameter(&"shadow_alpha", shadow_alpha)
+		m.set_shader_parameter(&"shadow_color", Vector3(shadow_color.r, shadow_color.g, shadow_color.b))
 	var pm := process_material as ShaderMaterial
 	if pm != null:
 		pm.set_shader_parameter(&"hole_center", global_position)
@@ -112,6 +153,8 @@ func emit_burst(world_pos: Vector2, type_id: int) -> void:
 		var sy := sx
 		var xf := _xf_rot_scale_pos(rot, sx, sy, p)
 		emit_particle(xf, vel, col, Color(0.0, 0.0, 0.0, 0.0), _flags_emit)
+		if _shadow_emitter != null:
+			_shadow_emitter.emit_particle(xf, vel, col, Color(0.0, 0.0, 0.0, 0.0), _flags_emit)
 
 
 func _vary_color(base: Color, seed_i: int) -> Color:
@@ -141,9 +184,10 @@ func _make_sphere_texture() -> Texture2D:
 	return ImageTexture.create_from_image(img)
 
 
-func _build_canvas_material() -> ShaderMaterial:
+func _build_canvas_material(is_shadow: bool = false) -> ShaderMaterial:
 	var mat := ShaderMaterial.new()
 	mat.shader = load(SHADER_PATH) as Shader
+	mat.set_shader_parameter(&"render_shadow", is_shadow)
 	return mat
 
 
