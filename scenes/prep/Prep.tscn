@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://dy8m3p7vxk01q" path="res://scripts/prep/Prep.gd" id="1"]
 [ext_resource type="PackedScene" uid="uid://bdax8wt0en6r6" path="res://scenes/prep/PrepPartIconTemplate.tscn" id="2"]
+[ext_resource type="PackedScene" uid="uid://73t7gbc5ro3t" path="res://scenes/ui/DebugOverlay.tscn" id="3"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_shop_money_yellow"]
 content_margin_left = 10.0
@@ -485,3 +486,7 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(220, 32)
 layout_mode = 2
 text = "DEBUG: Reset All Progress"
+
+[node name="UI" type="CanvasLayer" parent="." unique_id=4088117721]
+
+[node name="DebugOverlay" parent="UI" unique_id=4088117722 instance=ExtResource("3")]

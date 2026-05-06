@@ -43,7 +43,7 @@ var _money_award_amounts: PackedInt32Array = PackedInt32Array()
 var _run_mined_type_counts: Dictionary = {}
 var _run_mined_type_colors: Dictionary = {}
 
-## Master switch for world gizmos (mining ship hull/drill debug, conveyor bounds, viewport label). Toggled from `DebugOverlay` on planet; default off so Prep (no overlay) is clean.
+## Master switch for world gizmos (mining ship hull/drill debug, conveyor bounds, viewport label). Toggled from `DebugOverlay` (F3 on prep or planet); default off so normal play stays clean.
 ## Persisted in `user://debug_prefs.cfg`.
 var debug_world_visuals: bool = false
 ## Debug: reveals fog-of-war when enabled. Persisted with debug prefs.

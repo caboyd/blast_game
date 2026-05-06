@@ -1,5 +1,9 @@
 extends Control
 
+const _DEBUG_CAMERA_ZOOM_STEP: float = 1.15
+const _DEBUG_CAMERA_ZOOM_MIN: float = 0.2
+const _DEBUG_CAMERA_ZOOM_MAX: float = 2.0
+
 var _gold_spin: SpinBox
 var _gold_give: Button
 var _return_to_prep: Button
@@ -56,7 +60,11 @@ func _ready() -> void:
 		_gold_spin.value = float(GameStatistics.debug_menu_gold_give_spin)
 		_gold_spin.value_changed.connect(_on_debug_gold_spin_changed)
 	if _return_to_prep:
-		_return_to_prep.pressed.connect(_on_return_to_prep_pressed)
+		var host_rtp := _debug_host()
+		if host_rtp != null and host_rtp.has_method(&"adjust_debug_camera_zoom"):
+			_return_to_prep.pressed.connect(_on_return_to_prep_pressed)
+		else:
+			_return_to_prep.visible = false
 	if _debug_visuals:
 		_debug_visuals.button_pressed = GameStatistics.debug_world_visuals
 		_debug_visuals.toggled.connect(_on_debug_visuals_toggled)
@@ -267,17 +275,21 @@ func _adjust_debug_zoom(step_delta: int) -> void:
 	var host := _debug_host()
 	if host != null and host.has_method(&"adjust_debug_camera_zoom"):
 		host.call(&"adjust_debug_camera_zoom", step_delta)
+	else:
+		GameStatistics.debug_camera_zoom_multiplier = clampf(
+			GameStatistics.debug_camera_zoom_multiplier
+			* pow(_DEBUG_CAMERA_ZOOM_STEP, float(step_delta)),
+			_DEBUG_CAMERA_ZOOM_MIN,
+			_DEBUG_CAMERA_ZOOM_MAX
+		)
+		GameStatistics.save_debug_preferences()
 	_refresh_zoom_value()
 
 
 func _refresh_zoom_value() -> void:
 	if _zoom_value == null:
 		return
-	var zoom_multiplier: float = 1.0
-	var host := _debug_host()
-	if host != null and host.has_method(&"get_debug_camera_zoom_multiplier"):
-		zoom_multiplier = float(host.call(&"get_debug_camera_zoom_multiplier"))
-	_zoom_value.text = "%d%%" % int(roundf(zoom_multiplier * 100.0))
+	_zoom_value.text = "%d%%" % int(roundf(GameStatistics.debug_camera_zoom_multiplier * 100.0))
 
 
 func _debug_host() -> Node:

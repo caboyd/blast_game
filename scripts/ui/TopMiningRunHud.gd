@@ -1,10 +1,12 @@
 extends VBoxContainer
 
-const _ROLLING_REFRESH_MAX_INTERVAL_MS := 250
+## Min time between full pill refreshes (run $, rolling $/s, fuel ETA). Burst signals do not bypass this.
+@export_range(50, 2000, 1)
+var pill_refresh_interval_ms: int = 250
 
 @onready var _stats_label: Label = $PillWrap/StatsPill/StatsLabel
 
-var _last_roll_refresh_ms: int = 0
+var _last_pill_refresh_ms: int = 0
 
 
 func _ready() -> void:
@@ -15,12 +17,6 @@ func _ready() -> void:
 				ch.resized.connect(_on_child_band_resized)
 	visibility_changed.connect(_on_visibility_changed)
 	_on_visibility_changed()
-	if not GameStatistics.fuel_changed.is_connected(_on_stats_src_changed):
-		GameStatistics.fuel_changed.connect(_on_stats_src_changed)
-	if not GameStatistics.stats_changed.is_connected(_on_stats_src_changed):
-		GameStatistics.stats_changed.connect(_on_stats_src_changed)
-	if not PartRegistry.parts_changed.is_connected(_on_stats_src_changed):
-		PartRegistry.parts_changed.connect(_on_stats_src_changed)
 	_sync_pill_immediate()
 	call_deferred("refit_band_height")
 
@@ -43,15 +39,11 @@ func _on_visibility_changed() -> void:
 		call_deferred("refit_band_height")
 
 
-func _on_stats_src_changed(_a = null, _b = null) -> void:
-	_sync_pill_immediate()
-
-
 func _process(_delta: float) -> void:
 	var now := Time.get_ticks_msec()
-	if now - _last_roll_refresh_ms < _ROLLING_REFRESH_MAX_INTERVAL_MS:
+	var interval_ms: int = maxi(pill_refresh_interval_ms, 1)
+	if now - _last_pill_refresh_ms < interval_ms:
 		return
-	_last_roll_refresh_ms = now
 	_sync_pill_immediate()
 
 
@@ -66,6 +58,7 @@ func _sync_pill_immediate() -> void:
 		rps,
 		_format_time_remaining(sec),
 	]
+	_last_pill_refresh_ms = Time.get_ticks_msec()
 
 
 func _format_int_commas(v: int) -> String:
