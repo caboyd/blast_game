@@ -115,14 +115,20 @@ void process() {
 				float vt = dot(VELOCITY.xy, tangent_dir);
 
 				// normalize distance (0 = center, 1 = outer range)
-				float d = clamp(dist2 / (effective_well2 * 2.0), 0.0, 1.0);
+				// float chunk_size = 128.0;
+				// float orbit_radius = chunk_size * 2.0 * 2.0; // 2 chunks radius
+				// float orbit_radius_sq = orbit_radius * orbit_radius;
+				float max_distance2 = effective_well2 * 32.0;
+				float d = clamp(dist2 / max_distance2, 0.0, 1.0);
 
-				// gamma curve (higher = stronger suppression near center)
-				float gamma = 4.0;
+				// invert so center = 1, far = 0
+				float t = 1.0 - d;
 
-				float t = pow(d, gamma);
+				// higher = swirling starts closer to black hole center
+				float gamma = 2.1;
+				t = pow(t, gamma);
 
-				float limit = mix(0.9, 80.0, t);
+				float limit = mix(0.2, 85.0, t);
 
 				vt = clamp(vt, -limit, limit);
 
