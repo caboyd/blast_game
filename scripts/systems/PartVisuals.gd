@@ -1,21 +1,11 @@
 class_name PartVisuals
 extends RefCounted
 
-## Legacy single root (pre split); removed on attach so old ships clean up.
-const LEGACY_ROOT_NAME := &"PartsVisualRoot"
-## Legacy z-ordered roots (pre attachment slots); removed on attach.
-const TREADS_ROOT_NAME := &"PartsTreadsRoot"
-const UPPER_ROOT_NAME := &"PartsUpperRoot"
-
 
 static func attach_to_ship(ship: Node2D) -> void:
 	if ship == null:
 		return
 	var chained_follower: bool = ship is ShipBase and (ship as ShipBase).follower_visual_only
-	for root_name in [LEGACY_ROOT_NAME, TREADS_ROOT_NAME, UPPER_ROOT_NAME]:
-		var existing: Node = ship.get_node_or_null(String(root_name))
-		if existing:
-			existing.queue_free()
 	var treads_slot: Marker2D = ship.get_node_or_null(^"%Attachment_Treads") as Marker2D
 	var drill_slot: Marker2D = ship.get_node_or_null(^"%Attachment_Drill") as Marker2D
 	var fuel_tank_slot: Marker2D = ship.get_node_or_null(^"%Attachment_FuelTank") as Marker2D

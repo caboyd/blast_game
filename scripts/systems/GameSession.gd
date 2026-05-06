@@ -1,5 +1,8 @@
 extends Node
 
+## Emitted once when `init()` completes (idempotent).
+signal session_ready
+
 ## Persists run selection across Prep → planet scenes. Autoload.
 const PREP_SCENE := "res://scenes/prep/Prep.tscn"
 const _CAREER_SAVE_PATH := "user://career.cfg"
@@ -8,16 +11,26 @@ const _PART_PICKUP_BY_TYPE_SECTION := "part_pickup_by_type"
 const _CAREER_KEY_BLOCKS := "total_blocks_destroyed"
 const _CAREER_KEY_MONEY := "money"
 const _CAREER_KEY_SELECTED_SHIP := "selected_ship_id"
+const _CAREER_KEY_SELECTED_STAGE := "selected_stage_id"
 
-const _STAGE_REVEAL_MAGIC := 0x52455631
-const _MINING_CHUNK_BYTES := 40 * 40
+const _STAGE_REVEAL_MAGIC := 0x52455632
+const _MINING_CHUNK_BYTES := 32 * 32
 const _BLOCK_DISCOVERY_SECTION := "block_discovery"
+const _PLANET1_SCENE := preload("res://scenes/planets/Planet1.tscn")
+const _PLANET2_SCENE := preload("res://scenes/planets/Planet2.tscn")
+
+## Stage id → mission planet scene path.
+const STAGE_PLANET_SCENE_PATHS: Dictionary = {
+	&"planet1": "res://scenes/planets/Planet1.tscn",
+	&"planet2": "res://scenes/planets/Planet2.tscn",
+}
+const STAGE_PLANET_SCENES: Dictionary = {
+	&"planet1": _PLANET1_SCENE,
+	&"planet2": _PLANET2_SCENE,
+}
 
 var selected_ship_id: StringName = &"scout"
-## Reserved: slot index → turret type id; empty = no pre-mounted turrets from Prep.
-var mounted_turrets: Array[Dictionary] = []
-## Default when Prep calls `go_to_planet(GameSession.next_planet_scene)`.
-var next_planet_scene: String = "res://scenes/planets/Planet1.tscn"
+var selected_stage_id: StringName = &"planet1"
 ## Cumulative blocks destroyed across completed runs; saved to disk.
 var career_blocks_destroyed: int = 0
 var _career_write_pending: bool = false
@@ -28,19 +41,42 @@ var _stage_block_types_found: Dictionary = {}
 ## String slot key (`fuel_tank` / `drill` / `treads`) → dict composite key `"%d|%d" % [tier, pickup_index]` → true
 var _part_pickups_by_type: Dictionary = {}
 
+var initialized := false
 
-func _ready() -> void:
-	# Defer so `ShipDataRegistry` (and other autoloads) finish `_ready` before career applies upgrade keys.
-	call_deferred("_load_career")
+
+func init() -> void:
+	if initialized:
+		return
+	_load_career()
+	initialized = true
+	session_ready.emit()
 
 
 func go_to_planet(path: String) -> void:
 	if path.is_empty():
 		push_error("GameSession.go_to_planet: path empty")
 		return
-	var err := get_tree().change_scene_to_file(path)
+	var scene := _get_preloaded_planet_scene_for_path(path)
+	var err := get_tree().change_scene_to_packed(scene) if scene != null else get_tree().change_scene_to_file(path)
 	if err != OK:
 		push_error("GameSession.go_to_planet failed: %s" % error_string(err))
+
+
+func get_stage_planet_scene_path() -> String:
+	var sc: Variant = STAGE_PLANET_SCENE_PATHS.get(selected_stage_id)
+	if typeof(sc) != TYPE_STRING:
+		sc = STAGE_PLANET_SCENE_PATHS[&"planet1"]
+	var p: String = str(sc).strip_edges()
+	if p.is_empty():
+		return str(STAGE_PLANET_SCENE_PATHS[&"planet1"])
+	return p
+
+
+func _get_preloaded_planet_scene_for_path(path: String) -> PackedScene:
+	for sid in STAGE_PLANET_SCENE_PATHS:
+		if STAGE_PLANET_SCENE_PATHS[sid] == path:
+			return STAGE_PLANET_SCENES.get(sid) as PackedScene
+	return null
 
 
 func return_to_prep() -> void:
@@ -63,12 +99,15 @@ func _load_career() -> void:
 	selected_ship_id = StringName(
 		str(c.get_value(_CAREER_SECTION, _CAREER_KEY_SELECTED_SHIP, "scout"))
 	)
+	var stage_raw: String = str(c.get_value(_CAREER_SECTION, _CAREER_KEY_SELECTED_STAGE, "planet1"))
+	selected_stage_id = StringName(stage_raw)
+	if not STAGE_PLANET_SCENES.has(selected_stage_id):
+		selected_stage_id = &"planet1"
 	if ShipDataRegistry:
 		ShipDataRegistry.reload_active()
 	UpgradeBus.read_from_career_config(c)
 	PartRegistry.load_from_config_file(c)
 	load_part_pickup_collected_from_config(c)
-	PartRegistry.migrate_legacy_pickup_ids_to_game_session_pickup_slots()
 	GameStatistics.apply_fuel_max_from_career_load()
 	_load_block_discovery_from_config(c)
 
@@ -91,6 +130,7 @@ func _write_career_to_disk() -> void:
 	c.set_value(_CAREER_SECTION, _CAREER_KEY_BLOCKS, career_blocks_destroyed)
 	c.set_value(_CAREER_SECTION, _CAREER_KEY_MONEY, GameStatistics.money)
 	c.set_value(_CAREER_SECTION, _CAREER_KEY_SELECTED_SHIP, String(selected_ship_id))
+	c.set_value(_CAREER_SECTION, _CAREER_KEY_SELECTED_STAGE, String(selected_stage_id))
 	UpgradeBus.write_to_career_config(c)
 	PartRegistry.write_to_config_file(c)
 	write_part_pickup_collected_to_config(c)
@@ -246,8 +286,9 @@ func write_part_pickup_collected_to_config(c: ConfigFile) -> void:
 
 ## Call from Prep when starting a mission so HUD "blocks" counts this run only.
 func begin_run() -> void:
-	GameStatistics.debug_fog_disabled = false
 	GameStatistics.set_blocks_run_baseline()
+	GameStatistics.reset_run_mining_economy_tracking()
+	GameStatistics.reset_run_mined_resources()
 	GameStatistics.reset_fuel_for_run()
 
 
@@ -269,7 +310,7 @@ func _stage_reveal_path(stage_id: StringName) -> String:
 	return "user://stage_%s_reveal.dat" % sid
 
 
-## Returns Dictionary with Vector2i keys -> PackedByteArray reveal mask (40*40 bytes per chunk).
+## Returns Dictionary with Vector2i keys -> PackedByteArray reveal mask (`MiningWorld.CHUNK_SIZE²` bytes per chunk).
 func load_stage_reveal(stage_id: StringName) -> Dictionary:
 	var path := _stage_reveal_path(stage_id)
 	if not FileAccess.file_exists(path):
@@ -316,10 +357,12 @@ func save_stage_reveal(stage_id: StringName, reveals: Dictionary) -> void:
 func reset_all_progress() -> void:
 	career_blocks_destroyed = 0
 	selected_ship_id = &"scout"
+	selected_stage_id = &"planet1"
 	GameStatistics.money = 0
 	GameStatistics.total_blocks_destroyed = 0
 	GameStatistics._blocks_destroyed_run_baseline = 0
 	GameStatistics.furthest_depth_cells = 0
+	GameStatistics.reset_run_mined_resources()
 	UpgradeBus._levels.clear()
 	clear_part_pickup_collected_by_type()
 	PartRegistry.reset_to_t0_defaults()
@@ -355,7 +398,3 @@ func end_current_run_to_prep() -> void:
 	_write_career_to_disk()
 	GameStatistics.set_blocks_run_baseline()
 	call_deferred("return_to_prep")
-
-
-func on_ship_destroyed() -> void:
-	end_current_run_to_prep()

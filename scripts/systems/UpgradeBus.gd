@@ -3,8 +3,7 @@ extends Node
 const _SHIP_UPGRADE_MATH = preload("res://scripts/data/ShipUpgradeMath.gd")
 
 ## Central hub for upgrade purchases. UI calls `try_purchase_count`; gameplay systems connect to `upgrade_purchased`.
-## Mining upgrade defs/costs come from `ShipDataRegistry` (per-ship `.tres`). Legacy combat/click defs stay in code.
-## Optional `max_level` in legacy defs (inclusive cap). Omit `max_level` for infinite levels.
+## Upgrade definitions and costs come from `ShipDataRegistry` (per-ship `.tres`), including caps via `max_level` where authored.
 ## `laser_count` / `cannon_count` caps come from current Ship small-slot pool (shared).
 
 signal upgrade_purchased(id: StringName, new_level: int)

@@ -36,6 +36,7 @@ var _debug_layer: Node2D
 
 var _tread_cycle_t: float = 0.0
 var _tread_stopping: bool = false
+var _audio_listener_2d: AudioListener2D
 
 
 func _ready() -> void:
@@ -45,7 +46,6 @@ func _ready() -> void:
 	var sd: Resource = ShipDataRegistry.get_active()
 	if sd == null:
 		push_error("ShipDataRegistry.get_active() returned null")
-		assert(false)
 		return
 	move_speed_px_s = float(sd.get("move_speed_px_s"))
 	turn_rate_rad_s = float(sd.get("turn_rate_rad_s"))
@@ -75,6 +75,9 @@ func _ready() -> void:
 	add_child(_debug_layer)
 	_debug_layer.add_to_group(&"mining_ship")
 	_setup_pickup_overlap_area()
+	_audio_listener_2d = AudioListener2D.new()
+	_audio_listener_2d.name = &"AudioListener2D"
+	add_child(_audio_listener_2d)
 
 
 func _setup_pickup_overlap_area() -> void:
@@ -110,6 +113,8 @@ func _ready_follower_visual_only() -> void:
 
 
 func get_effective_mine_damage_per_tick() -> float:
+	if GameStatistics.debug_mine_damage_override_enabled:
+		return GameStatistics.debug_mine_damage_override_value
 	var v: float = ShipDataRegistry.apply_effects_for_stat(
 		&"mine_damage_per_tick", _base_mine_damage_per_tick
 	)
@@ -117,6 +122,8 @@ func get_effective_mine_damage_per_tick() -> float:
 
 
 func get_effective_vision_radius_cells() -> int:
+	if GameStatistics.debug_vision_radius_cells_override_enabled:
+		return GameStatistics.debug_vision_radius_cells_override_value
 	return maxi(
 		1,
 		ShipDataRegistry.apply_effects_for_stat_int(&"vision_radius_cells", _base_vision_radius_cells)
@@ -124,8 +131,16 @@ func get_effective_vision_radius_cells() -> int:
 
 
 func get_effective_move_speed_px_s() -> float:
+	if GameStatistics.debug_move_speed_override_enabled:
+		return GameStatistics.debug_move_speed_override_value
 	var v: float = ShipDataRegistry.apply_effects_for_stat(&"move_speed_px_s", _base_move_speed_px_s)
 	return PartRegistry.apply_effects_for_stat(&"move_speed_px_s", v)
+
+
+func get_effective_mine_interval_s() -> float:
+	if GameStatistics.debug_mine_interval_override_enabled:
+		return GameStatistics.debug_mine_interval_override_value
+	return mine_interval_s
 
 
 func get_effective_fuel_drain_per_second() -> float:
@@ -133,6 +148,8 @@ func get_effective_fuel_drain_per_second() -> float:
 
 
 func get_effective_turn_rate_rad_s() -> float:
+	if GameStatistics.debug_turn_rate_rad_s_override_enabled:
+		return GameStatistics.debug_turn_rate_rad_s_override_value
 	return maxf(
 		0.0,
 		ShipDataRegistry.apply_effects_for_stat(&"turn_rate_rad_s", _base_turn_rate_rad_s)
@@ -148,6 +165,8 @@ func carve_hull_terrain_on_spawn() -> void:
 func _physics_process(delta: float) -> void:
 	if grid == null:
 		return
+	if _audio_listener_2d != null:
+		_audio_listener_2d.make_current()
 	var mouse := get_global_mouse_position()
 	var dir := mouse - global_position
 	if dir.length_squared() > 0.0001:
@@ -202,20 +221,8 @@ func _draw_mining_debug(ci: CanvasItem) -> void:
 	var color_hull_blocked: Color = Color(0.95, 0.2, 0.22, 0.9)
 	var color_mine_dot: Color = Color(1.0, 0.12, 0.12, 0.95)
 	var color_drill_bearing: Color = Color(1.0, 0.35, 0.35, 0.85)
-	var color_chunk_border: Color = Color(0.3, 0.65, 1.0, 0.88)
 
 	var cs: float = MiningWorld.CELL_SIZE_PX
-	var chunk_px: float = float(MiningWorld.CHUNK_SIZE) * cs
-	var origin_chunk: Vector2i = grid.get_chunk_for_world_pos(global_position)
-	const _CHUNK_BORDERS_HALF: int = 4
-	for dcy in range(-_CHUNK_BORDERS_HALF, _CHUNK_BORDERS_HALF + 1):
-		for dcx in range(-_CHUNK_BORDERS_HALF, _CHUNK_BORDERS_HALF + 1):
-			var cchunk: Vector2i = origin_chunk + Vector2i(dcx, dcy)
-			var tlx: float = float(cchunk.x * MiningWorld.CHUNK_SIZE) * cs
-			var tly: float = float(cchunk.y * MiningWorld.CHUNK_SIZE) * cs
-			_draw_world_rect_outline(
-				ci, Vector2(tlx, tly), chunk_px, chunk_px, color_chunk_border, 1.0
-			)
 	var hull_c_world: Vector2 = global_position
 	var rh: float = hull_radius_px
 	var rh_blocked: float = rh + maxf(0.0, hull_debug_blocked_pad_px)
@@ -322,6 +329,8 @@ func get_drill_game_radius_px() -> float:
 
 
 func get_effective_drill_game_radius_px() -> float:
+	if GameStatistics.debug_drill_range_game_px_override_enabled:
+		return GameStatistics.debug_drill_range_game_px_override_value
 	var base_game: float = get_drill_game_radius_px()
 	var bonus: float = ShipDataRegistry.apply_effects_for_stat(&"drill_range_bonus_game_px", 0.0)
 	return base_game + bonus
@@ -359,6 +368,16 @@ func _front_world() -> Vector2:
 
 func _drill_center_world() -> Vector2:
 	return _front_world()
+
+
+func get_drill_center_world() -> Vector2:
+	return _drill_center_world()
+
+
+func get_hull_center_world() -> Vector2:
+	if _hull_shape:
+		return _hull_shape.global_position
+	return global_position
 
 
 func _circle_overlaps_cell_rect(center: Vector2, radius: float, cell_x: int, cell_y: int) -> bool:
@@ -425,13 +444,16 @@ func _move_with_collision(step: Vector2) -> void:
 func _tick_mining(delta: float) -> void:
 	var drill_c: Vector2 = _drill_center_world()
 	var drill_r: float = get_effective_drill_world_radius_px()
-	if not grid.has_solid_overlapping_circle_world(drill_c, drill_r):
+	var biting: bool = grid.has_solid_overlapping_circle_world(drill_c, drill_r)
+	AudioManager.set_drilling(true, drill_c, biting)
+	if not biting:
 		_mine_accum_time = 0.0
 		return
 
 	_mine_accum_time += delta
-	while _mine_accum_time >= mine_interval_s:
-		_mine_accum_time -= mine_interval_s
+	var interval_s := get_effective_mine_interval_s()
+	while _mine_accum_time >= interval_s:
+		_mine_accum_time -= interval_s
 		_mine_pending_damage += get_effective_mine_damage_per_tick()
 		var whole: int = int(floor(_mine_pending_damage))
 		if whole <= 0:
@@ -440,7 +462,9 @@ func _tick_mining(delta: float) -> void:
 		drill_c = _drill_center_world()
 		drill_r = get_effective_drill_world_radius_px()
 		var allowed := PartRegistry.get_drill_allowed_mine_type_ids()
-		grid.mine_solid_in_circle_world(drill_c, drill_r, whole, allowed)
+		var hp_removed: int = grid.mine_solid_in_circle_world(drill_c, drill_r, whole, allowed)
+		if hp_removed > 0:
+			AudioManager.play_dirt_mine(drill_c)
 
 
 class _MiningDebugLayer extends Node2D:

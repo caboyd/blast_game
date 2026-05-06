@@ -5,15 +5,8 @@ uniform sampler2D mask_tex : source_color, filter_nearest;
 // R = type id / 255, G = hp ratio 0..1
 uniform sampler2D type_tex : source_color, filter_nearest;
 
-uniform int type_count : hint_range(0, 8) = 3;
-uniform vec4 type_colors[8];
-
-const int HIGHLIGHT_MAX = 8;
-
-uniform int highlight_count : hint_range(0, 8) = 0;
-uniform vec2 highlight_cells[HIGHLIGHT_MAX];
-uniform vec4 highlight_tint : source_color = vec4(1.0, 0.92, 0.15, 1.0);
-uniform float highlight_mix : hint_range(0.0, 1.0) = 0.72;
+uniform int type_count : hint_range(0, 16) = 6;
+uniform vec4 type_colors[16];
 
 // Contour outline between differing materials / material vs empty.
 uniform vec4 edge_color : source_color = vec4(0.04, 0.04, 0.06, 1.0);
@@ -183,7 +176,7 @@ void fragment() {
 	float best_rank = -1.0;
 	float second_rank = -1.0;
 
-	for (int i = 1; i < 8; i++) {
+	for (int i = 1; i < 16; i++) {
 		if (i >= type_count) {
 			break;
 		}
@@ -223,16 +216,17 @@ void fragment() {
 		discard;
 	}
 
-	float hp_ratio = clamp(best_hp_sum / max(best_w, 1e-5), 0.0, 1.0);
-	float damage_taken = 1.0 - hp_ratio;
+	// float hp_ratio = clamp(best_hp_sum / max(best_w, 1e-5), 0.0, 1.0);
+	// float damage_taken = 1.0 - hp_ratio;
 	vec4 base = type_colors[best_id];
-	vec3 rgb;
+	vec3 rgb = base.rgb;
 	
-	if (best_id == MATERIAL_FUEL) {
-		rgb = fuel_cell_rgb(fuel_world_origin + p, hp_ratio, TIME, base.rgb);
-	} else {
-		rgb = base.rgb * mix(0.45, 1.0, hp_ratio);
-	}
+	 if (best_id == MATERIAL_FUEL) {
+	 	rgb = fuel_cell_rgb(fuel_world_origin + p, 1.0, TIME, base.rgb);
+	 } 
+	// else {
+	// 	rgb = base.rgb * mix(0.45, 1.0, hp_ratio);
+	// }
 
 	// Outline at contour between differing materials, or along outer boundary.
 	// Inner contour: best vs second using rank (matches color choice).
@@ -253,29 +247,5 @@ void fragment() {
 	float e = clamp(max(inner_edge, outer_edge), 0.0, 1.0);
 	rgb = mix(rgb, edge_color.rgb, e * edge_color.a);
 
-	vec4 col = vec4(rgb, base.a * alpha);
-
-	// Highlight cell resolution: pick the solid corner of the winning material
-	// whose bilinear weight dominates this pixel.
-	ivec2 cc = i00;
-	float hl_best = -1.0;
-	if (s00.present > 0.5 && s00.mid == best_id && w00 > hl_best) { hl_best = w00; cc = i00 + ivec2(0, 0); }
-	if (s10.present > 0.5 && s10.mid == best_id && w10 > hl_best) { hl_best = w10; cc = i00 + ivec2(1, 0); }
-	if (s01.present > 0.5 && s01.mid == best_id && w01 > hl_best) { hl_best = w01; cc = i00 + ivec2(0, 1); }
-	if (s11.present > 0.5 && s11.mid == best_id && w11 > hl_best) { hl_best = w11; cc = i00 + ivec2(1, 1); }
-
-	int hc_n = clamp(highlight_count, 0, HIGHLIGHT_MAX);
-	for (int hi = 0; hi < hc_n; hi++) {
-		vec2 hcv = highlight_cells[hi];
-		if (hcv.x < -0.5 || hcv.y < -0.5) {
-			continue;
-		}
-		ivec2 hc = ivec2(int(hcv.x + 0.5), int(hcv.y + 0.5));
-		if (cc == hc) {
-			col.rgb = mix(col.rgb, highlight_tint.rgb, highlight_mix);
-			break;
-		}
-	}
-
-	COLOR = col;
+	COLOR = vec4(rgb, base.a * alpha);
 }

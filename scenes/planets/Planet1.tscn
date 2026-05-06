@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://conweb5pvayjf" path="res://scripts/planets/Planet1.gd" id="1"]
 [ext_resource type="PackedScene" uid="uid://wfvva5w2yqqq" path="res://scenes/world/MiningWorld.tscn" id="2"]
-[ext_resource type="PackedScene" uid="uid://s27h7pw54ab5" path="res://scenes/ui/BottomHUD.tscn" id="4"]
+[ext_resource type="PackedScene" uid="uid://b8statsstrip001" path="res://scenes/ui/BottomPlayerStatsStrip.tscn" id="4"]
 [ext_resource type="PackedScene" path="res://scenes/ui/DebugOverlay.tscn" id="5"]
 
 [node name="Planet1" type="Control" unique_id=803336066]
@@ -19,7 +19,6 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_bottom = -200.0
 grow_horizontal = 2
 grow_vertical = 2
 
@@ -30,7 +29,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-ratio = 2.4615386
+ratio = 1.77778
 
 [node name="ViewportFrame" type="Control" parent="GameplayBlock/AspectRatioContainer" unique_id=646478256]
 layout_mode = 2
@@ -48,8 +47,9 @@ stretch = true
 [node name="GameSubViewport" type="SubViewport" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer" unique_id=993360703]
 unique_name_in_owner = true
 handle_input_locally = false
+audio_listener_enable_2d = true
 msaa_2d = 3
-size = Vector2i(1280, 520)
+size = Vector2i(1280, 720)
 render_target_update_mode = 4
 
 [node name="GameCamera2D" type="Camera2D" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport" unique_id=302616392]
@@ -77,19 +77,47 @@ editor_only = false
 
 [node name="ViewportInfo" type="Label" parent="GameplayBlock/AspectRatioContainer/ViewportFrame" unique_id=272244834]
 unique_name_in_owner = true
-layout_mode = 0
+layout_mode = 1
+anchors_preset = 2
+anchor_left = 0.0
+anchor_top = 1.0
+anchor_right = 0.0
+anchor_bottom = 1.0
 offset_left = 6.0
-offset_top = 4.0
+offset_top = -54.0
 offset_right = 400.0
-offset_bottom = 46.0
+offset_bottom = -8.0
+grow_horizontal = 0
+grow_vertical = 0
 theme_override_colors/font_color = Color(0.85, 0.95, 1, 0.9)
 theme_override_colors/font_outline_color = Color(0.05, 0.05, 0.12, 0.9)
 theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 14
 text = "—"
 
+[node name="CellHoverOverlay" type="Label" parent="GameplayBlock/AspectRatioContainer/ViewportFrame" unique_id=272244836]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 2
+anchor_left = 0.0
+anchor_top = 1.0
+anchor_right = 0.0
+anchor_bottom = 1.0
+offset_left = 6.0
+offset_top = -82.0
+offset_right = 486.0
+offset_bottom = -58.0
+grow_horizontal = 0
+grow_vertical = 0
+horizontal_alignment = 0
+theme_override_colors/font_color = Color(0.92, 0.96, 1, 0.95)
+theme_override_colors/font_outline_color = Color(0.05, 0.05, 0.12, 0.92)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 14
+text = ""
+
 [node name="UI" type="CanvasLayer" parent="." unique_id=508636688]
 
-[node name="BottomHUD" parent="UI" unique_id=670664507 instance=ExtResource("4")]
+[node name="BottomPlayerStats" parent="UI" unique_id=670664507 instance=ExtResource("4")]
 
 [node name="DebugOverlay" parent="UI" unique_id=1221568308 instance=ExtResource("5")]

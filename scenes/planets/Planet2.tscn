@@ -1,0 +1,161 @@
+[gd_scene format=3 uid="uid://dbddxgkqbh86a"]
+
+[ext_resource type="Script" uid="uid://c15v6bdd815i3" path="res://scripts/planets/Planet2.gd" id="1"]
+[ext_resource type="PackedScene" uid="uid://wfvva5w2yqqq" path="res://scenes/world/MiningWorld.tscn" id="2"]
+[ext_resource type="Shader" uid="uid://jm5cy4rqdfdd" path="res://shaders/black_hole_process.gdshader" id="3_ywat3"]
+[ext_resource type="PackedScene" uid="uid://1xvfat41l4vs" path="res://scenes/ui/BottomPlayerStatsStrip.tscn" id="4"]
+[ext_resource type="PackedScene" uid="uid://73t7gbc5ro3t" path="res://scenes/ui/DebugOverlay.tscn" id="5"]
+[ext_resource type="Script" uid="uid://cu2mvnckh1g2m" path="res://scripts/world/BlackHoleSphere.gd" id="6"]
+[ext_resource type="Script" uid="uid://cm2ubkcy7mqdm" path="res://scripts/world/BlackHoleDebrisEmitter.gd" id="7"]
+[ext_resource type="Script" uid="uid://xk4c6nvxdw4v" path="res://scripts/world/BlackHoleCurrencyManager.gd" id="8"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_q5l78"]
+shader = ExtResource("3_ywat3")
+shader_parameter/hole_center = Vector2(0, 0)
+shader_parameter/event_horizon_radius = 16.0
+shader_parameter/event_horizon_falloff_radius = 16.0
+shader_parameter/gravity_strength = 180000.0
+shader_parameter/gravity_softening = 24.0
+shader_parameter/burst_inward_bias = 0.0
+shader_parameter/swirl_bias = 1.0
+shader_parameter/tangential_boost = 1.6
+shader_parameter/radial_damping = 0.0
+shader_parameter/max_speed = 6000.0
+shader_parameter/spawn_jitter = 0.0
+
+[node name="Planet2" type="Control" unique_id=803336066]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+planet_id = null
+
+[node name="GameplayBlock" type="Control" parent="." unique_id=1248247386]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="AspectRatioContainer" type="AspectRatioContainer" parent="GameplayBlock" unique_id=430329472]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+ratio = 1.77778
+
+[node name="ViewportFrame" type="Control" parent="GameplayBlock/AspectRatioContainer" unique_id=646478256]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="SubViewportContainer" type="SubViewportContainer" parent="GameplayBlock/AspectRatioContainer/ViewportFrame" unique_id=1387796240]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+stretch = true
+
+[node name="GameSubViewport" type="SubViewport" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer" unique_id=993360703]
+unique_name_in_owner = true
+handle_input_locally = false
+msaa_2d = 3
+audio_listener_enable_2d = true
+size = Vector2i(1280, 719)
+render_target_update_mode = 4
+
+[node name="GameCamera2D" type="Camera2D" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport" unique_id=302616392]
+unique_name_in_owner = true
+
+[node name="World2D" type="Node2D" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport" unique_id=264430991]
+
+[node name="BlackHoleSphere" type="Node2D" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport/World2D" unique_id=1842101001]
+unique_name_in_owner = true
+z_index = 5
+script = ExtResource("6")
+
+[node name="BlackHoleDebrisEmitter" type="GPUParticles2D" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport/World2D" unique_id=1842101002]
+unique_name_in_owner = true
+z_index = 4
+z_as_relative = false
+process_material = SubResource("ShaderMaterial_q5l78")
+script = ExtResource("7")
+particles_per_broken_cell = 6
+gravity_softening = 2.0
+tangential_boost = 0.8
+burst_inward_bias = 10.0
+spaghetti_stretch = 3.0
+color_variation = 0.025
+
+[node name="BlackHoleCurrencyManager" type="Node" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport/World2D" unique_id=1842101003]
+unique_name_in_owner = true
+script = ExtResource("8")
+
+[node name="MiningWorld" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport/World2D" unique_id=1384592697 instance=ExtResource("2")]
+unique_name_in_owner = true
+stage_id = &"planet2"
+terrain_shader_path = "res://shaders/planet2_marching.gdshader"
+shader_type_color_max = 24
+
+[node name="ShipSpawn" type="Node2D" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport/World2D" unique_id=945517021]
+unique_name_in_owner = true
+
+[node name="Border" type="ReferenceRect" parent="GameplayBlock/AspectRatioContainer/ViewportFrame" unique_id=216972038]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+border_color = Color(0.45, 0.78, 1, 0.95)
+border_width = 2.0
+editor_only = false
+
+[node name="ViewportInfo" type="Label" parent="GameplayBlock/AspectRatioContainer/ViewportFrame" unique_id=272244834]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 6.0
+offset_top = -54.0
+offset_right = 400.0
+offset_bottom = -8.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_colors/font_color = Color(0.85, 0.95, 1, 0.9)
+theme_override_colors/font_outline_color = Color(0.05, 0.05, 0.12, 0.9)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 14
+text = "—"
+
+[node name="CellHoverOverlay" type="Label" parent="GameplayBlock/AspectRatioContainer/ViewportFrame" unique_id=272244836]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 6.0
+offset_top = -82.0
+offset_right = 486.0
+offset_bottom = -58.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_colors/font_color = Color(0.92, 0.96, 1, 0.95)
+theme_override_colors/font_outline_color = Color(0.05, 0.05, 0.12, 0.92)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 14
+
+[node name="UI" type="CanvasLayer" parent="." unique_id=508636688]
+
+[node name="BottomPlayerStats" parent="UI" unique_id=670664507 instance=ExtResource("4")]
+
+[node name="DebugOverlay" parent="UI" unique_id=1221568308 instance=ExtResource("5")]

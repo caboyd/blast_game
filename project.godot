@@ -15,7 +15,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 [application]
 
 config/name="Blast"
-run/main_scene="res://scenes/prep/Prep.tscn"
+run/main_scene="res://scenes/bootstrap/Bootstrap.tscn"
 config/features=PackedStringArray("4.6")
 
 [autoload]
@@ -27,6 +27,7 @@ ShipDataRegistry="*res://scripts/systems/ShipDataRegistry.gd"
 UpgradeBus="*res://scripts/systems/UpgradeBus.gd"
 GameStatistics="*res://scripts/stats/GameStatistics.gd"
 MiningMissionUI="*res://scripts/systems/MiningMissionUI.gd"
+AudioManager="*res://scripts/systems/AudioManager.gd"
 
 [display]
 

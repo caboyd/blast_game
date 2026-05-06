@@ -1,5 +1,8 @@
 extends Node
 
+## Emitted once when `init()` completes (idempotent; subsequent `init()` does not emit again).
+signal registry_ready
+
 ## Loads all `res://data/ships/*.tres` and the active `ShipData` for `GameSession.selected_ship_id`
 ## (may be locked — use `is_ship_unlocked` before starting a run).
 ## Upgrade *levels* are global; effects from every ship's upgrade list apply together at runtime.
@@ -9,41 +12,52 @@ const _SHIP_DATA_SCRIPT = preload("res://scripts/data/ShipData.gd")
 const _ShipUpgradeEffectScript = preload("res://scripts/data/ShipUpgradeEffect.gd")
 
 const _SHIPS_DIR := "res://data/ships/"
+const _SHIP_DATA_MANIFEST: Array[Resource] = [
+	preload("res://data/ships/scout.tres"),
+	preload("res://data/ships/prospector.tres"),
+]
 
 var _active: Resource
 var _ships_by_id: Dictionary = {}  # StringName -> ShipData Resource
 var _ship_ids_sorted: Array[StringName] = []
 ## First definition per `prep_sort_index` order (matches former `get_upgrade` scan).
 var _upgrade_by_id: Dictionary = {}  # StringName -> upgrade resource
+var _loaded := false
+var _loading := false
+var initialized := false
 
 
-func _ready() -> void:
-	reload_all()
+func init() -> void:
+	if initialized:
+		return
+	ensure_loaded()
+	initialized = true
+	registry_ready.emit()
 
 
 func reload_all() -> void:
+	if _loading:
+		return
+	_loading = true
 	_ships_by_id.clear()
 	_ship_ids_sorted.clear()
 	_upgrade_by_id.clear()
+	_loaded = false
 	var dir := DirAccess.open(_SHIPS_DIR)
 	if dir == null:
 		push_error("ShipDataRegistry: cannot open %s" % _SHIPS_DIR)
-		_active = null
-		return
-	dir.list_dir_begin()
-	var fname := dir.get_next()
-	while fname != "":
-		if not dir.current_is_dir() and fname.ends_with(".tres"):
-			var path: String = _SHIPS_DIR.path_join(fname)
-			var res: Resource = ResourceLoader.load(path, "", ResourceLoader.CACHE_MODE_REUSE)
-			if res != null and res.get_script() == _SHIP_DATA_SCRIPT:
-				var sid: StringName = res.get("id") as StringName
-				if String(sid).is_empty():
-					push_error("ShipDataRegistry: ship id empty in %s" % path)
-				else:
-					_ships_by_id[sid] = res
-		fname = dir.get_next()
-	dir.list_dir_end()
+	else:
+		dir.list_dir_begin()
+		var fname := dir.get_next()
+		while fname != "":
+			if not dir.current_is_dir() and _is_ship_resource_file(fname):
+				var path: String = _SHIPS_DIR.path_join(_resource_path_from_dir_entry(fname))
+				var res: Resource = ResourceLoader.load(path, "", ResourceLoader.CACHE_MODE_REUSE)
+				_register_ship_data_resource(res, path)
+			fname = dir.get_next()
+		dir.list_dir_end()
+	for res in _SHIP_DATA_MANIFEST:
+		_register_ship_data_resource(res, str(res.resource_path))
 	var keys: Array = _ships_by_id.keys()
 	keys.sort_custom(
 		func(a: Variant, b: Variant) -> bool:
@@ -59,7 +73,39 @@ func reload_all() -> void:
 	for k in keys:
 		_ship_ids_sorted.append(k as StringName)
 	_rebuild_upgrade_index()
+	_loaded = true
 	reload_active()
+	_loading = false
+
+
+func ensure_loaded() -> void:
+	if _loaded or _loading:
+		return
+	reload_all()
+
+
+func _is_ship_resource_file(fname: String) -> bool:
+	return fname.ends_with(".tres") or fname.ends_with(".tres.remap")
+
+
+func _resource_path_from_dir_entry(fname: String) -> String:
+	if fname.ends_with(".remap"):
+		return fname.trim_suffix(".remap")
+	return fname
+
+
+func _is_ship_data_resource(res: Resource) -> bool:
+	return res != null and (res is ShipData or res.get_script() == _SHIP_DATA_SCRIPT)
+
+
+func _register_ship_data_resource(res: Resource, path: String) -> void:
+	if not _is_ship_data_resource(res):
+		return
+	var sid: StringName = res.get("id") as StringName
+	if String(sid).is_empty():
+		push_error("ShipDataRegistry: ship id empty in %s" % path)
+	else:
+		_ships_by_id[sid] = res
 
 
 func _rebuild_upgrade_index() -> void:
@@ -78,6 +124,7 @@ func _rebuild_upgrade_index() -> void:
 
 
 func reload_active() -> void:
+	ensure_loaded()
 	var sid: StringName = GameSession.selected_ship_id
 	if not _ships_by_id.has(sid):
 		# Invalid id (e.g. removed ship): fall back to first unlocked ship.
@@ -93,20 +140,24 @@ func reload_active() -> void:
 
 
 func get_active() -> Resource:
+	ensure_loaded()
 	return _active
 
 
 func get_ship_data(id: StringName) -> Resource:
+	ensure_loaded()
 	return _ships_by_id.get(id)
 
 
 ## Sorted by each ship's `prep_sort_index`, then id string (`ShipData`).
 func get_all_ship_ids_sorted() -> Array[StringName]:
+	ensure_loaded()
 	return _ship_ids_sorted.duplicate()
 
 
 ## Selected ship first, then other unlocked ships in prep order. Used by Prep preview and mission ship chain tails.
 func get_mission_ship_chain_ship_ids() -> Array[StringName]:
+	ensure_loaded()
 	var selected: StringName = GameSession.selected_ship_id
 	var out: Array[StringName] = [selected]
 	for sid in _ship_ids_sorted:
@@ -120,6 +171,7 @@ func get_mission_ship_chain_ship_ids() -> Array[StringName]:
 
 ## Every upgrade id defined on any ship (for save persistence and UpgradeBus).
 func get_all_upgrade_ids() -> Array[StringName]:
+	ensure_loaded()
 	var out: Array[StringName] = []
 	for k in _upgrade_by_id:
 		out.append(k as StringName)
@@ -127,12 +179,14 @@ func get_all_upgrade_ids() -> Array[StringName]:
 
 
 func get_upgrade(upgrade_id: StringName) -> Resource:
+	ensure_loaded()
 	if upgrade_id == &"":
 		return null
 	return _upgrade_by_id.get(upgrade_id)
 
 
 func has_upgrade(upgrade_id: StringName) -> bool:
+	ensure_loaded()
 	if upgrade_id == &"":
 		return false
 	return _upgrade_by_id.has(upgrade_id)
@@ -140,12 +194,14 @@ func has_upgrade(upgrade_id: StringName) -> bool:
 
 ## Upgrades shown in the shop for the currently active ship.
 func get_active_ship_upgrades() -> Array:
+	ensure_loaded()
 	if _active == null:
 		return []
 	return _active.get("upgrades") as Array
 
 
 func is_ship_unlocked(ship_id: StringName) -> bool:
+	ensure_loaded()
 	var sd: Resource = _ships_by_id.get(ship_id)
 	if sd == null:
 		return false
@@ -187,6 +243,7 @@ func get_ship_lock_reason(ship_id: StringName) -> String:
 
 
 func apply_effects_for_stat(stat: StringName, base: float) -> float:
+	ensure_loaded()
 	var v: float = base
 	if _ship_ids_sorted.is_empty():
 		return v
@@ -214,6 +271,7 @@ func apply_effects_for_stat_int(stat: StringName, base: int) -> int:
 
 
 func _get_base_for_active_ship_stat(stat: StringName) -> float:
+	ensure_loaded()
 	if _active == null:
 		return 0.0
 	return _active.get_base_float_for_stat(stat)

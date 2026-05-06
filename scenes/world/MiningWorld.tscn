@@ -1,10 +1,40 @@
 [gd_scene format=3 uid="uid://wfvva5w2yqqq"]
 
 [ext_resource type="Script" uid="uid://cs655syhp8bid" path="res://scripts/world/MiningWorld.gd" id="1_gr8o2"]
+[ext_resource type="Script" uid="uid://dpu7mee800bqf" path="res://scripts/world/MiningCrackOverlay.gd" id="2_crack"]
+[ext_resource type="Texture2D" uid="uid://cxa1ejrpdmigu" path="res://assets/sprites/crack.png" id="3_cd1rj"]
+[ext_resource type="Script" uid="uid://bqwm82kxdevsf" path="res://scripts/world/MiningDebrisField.gd" id="4_debris"]
 
 [node name="World" type="Node2D" unique_id=1400227605]
 script = ExtResource("1_gr8o2")
 
+[node name="MiningDebrisField" type="Node2D" parent="." unique_id=1829439215]
+z_index = -1
+script = ExtResource("4_debris")
+max_total_particles = 16384
+particles_per_broken_cell = 12
+old_particle_fade_window = 512
+repel_radius_px = 8.0
+repel_strength = 35.0
+spring_strength = 16.0
+spawn_z_velocity_min = 30.0
+spawn_z_velocity_max = 60.0
+z_scale = 0.01
+repel_z_kick_max = 0.793
+repel_z_falloff_threshold = 0.0
+shadow_offset = Vector2(0.3, 0.8)
+color_variation = 0.024
+
 [node name="WorldVisual" type="Sprite2D" parent="." unique_id=716519693]
+
+[node name="MiningCrackOverlay" type="Node2D" parent="." unique_id=1420087612]
+z_index = 1
+script = ExtResource("2_crack")
+crack_texture = ExtResource("3_cd1rj")
+frame_count = 7
+crack_alpha = 0.686
+jitter_scale_min = 0.4
+jitter_scale_max = 0.65
+jitter_rotation_degrees_max = 180.0
 
 [node name="FogVisual" type="Sprite2D" parent="." unique_id=1293813776]

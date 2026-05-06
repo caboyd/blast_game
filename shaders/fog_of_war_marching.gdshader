@@ -2,7 +2,7 @@ shader_type canvas_item;
 
 uniform sampler2D reveal_tex : filter_nearest;
 uniform vec2 fog_world_origin = vec2(0.0, 0.0);
-// Planet-tinted fog: mid = main haze tint, dark = deep shadow layer (see MiningWorld.set_fog_shader_colors).
+// Planet-tinted fog: mid = main haze tint, dark = deep shadow layer (see MiningWorld.set_fog_base_color / _push_fog_shader_colors).
 uniform vec4 fog_mid : source_color = vec4(0.42, 0.28, 0.18, 1.0);
 uniform vec4 fog_dark : source_color = vec4(0.038, 0.025, 0.016, 1.0);
 uniform float edge_soft : hint_range(0.0, 0.5) = 0.13;

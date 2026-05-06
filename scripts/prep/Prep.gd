@@ -1,9 +1,17 @@
 extends Control
 
+const _Bootstrap := preload("res://scripts/bootstrap/Bootstrap.gd")
 const _PREP_PART_TOOLTIP_SCENE := preload("res://scenes/prep/prep_part_hover_tooltip.tscn")
 
+
+
+const PREP_STAGE_CHOICES: Array[Dictionary] = [
+	{"id": &"planet1", "label": "Planet 1"},
+	{"id": &"planet2", "label": "Planet 2"},
+]
+
+
 const _STAGE_TAB_INDEX := 1
-const _STAGE_BLOCK_CATALOG_ID: StringName = &"planet1"
 const _UNKNOWN_BLOCK := "???"
 const UPGRADE_BATCH_REQUESTS: Array[int] = [1, 5, 25, 100, -1]
 const _PREVIEW_POS := Vector2(200, 180)
@@ -50,6 +58,7 @@ const _SHIP_PICK_SCROLL_STEP_PX := 140
 
 @onready var _ship_tabs: TabContainer = %ShipTabs
 @onready var _stage_summary: Label = %PrepStageSummaryLabel
+@onready var _stage_option: OptionButton = %PrepStageOptionButton
 @onready var _stage_type_tree: Tree = %PrepStageBlockTypesTree
 @onready var _debug_reset: Button = %PrepDebugResetProgressBtn
 @onready var _stats_tabs: TabContainer = %StatsTabs
@@ -106,18 +115,47 @@ func _ready() -> void:
 		PartRegistry.parts_changed.connect(_on_parts_changed)
 	if _ship_preview_stack and not _ship_preview_stack.resized.is_connected(_on_ship_preview_stack_resized):
 		_ship_preview_stack.resized.connect(_on_ship_preview_stack_resized)
+	if _stage_option:
+		if _stage_option.get_item_count() == 0:
+			for row in PREP_STAGE_CHOICES:
+				_stage_option.add_item(str(row["label"]))
+		if not _stage_option.item_selected.is_connected(_on_prep_stage_choice_selected):
+			_stage_option.item_selected.connect(_on_prep_stage_choice_selected)
+		_sync_prep_stage_option_from_session()
+	_Bootstrap.ensure_initialized()
+	_prep_bootstrap_after_registry_and_career()
+
+
+func _prep_bootstrap_after_registry_and_career() -> void:
 	ShipDataRegistry.reload_active()
 	GameStatistics.apply_active_ship_fuel_baseline()
 	_apply_prep_parts_overlay_layout()
 	_ensure_ship_picker_buttons()
 	_rebuild_preview_ship()
 	_refresh_all()
-	# `GameSession._load_career` is deferred and runs after this `_ready`; it restores
-	# `selected_ship_id` and emits `stats_changed` (labels refresh) but does not rebuild
-	# the viewport. Rebuild once more after career apply so the preview matches the ship.
-	call_deferred("_rebuild_preview_ship")
 	call_deferred("_update_ship_picker_scroll_state")
 	call_deferred("_rebuild_parts_strip")
+	call_deferred("_sync_prep_stage_option_from_session")
+
+
+func _sync_prep_stage_option_from_session() -> void:
+	if _stage_option == null:
+		return
+	for i in PREP_STAGE_CHOICES.size():
+		if PREP_STAGE_CHOICES[i]["id"] == GameSession.selected_stage_id:
+			if _stage_option.selected != i:
+				_stage_option.set_block_signals(true)
+				_stage_option.select(i)
+				_stage_option.set_block_signals(false)
+			break
+
+
+func _on_prep_stage_choice_selected(idx: int) -> void:
+	if idx < 0 or idx >= PREP_STAGE_CHOICES.size():
+		return
+	GameSession.selected_stage_id = PREP_STAGE_CHOICES[idx]["id"]
+	GameSession.save_career()
+	_refresh_stage_tab()
 
 
 func _select_ship(ship_id: StringName) -> void:
@@ -524,15 +562,21 @@ func _update_ship_picker_scroll_state() -> void:
 func _refresh_stage_tab() -> void:
 	if _stage_type_tree == null or _stage_summary == null:
 		return
-	_stage_summary.text = "Stage: %s" % String(_STAGE_BLOCK_CATALOG_ID)
+	var sid: StringName = GameSession.selected_stage_id
+	var title := String(sid)
+	for row in PREP_STAGE_CHOICES:
+		if row["id"] == sid:
+			title = str(row["label"])
+			break
+	_stage_summary.text = "Stage: %s" % title
 	_stage_type_tree.clear()
 	var root: TreeItem = _stage_type_tree.create_item()
-	for spec in MiningWorld.get_stage_block_type_rows():
+	for spec in MiningWorld.get_stage_block_type_rows(sid):
 		var type_id: int = int(spec["type_id"])
 		if type_id < 0 or type_id >= MiningWorld.TYPE_MAX_HP.size():
 			continue
 		var it: TreeItem = _stage_type_tree.create_item(root)
-		if GameSession.is_block_type_discovered(_STAGE_BLOCK_CATALOG_ID, type_id):
+		if GameSession.is_block_type_discovered(sid, type_id):
 			it.set_text(0, str(spec.get("label", "?")))
 			it.set_text(1, "%d" % int(MiningWorld.TYPE_MAX_HP[type_id]))
 			it.set_text(2, "%d" % int(MiningWorld.TYPE_MONEY[type_id]))
@@ -945,4 +989,4 @@ func _on_start_mission_pressed() -> void:
 		return
 	ShipDataRegistry.reload_active()
 	GameSession.begin_run()
-	GameSession.go_to_planet(GameSession.next_planet_scene)
+	GameSession.go_to_planet(GameSession.get_stage_planet_scene_path())

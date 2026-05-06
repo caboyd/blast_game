@@ -8,9 +8,8 @@ class _ShipChainFollowerTick extends Node:
 			host.call(&"update_mission_ship_chain_followers", delta)
 
 
-## Pixels at bottom of window reserved for `BottomHUD`; 2D gameplay only uses area above.
-const HUD_RESERVE_PX: int = 200
-const GAME_VIEWPORT_SIZE: Vector2i = Vector2i(1280, 720 - HUD_RESERVE_PX)
+## Internal SubViewport baseline; 16:9 ratio drives letterboxing via `AspectRatioContainer`.
+const GAME_VIEWPORT_SIZE: Vector2i = Vector2i(1280, 720)
 
 const CELLS_PER_HALF_VIEW: int = 10
 const CELL_SIZE_PX: float = 8.0
@@ -19,7 +18,7 @@ const DEBUG_CAMERA_ZOOM_MIN: float = 0.2
 const DEBUG_CAMERA_ZOOM_MAX: float = 2.0
 
 ## Planet 1 “generation monument”: hollow 5×5 (non-solid shell) + ruby center cell.
-const GENERATION_MONUMENT_CHUNK := Vector2i(0, 2)
+const GENERATION_MONUMENT_CHUNK := Vector2i(0, 3)
 const GENERATION_MONUMENT_CENTER_CELL := Vector2i(20, 100)
 const GENERATION_MONUMENT_RADIUS_CELLS := 2
 const _GENERATION_MONUMENT_SCRIPT: GDScript = preload("res://scripts/world/GenerationMonument.gd")
@@ -31,15 +30,24 @@ const STATIC_CELLS: Array[Dictionary] = [
 
 const PRIMARY_MATERIAL_TYPE := MiningWorld.TYPE_DIRT
 
-static var CELL_MATERIAL_COLORS: PackedColorArray = PackedColorArray([
-	Color(0.0, 0.0, 0.0, 0.0),
-	Color(0.42, 0.28, 0.18, 1.0),
-	Color(0.52, 0.52, 0.55, 1.0),
-	Color(1.0, 0.82, 0.2, 1.0),
+## Edit colors here (int keys = `MiningWorld.TYPE_*`). Omitted types use `MiningWorld.TYPE_COLOR` at runtime.
+const CELL_MATERIAL_COLORS: Dictionary = {
+	MiningWorld.TYPE_EMPTY: Color(0.0, 0.0, 0.0, 0.0),
+	MiningWorld.TYPE_DIRT: Color(0.42, 0.28, 0.18, 1.0),
+	MiningWorld.TYPE_STONE: Color(0.52, 0.52, 0.55, 1.0),
+	MiningWorld.TYPE_GOLD: Color(1.0, 0.82, 0.2, 1.0),
 	# Fuel shader uses this as its tint anchor; brown preserves the current look.
-	Color(0.22, 0.15, 0.10, 1.0),
-	Color(0.92, 0.18, 0.38, 1.0),
-])
+	MiningWorld.TYPE_FUEL: Color(0.22, 0.15, 0.10, 1.0),
+	MiningWorld.TYPE_RUBY: Color(0.92, 0.18, 0.38, 1.0),
+}
+
+
+static func _cell_material_colors_packed() -> PackedColorArray:
+	var out: PackedColorArray = PackedColorArray()
+	out.resize(MiningWorld.TYPE_COUNT)
+	for i in MiningWorld.TYPE_COUNT:
+		out[i] = CELL_MATERIAL_COLORS[i] if CELL_MATERIAL_COLORS.has(i) else MiningWorld.TYPE_COLOR[i]
+	return out
 
 ## Planet 1: only parts with `PartData.tier == 1` (`_t1` line). Tier 0 has no ground pickups.
 const PART_PICKUP_DEFS: Array[Dictionary] = [
@@ -110,24 +118,32 @@ const _MISSION_SHIP_CHAIN_TURN_RATE_LINK_FACTOR := 0.68
 ## Floor so the last segments still steer (set 0 to allow arbitrarily slow tails).
 const _MISSION_SHIP_CHAIN_TAIL_TURN_RATE_MIN_RAD_S := 0.35
 @onready var _viewport_info: Label = %ViewportInfo
+@onready var _cell_hover_overlay: Label = %CellHoverOverlay
+@onready var _game_sub_viewport: SubViewport = %GameSubViewport
 @onready var _game_camera: Camera2D = %GameCamera2D
 @onready var _subviewport_container: SubViewportContainer = $GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer
-@onready var _bottom_hud: BottomHUD = get_node_or_null("UI/BottomHUD") as BottomHUD
+@onready var _bottom_player_stats: BottomPlayerStatsStrip = get_node_or_null(
+	"UI/BottomPlayerStats"
+) as BottomPlayerStatsStrip
 
 var _vp_w: int = 1280
-var _vp_h: int = 520
+var _vp_h: int = 720
 var _generation_monument: Node2D = null
-var _debug_camera_zoom_multiplier: float = 1.0
 
 
 func _ready() -> void:
+	AudioManager.set_drilling(false, Vector2.ZERO, false)
 	MiningMissionUI.attach_fuel_bar_for_mining_host(self)
 	GameSession.start_mission_timer()
 	_apply_game_viewport_layout()
 	if _mining_world:
 		_mining_world.configure_stage_generation(planet_id, Callable(self, "_generate_mining_world_chunk"))
-		_mining_world.set_cell_material_colors(CELL_MATERIAL_COLORS)
-		_mining_world.set_fog_base_color(CELL_MATERIAL_COLORS[PRIMARY_MATERIAL_TYPE])
+		var cell_colors: PackedColorArray = _cell_material_colors_packed()
+		_mining_world.set_cell_material_colors(cell_colors)
+		_mining_world.set_fog_base_color(cell_colors[PRIMARY_MATERIAL_TYPE])
+		if not _mining_world.block_broken.is_connected(_on_mining_block_broken_audio):
+			_mining_world.block_broken.connect(_on_mining_block_broken_audio)
+		AudioManager.bind_world_audio_mount(_mining_world)
 	_spawn_mission_ship()
 	if _ship and _mining_world:
 		_ship.grid = _mining_world
@@ -145,20 +161,19 @@ func _ready() -> void:
 		_spawn_part_pickups(spawn_world)
 	if _ship and not _ship.out_of_fuel.is_connected(_on_ship_out_of_fuel):
 		_ship.out_of_fuel.connect(_on_ship_out_of_fuel)
+	if _bottom_player_stats != null:
+		_bottom_player_stats.bind_leading_ship(_ship)
 	if _subviewport_container != null and not _subviewport_container.resized.is_connected(_on_subviewport_container_resized):
 		_subviewport_container.resized.connect(_on_subviewport_container_resized)
-	if _bottom_hud != null:
-		if not _bottom_hud.resized.is_connected(_on_bottom_hud_layout_changed):
-			_bottom_hud.resized.connect(_on_bottom_hud_layout_changed)
-		if not _bottom_hud.item_rect_changed.is_connected(_on_bottom_hud_layout_changed):
-			_bottom_hud.item_rect_changed.connect(_on_bottom_hud_layout_changed)
-	if not MiningMissionUI.top_fuel_layout_changed.is_connected(_on_top_fuel_bar_layout_changed):
-		MiningMissionUI.top_fuel_layout_changed.connect(_on_top_fuel_bar_layout_changed)
 	if not resized.is_connected(_on_main_resized_for_viewport):
 		resized.connect(_on_main_resized_for_viewport)
 	if not get_viewport().size_changed.is_connected(_on_main_resized_for_viewport):
 		get_viewport().size_changed.connect(_on_main_resized_for_viewport)
 	call_deferred("_apply_game_viewport_layout")
+
+
+func _exit_tree() -> void:
+	AudioManager.bind_world_audio_mount(null)
 
 
 func _generate_mining_world_chunk(
@@ -445,6 +460,10 @@ func update_mission_ship_chain_followers(delta: float) -> void:
 		chain_i += 1
 
 
+func _on_mining_block_broken_audio(world_pos: Vector2, _type_id: int) -> void:
+	AudioManager.play_dirt_fall(world_pos)
+
+
 func _on_ship_out_of_fuel() -> void:
 	GameSession.end_current_run_to_prep()
 
@@ -453,33 +472,15 @@ func _on_subviewport_container_resized() -> void:
 	_apply_game_viewport_layout()
 
 
-func _on_bottom_hud_layout_changed() -> void:
-	call_deferred("_apply_game_viewport_layout")
-
-
-func _on_top_fuel_bar_layout_changed() -> void:
-	call_deferred("_apply_game_viewport_layout")
-
-
 func _on_main_resized_for_viewport() -> void:
 	call_deferred("_apply_game_viewport_layout")
-
-
-func _hud_bottom_reserve_px() -> float:
-	if _bottom_hud != null and _bottom_hud.is_inside_tree():
-		return float(_bottom_hud.get_occlusion_bottom_reserve_px())
-	return float(HUD_RESERVE_PX)
-
-
-func _top_fuel_band_px() -> float:
-	return MiningMissionUI.get_top_fuel_band_px()
 
 
 func _apply_game_viewport_layout() -> void:
 	var block := get_node_or_null("GameplayBlock") as Control
 	if block != null:
-		block.offset_top = _top_fuel_band_px()
-		block.offset_bottom = -_hud_bottom_reserve_px()
+		block.offset_top = 0.0
+		block.offset_bottom = 0.0
 	var ar := get_node_or_null("GameplayBlock/AspectRatioContainer") as AspectRatioContainer
 	if ar != null:
 		ar.ratio = float(GAME_VIEWPORT_SIZE.x) / float(GAME_VIEWPORT_SIZE.y)
@@ -498,22 +499,23 @@ func _apply_game_viewport_layout() -> void:
 	_vp_h = h
 	if _game_camera != null and w > 0 and h > 0:
 		var z: float = float(mini(w, h)) / (CELL_SIZE_PX * float(CELLS_PER_HALF_VIEW * 2))
-		_game_camera.zoom = Vector2(z, z) * _debug_camera_zoom_multiplier
+		_game_camera.zoom = Vector2(z, z) * GameStatistics.debug_camera_zoom_multiplier
 	_refresh_viewport_info()
 
 
 func adjust_debug_camera_zoom(step_delta: int) -> float:
-	_debug_camera_zoom_multiplier = clampf(
-		_debug_camera_zoom_multiplier * pow(DEBUG_CAMERA_ZOOM_STEP, float(step_delta)),
+	GameStatistics.debug_camera_zoom_multiplier = clampf(
+		GameStatistics.debug_camera_zoom_multiplier * pow(DEBUG_CAMERA_ZOOM_STEP, float(step_delta)),
 		DEBUG_CAMERA_ZOOM_MIN,
 		DEBUG_CAMERA_ZOOM_MAX
 	)
 	_apply_game_viewport_layout()
-	return _debug_camera_zoom_multiplier
+	GameStatistics.save_debug_preferences()
+	return GameStatistics.debug_camera_zoom_multiplier
 
 
 func get_debug_camera_zoom_multiplier() -> float:
-	return _debug_camera_zoom_multiplier
+	return GameStatistics.debug_camera_zoom_multiplier
 
 
 func _refresh_viewport_info() -> void:
@@ -535,14 +537,52 @@ func _refresh_viewport_info() -> void:
 		_viewport_info.text = line1
 
 
+func _mouse_world_on_game_viewport() -> Vector2:
+	if _game_sub_viewport == null or _subviewport_container == null:
+		return Vector2(NAN, NAN)
+	var mouse_root: Vector2 = get_viewport().get_mouse_position()
+	var gr: Rect2 = _subviewport_container.get_global_rect()
+	if not gr.has_point(mouse_root):
+		return Vector2(NAN, NAN)
+	var loc: Vector2 = mouse_root - gr.position
+	var vs: Vector2 = Vector2(_game_sub_viewport.get_visible_rect().size)
+	var container_size: Vector2 = gr.size
+	if container_size.x <= 0.0 or container_size.y <= 0.0:
+		return Vector2(NAN, NAN)
+	var sub_pixel := Vector2(
+		loc.x / container_size.x * vs.x,
+		loc.y / container_size.y * vs.y,
+	)
+	var inv: Transform2D = _game_sub_viewport.get_canvas_transform().affine_inverse()
+	return inv * sub_pixel
+
+
+func _refresh_cell_hover_overlay() -> void:
+	if _cell_hover_overlay == null or _mining_world == null:
+		return
+	var w: Vector2 = _mouse_world_on_game_viewport()
+	if not w.is_finite():
+		_cell_hover_overlay.text = ""
+		return
+	var cell: Vector2i = _mining_world.world_pos_to_cell(w)
+	var tid: int = _mining_world.get_cell_type_at(cell)
+	var tnm: String = _mining_world.describe_cell_type(tid)
+	_cell_hover_overlay.text = "cell (%d, %d)  •  %s  (type %d)" % [cell.x, cell.y, tnm, tid]
+
+
 func _physics_process(_delta: float) -> void:
 	if _game_camera == null or _ship == null or _mining_world == null:
+		if _cell_hover_overlay != null:
+			_cell_hover_overlay.text = ""
 		return
 	_game_camera.global_position = _ship.global_position
 	var z: float = _game_camera.zoom.x
 	if z <= 0.0:
+		if _cell_hover_overlay != null:
+			_cell_hover_overlay.text = ""
 		return
 	var half := Vector2(float(_vp_w) / (2.0 * z), float(_vp_h) / (2.0 * z))
 	var r := Rect2(_ship.global_position - half, half * 2.0)
 	_mining_world.set_camera_view_world_rect(r)
 	_refresh_viewport_info()
+	_refresh_cell_hover_overlay()
