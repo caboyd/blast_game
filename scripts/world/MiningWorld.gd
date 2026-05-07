@@ -84,6 +84,8 @@ static func get_chunk_center_world(chunk: Vector2i) -> Vector2:
 @export_range(0, 24) var chunk_unload_radius_chunks: int = 5
 ## When true, visited chunks stay in memory regardless of unload radius.
 @export var never_unload_chunks: bool = false
+## Max deferred mined-break chain jobs processed per `_physics_process` tick; 0 means no limit.
+@export_range(0, 256) var mined_break_chain_drains_per_frame: int = 0
 
 ## Effective unload Chebyshev radius is max(`chunk_unload_radius_chunks`, preload + this).
 const _CHUNK_STREAM_UNLOAD_MARGIN_CHUNKS: int = 1
@@ -115,6 +117,9 @@ var _type_image: Image
 var _type_texture: ImageTexture
 var _terrain_dirty: bool = true
 var _type_colors: PackedColorArray = TYPE_COLOR.duplicate()
+## Mined-block chain explosions flush on the next `_physics_process` so HP damage from the prior tick finishes first.
+## Direct breaks are queued at the front; breaks caused by chain splash damage are queued at the back.
+var _deferred_mined_break_chain_queue: Array = []
 
 
 ## Current-run mined terrain; reapplied after a chunk is regenerated following unload.
@@ -140,6 +145,7 @@ func _ready() -> void:
 		_debris_field.setup(self)
 		block_broken.connect(_debris_field.on_block_broken)
 	set_process(true)
+	set_physics_process(true)
 	var dbg := _ChunkBorderDebug.new()
 	dbg.z_index = 50
 	dbg.setup_chunk_border_debug(self)
@@ -232,6 +238,7 @@ func configure_stage_generation(new_stage_id: StringName, chunk_generator: Calla
 	_chunk_stream_in_per_sec = 0
 	_chunk_stream_out_per_sec = 0
 	_run_cell_edits.clear()
+	_deferred_mined_break_chain_queue.clear()
 	_terrain_dirty = true
 
 
@@ -291,6 +298,10 @@ func _maintain_chunk_streaming(cam_chunk: Vector2i) -> void:
 	_preload_chunks_near(cam_chunk, chunk_preload_radius_chunks)
 	if not never_unload_chunks:
 		_unload_chunks_farther_than(cam_chunk, _chunk_unload_radius_effective())
+
+
+func _physics_process(_delta: float) -> void:
+	_flush_deferred_mined_break_chains()
 
 
 func _process(delta: float) -> void:
@@ -1011,7 +1022,13 @@ func _clear_fuel_cluster_if_cell_inside(
 	return true
 
 
-func _damage_cell_abs(cell: Vector2i, amount: int, chain_depth: int = 0, cascade_budget: Variant = null) -> int:
+func _damage_cell_abs(
+	cell: Vector2i,
+	amount: int,
+	chain_depth: int = 0,
+	cascade_budget: Variant = null,
+	from_chain_explosion: bool = false
+) -> int:
 	var ch := _cell_to_chunk_coord(cell)
 	_ensure_chunk(ch)
 	var data: Dictionary = _chunks[ch]
@@ -1036,7 +1053,7 @@ func _damage_cell_abs(cell: Vector2i, amount: int, chain_depth: int = 0, cascade
 				if TYPE_FUEL >= 0 and TYPE_FUEL < TYPE_MONEY.size():
 					GameStatistics.add_mined_cell_reward(int(TYPE_MONEY[TYPE_FUEL]))
 				block_broken.emit(cell_center_world(cell), TYPE_FUEL)
-				_maybe_chain_explode_from_mined_break(cell, chain_depth, cascade_budget)
+				_queue_deferred_mined_break_chain(cell, chain_depth, cascade_budget, from_chain_explosion)
 				return hp_f
 			var nh_f: int = clampi(new_hp_f, 0, 255)
 			hparr[idx] = nh_f
@@ -1062,13 +1079,42 @@ func _damage_cell_abs(cell: Vector2i, amount: int, chain_depth: int = 0, cascade
 		_commit_run_edit_for_chunk_index(ch, idx)
 		_sync_chunk_type_image_pixel(data, idx)
 		block_broken.emit(cell_center_world(cell), broken_type_id)
-		_maybe_chain_explode_from_mined_break(cell, chain_depth, cascade_budget)
+		_queue_deferred_mined_break_chain(cell, chain_depth, cascade_budget, from_chain_explosion)
 		return hp_before
 	var nh: int = clampi(new_hp, 0, 255)
 	hparr[idx] = nh
 	_commit_run_edit_for_chunk_index(ch, idx)
 	_sync_chunk_type_image_pixel(data, idx)
 	return hp_before - nh
+
+
+func _queue_deferred_mined_break_chain(
+	cell: Vector2i, chain_depth: int, cascade_budget: Variant, from_chain_explosion: bool
+) -> void:
+	var entry: Array = [cell, chain_depth, cascade_budget]
+	if from_chain_explosion:
+		_deferred_mined_break_chain_queue.append(entry)
+	else:
+		_deferred_mined_break_chain_queue.push_front(entry)
+
+
+func _flush_deferred_mined_break_chains() -> void:
+	if _deferred_mined_break_chain_queue.is_empty():
+		return
+	var cap: int = mined_break_chain_drains_per_frame
+	var batch: Array
+	if cap <= 0:
+		batch = _deferred_mined_break_chain_queue.duplicate()
+		_deferred_mined_break_chain_queue.clear()
+	else:
+		var take: int = mini(cap, _deferred_mined_break_chain_queue.size())
+		batch = _deferred_mined_break_chain_queue.slice(0, take)
+		_deferred_mined_break_chain_queue = _deferred_mined_break_chain_queue.slice(take)
+	for item in batch:
+		var cell: Vector2i = item[0]
+		var depth: int = item[1]
+		var budget: Variant = item[2]
+		_maybe_chain_explode_from_mined_break(cell, depth, budget)
 
 
 func _maybe_chain_explode_from_mined_break(
@@ -1105,7 +1151,7 @@ func _maybe_chain_explode_from_mined_break(
 			if maxi(absi(dx), absi(dy)) > r_cells:
 				continue
 			var ncell: Vector2i = Vector2i(cell.x + dx, cell.y + dy)
-			var removed: int = _damage_cell_abs(ncell, dmg, nd, b)
+			var removed: int = _damage_cell_abs(ncell, dmg, nd, b, true)
 			if removed > 0:
 				_terrain_dirty = true
 

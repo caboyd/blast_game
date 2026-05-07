@@ -61,6 +61,7 @@ unique_name_in_owner = true
 [node name="MiningWorld" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport/World2D" unique_id=981863744 instance=ExtResource("2")]
 unique_name_in_owner = true
 never_unload_chunks = true
+mined_break_chain_drains_per_frame = 20
 
 [node name="ShipSpawn" type="Node2D" parent="GameplayBlock/AspectRatioContainer/ViewportFrame/SubViewportContainer/GameSubViewport/World2D" unique_id=1755799973]
 unique_name_in_owner = true
