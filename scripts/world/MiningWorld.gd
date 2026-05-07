@@ -126,6 +126,11 @@ var _chunk_generator: Callable = Callable()
 @onready var _debris_field = $MiningDebrisField
 
 var _chunk_border_debug: Node2D
+## Resolved once per `_draw` path; invalidated when the ship is freed or leaves this grid.
+var _chunk_border_debug_ship: WeakRef
+
+const _CHUNK_BORDER_DEBUG_HALF: int = 4
+const _CHUNK_BORDER_DEBUG_COLOR: Color = Color(0.3, 0.65, 1.0, 0.88)
 
 
 func _ready() -> void:
@@ -147,40 +152,61 @@ func refresh_chunk_border_debug() -> void:
 		_chunk_border_debug.queue_redraw()
 
 
-func draw_chunk_border_debug(ci: CanvasItem) -> void:
-	if not GameStatistics.debug_world_visuals:
-		return
-	var ship_anchor: ShipBase = null
+func _find_ship_anchor_for_chunk_border_debug() -> ShipBase:
 	for lead in get_tree().get_nodes_in_group(&"leading_mining_ship"):
 		if lead is ShipBase:
 			var sb: ShipBase = lead as ShipBase
 			if sb.grid == self:
-				ship_anchor = sb
-				break
-	if ship_anchor == null:
-		for n in get_tree().get_nodes_in_group(&"mining_ship"):
-			var sb_: ShipBase = null
-			if n is ShipBase:
-				sb_ = n as ShipBase
-			else:
-				var par: Node = n.get_parent()
-				if par is ShipBase:
-					sb_ = par as ShipBase
-			if sb_ != null and sb_.grid == self and not sb_.follower_visual_only:
-				ship_anchor = sb_
-				break
-	if ship_anchor == null:
+				return sb
+	for n in get_tree().get_nodes_in_group(&"mining_ship"):
+		var sb_: ShipBase = null
+		if n is ShipBase:
+			sb_ = n as ShipBase
+		else:
+			var par: Node = n.get_parent()
+			if par is ShipBase:
+				sb_ = par as ShipBase
+		if sb_ != null and sb_.grid == self and not sb_.follower_visual_only:
+			return sb_
+	return null
+
+
+func draw_chunk_border_debug(ci: CanvasItem) -> void:
+	if not GameStatistics.debug_world_visuals:
 		return
+	var ship_anchor: ShipBase = null
+	if _chunk_border_debug_ship != null:
+		var cached: Variant = _chunk_border_debug_ship.get_ref()
+		if cached is ShipBase:
+			var csb: ShipBase = cached as ShipBase
+			if csb.grid == self:
+				ship_anchor = csb
+	if ship_anchor == null:
+		ship_anchor = _find_ship_anchor_for_chunk_border_debug()
+		_chunk_border_debug_ship = weakref(ship_anchor) if ship_anchor != null else null
+		if ship_anchor == null:
+			return
 	var origin_chunk: Vector2i = get_chunk_for_world_pos(ship_anchor.global_position)
-	const _CHUNK_BORDERS_HALF: int = 4
-	const _color_chunk_border: Color = Color(0.3, 0.65, 1.0, 0.88)
-	var chunk_side: float = float(CHUNK_SIZE) * CELL_SIZE_PX
-	for dcy in range(-_CHUNK_BORDERS_HALF, _CHUNK_BORDERS_HALF + 1):
-		for dcx in range(-_CHUNK_BORDERS_HALF, _CHUNK_BORDERS_HALF + 1):
-			var cchunk: Vector2i = origin_chunk + Vector2i(dcx, dcy)
-			var tl_cell := Vector2i(cchunk.x * CHUNK_SIZE, cchunk.y * CHUNK_SIZE)
-			var tl: Vector2 = cell_top_left_world(tl_cell)
-			ci.draw_rect(Rect2(tl, Vector2(chunk_side, chunk_side)), _color_chunk_border, false, 1.0)
+	var half: int = _CHUNK_BORDER_DEBUG_HALF
+	var n: int = half * 2 + 1
+	var side: float = float(CHUNK_SIZE) * CELL_SIZE_PX
+	var x0: float = float((origin_chunk.x - half) * CHUNK_SIZE) * CELL_SIZE_PX
+	var y0: float = float((origin_chunk.y - half) * CHUNK_SIZE) * CELL_SIZE_PX
+	var span: float = float(n) * side
+	var segs: PackedVector2Array = PackedVector2Array()
+	segs.resize((n + 1) * 4)
+	var wi: int = 0
+	for i in range(n + 1):
+		var x: float = x0 + float(i) * side
+		segs[wi] = Vector2(x, y0)
+		segs[wi + 1] = Vector2(x, y0 + span)
+		wi += 2
+	for j in range(n + 1):
+		var y: float = y0 + float(j) * side
+		segs[wi] = Vector2(x0, y)
+		segs[wi + 1] = Vector2(x0 + span, y)
+		wi += 2
+	ci.draw_multiline(segs, _CHUNK_BORDER_DEBUG_COLOR, 1.0)
 
 
 func _stage_seed_effective() -> int:
