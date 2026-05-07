@@ -99,9 +99,7 @@ var _chunks: Dictionary = {} # Vector2i -> { cells, hp PackedByteArray }
 var _view_origin_cell: Vector2i = Vector2i.ZERO
 var _view_size_cells: Vector2i = Vector2i.ZERO
 
-var _mask_image: Image
 var _type_image: Image
-var _mask_texture: ImageTexture
 var _type_texture: ImageTexture
 var _terrain_dirty: bool = true
 var _type_colors: PackedColorArray = TYPE_COLOR.duplicate()
@@ -1141,15 +1139,13 @@ func set_camera_view_world_rect(rect: Rect2) -> void:
 func _resize_view_textures(w: int, h: int) -> void:
 	if w < 1 or h < 1:
 		return
-	_mask_image = Image.create(w, h, false, Image.FORMAT_L8)
 	_type_image = Image.create(w, h, false, Image.FORMAT_RG8)
 	# `ImageTexture.update(image)` requires image size to match the texture; view size changes
 	# after the first frame, so always recreate when dimensions change.
-	_mask_texture = ImageTexture.create_from_image(_mask_image)
 	_type_texture = ImageTexture.create_from_image(_type_image)
 
 	if _world_visual:
-		_world_visual.texture = _mask_texture
+		_world_visual.texture = _type_texture
 		_world_visual.region_enabled = false
 		_world_visual.scale = Vector2(CELL_SIZE_PX, CELL_SIZE_PX)
 		_world_visual.centered = false
@@ -1166,7 +1162,6 @@ func _update_visual_positions() -> void:
 func _sync_shader_texture_params() -> void:
 	if _world_visual != null and _world_visual.material is ShaderMaterial:
 		var sm: ShaderMaterial = _world_visual.material as ShaderMaterial
-		sm.set_shader_parameter("mask_tex", _mask_texture)
 		sm.set_shader_parameter("type_tex", _type_texture)
 		sm.set_shader_parameter("fuel_world_origin", Vector2(_view_origin_cell))
 
@@ -1183,7 +1178,6 @@ func _init_visuals() -> void:
 	var sh: Shader = load(tpath) as Shader
 	if sh:
 		sm.shader = sh
-		sm.set_shader_parameter("mask_tex", _mask_texture)
 		sm.set_shader_parameter("type_tex", _type_texture)
 		_push_shader_type_colors(sm)
 	_world_visual.material = sm
@@ -1208,15 +1202,13 @@ func _push_shader_type_colors(sm: ShaderMaterial = null) -> void:
 
 
 func _rebuild_terrain_textures() -> void:
-	if _mask_image == null or _view_size_cells.x < 1:
+	if _type_image == null or _view_size_cells.x < 1:
 		return
 	var ox: int = _view_origin_cell.x
 	var oy: int = _view_origin_cell.y
 	var w: int = _view_size_cells.x
 	var h: int = _view_size_cells.y
 	var pixel_count: int = w * h
-	var mask_data := PackedByteArray()
-	mask_data.resize(pixel_count)
 	var type_data := PackedByteArray()
 	type_data.resize(pixel_count * 2)
 
@@ -1242,7 +1234,6 @@ func _rebuild_terrain_textures() -> void:
 			for _i in run_len:
 				var t: int = int(cells[chunk_idx])
 				if t != TYPE_EMPTY:
-					mask_data[pixel_idx] = 255
 					var max_hp: int = maxi(1, int(TYPE_MAX_HP[t]))
 					var hp: int = clampi(int(hparr[chunk_idx]), 0, max_hp)
 					type_data[type_idx] = t
@@ -1252,9 +1243,7 @@ func _rebuild_terrain_textures() -> void:
 				type_idx += 2
 			ix += run_len
 
-	_mask_image.set_data(w, h, false, Image.FORMAT_L8, mask_data)
 	_type_image.set_data(w, h, false, Image.FORMAT_RG8, type_data)
-	_mask_texture.update(_mask_image)
 	_type_texture.update(_type_image)
 
 	_sync_shader_texture_params()

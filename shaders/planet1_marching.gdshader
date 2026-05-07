@@ -1,8 +1,7 @@
 shader_type canvas_item;
 
 // Low-res grid; nearest so texelFetch matches CPU grid.
-uniform sampler2D mask_tex : source_color, filter_nearest;
-// R = type id / 255, G = hp ratio 0..1
+// R = type id / 255, G = hp ratio 0..1 (0 hp => empty; no separate mask).
 uniform sampler2D type_tex : source_color, filter_nearest;
 
 uniform int type_count : hint_range(0, 16) = 6;
@@ -32,10 +31,9 @@ struct CellSample {
 CellSample sample_cell(ivec2 t, ivec2 ts, int tc1) {
 	CellSample s;
 	t = clamp(t, ivec2(0), ts - ivec2(1));
-	float m = texelFetch(mask_tex, t, 0).r;
 	vec4 td = texelFetch(type_tex, t, 0);
 	s.hp = clamp(td.g, 0.0, 1.0);
-	s.present = (m >= 0.5 && td.g > 0.01) ? 1.0 : 0.0;
+	s.present = (td.g > 0.01) ? 1.0 : 0.0;
 	s.mid = int(clamp(round(td.r * 255.0), 0.0, float(tc1)));
 	return s;
 }
@@ -140,7 +138,7 @@ vec3 fuel_cell_rgb(vec2 world_cell_uv, float hp_ratio, float time_sec, vec3 mate
 }
 
 void fragment() {
-	ivec2 ts = textureSize(mask_tex, 0);
+	ivec2 ts = textureSize(type_tex, 0);
 	if (ts.x < 1 || ts.y < 1) {
 		discard;
 	}
