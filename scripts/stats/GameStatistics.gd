@@ -42,6 +42,10 @@ var _money_award_amounts: PackedInt32Array = PackedInt32Array()
 ## Block types fully mined this run (`type_id` -> count); colors captured on first increment. Cleared in `reset_run_mined_resources`.
 var _run_mined_type_counts: Dictionary = {}
 var _run_mined_type_colors: Dictionary = {}
+## Bumps on every `register_fully_mined_block` / `reset_run_mined_resources`; for coalescing UI without re-sorting unchanged data.
+var _run_mined_snapshot_generation: int = 0
+var _run_mined_rows_cache: Array[Dictionary] = []
+var _run_mined_rows_cache_dirty: bool = true
 
 ## Master switch for world gizmos (mining ship hull/drill debug, conveyor bounds, viewport label). Toggled from `DebugOverlay` (F3 on prep or planet); default off so normal play stays clean.
 ## Persisted in `user://debug_prefs.cfg`.
@@ -276,6 +280,9 @@ func reset_run_mining_economy_tracking() -> void:
 func reset_run_mined_resources() -> void:
 	_run_mined_type_counts.clear()
 	_run_mined_type_colors.clear()
+	_run_mined_snapshot_generation += 1
+	_run_mined_rows_cache.clear()
+	_run_mined_rows_cache_dirty = true
 	run_mined_resources_changed.emit()
 
 
@@ -286,10 +293,22 @@ func register_fully_mined_block(type_id: int, display_color: Color) -> void:
 	_run_mined_type_counts[type_id] = int(_run_mined_type_counts.get(type_id, 0)) + 1
 	if not _run_mined_type_colors.has(type_id):
 		_run_mined_type_colors[type_id] = display_color
+	_run_mined_snapshot_generation += 1
+	_run_mined_rows_cache_dirty = true
 	run_mined_resources_changed.emit()
 
 
+func get_run_mined_resource_snapshot_generation() -> int:
+	return _run_mined_snapshot_generation
+
+
+func run_mined_resources_has_any() -> bool:
+	return not _run_mined_type_counts.is_empty()
+
+
 func get_run_mined_resource_rows_sorted() -> Array[Dictionary]:
+	if not _run_mined_rows_cache_dirty:
+		return _run_mined_rows_cache
 	var rows: Array[Dictionary] = []
 	for tid_any in _run_mined_type_counts:
 		var c: int = int(_run_mined_type_counts[tid_any])
@@ -308,7 +327,9 @@ func get_run_mined_resource_rows_sorted() -> Array[Dictionary]:
 			return ca > cb
 		return int(a["type_id"]) < int(b["type_id"])
 	)
-	return rows
+	_run_mined_rows_cache = rows
+	_run_mined_rows_cache_dirty = false
+	return _run_mined_rows_cache
 
 
 func _prune_run_money_award_log(now_ms: int) -> void:

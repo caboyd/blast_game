@@ -3,10 +3,6 @@ extends MarginContainer
 ## Top-left mined-resource list for the current run (counts on full clears only).
 ## Base sizes × 1.25 from original HUD spec.
 
-## Fixed cadence for mined-resource overlay rebuilds while the run has mined rows (not reset by each new block).
-@export var mined_resource_refresh_interval_sec: float = 0.25
-## Fixed cadence for overlay rebuilds after viewport width changes while resize keeps marking layout dirty.
-@export var viewport_refresh_interval_sec: float = 0.05
 ## Max resource rows constructed per frame while building an off-tree list (swap happens once when complete).
 @export var row_rebuild_budget_per_frame: int = 1
 
@@ -44,9 +40,10 @@ var _hover_type_id: int = -1
 var _viewport_w_for_bars: int = 1280
 
 var _dirty_viewport: bool = false
-var _mined_refresh_timer: Timer
-var _viewport_refresh_timer: Timer
-var _followup_rebuild_timer: Timer
+## `GameStatistics` bumps this when run-mined counts change; coalesce UI to one `_refresh_rows` per frame.
+var _last_applied_mined_generation: int = -1
+var _last_coalesced_poll_frame: int = -1
+var _followup_refresh_queued: bool = false
 
 var _incremental_rebuild_active: bool = false
 var _pending_rows_host: VBoxContainer
@@ -100,48 +97,49 @@ func _ready() -> void:
 	add_child(_rows_host)
 	size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 
-	_mined_refresh_timer = Timer.new()
-	_mined_refresh_timer.one_shot = false
-	_mined_refresh_timer.timeout.connect(_on_mined_refresh_tick)
-	add_child(_mined_refresh_timer)
-
-	_viewport_refresh_timer = Timer.new()
-	_viewport_refresh_timer.one_shot = false
-	_viewport_refresh_timer.timeout.connect(_on_viewport_refresh_tick)
-	add_child(_viewport_refresh_timer)
-
-	_followup_rebuild_timer = Timer.new()
-	_followup_rebuild_timer.one_shot = true
-	_followup_rebuild_timer.timeout.connect(_on_followup_rebuild_timeout)
-	add_child(_followup_rebuild_timer)
-
-	if not GameStatistics.run_mined_resources_changed.is_connected(_on_mined_changed):
-		GameStatistics.run_mined_resources_changed.connect(_on_mined_changed)
-
 	var vp := get_viewport()
 	if vp != null and not vp.size_changed.is_connected(_on_viewport_size_changed):
 		vp.size_changed.connect(_on_viewport_size_changed)
 	_sync_viewport_width_from_viewport()
 
+	set_process(true)
 	_refresh_rows()
+	_last_applied_mined_generation = GameStatistics.get_run_mined_resource_snapshot_generation()
 
 
 func _process(_delta: float) -> void:
-	if not _incremental_rebuild_active:
-		set_process(false)
+	if _incremental_rebuild_active:
+		if _pending_rows_host == null:
+			_incremental_rebuild_active = false
+		else:
+			var budget: int = maxi(1, row_rebuild_budget_per_frame)
+			var added: int = 0
+			while added < budget and _pending_row_index < _pending_rows.size():
+				_append_one_pending_row(_pending_row_index)
+				_pending_row_index += 1
+				added += 1
+			if _pending_row_index >= _pending_rows.size():
+				_finish_incremental_swap()
 		return
-	if _pending_rows_host == null:
-		_incremental_rebuild_active = false
-		set_process(false)
+
+	var frame: int = Engine.get_process_frames()
+	if frame == _last_coalesced_poll_frame:
+		if visible:
+			queue_redraw()
 		return
-	var budget: int = maxi(1, row_rebuild_budget_per_frame)
-	var added: int = 0
-	while added < budget and _pending_row_index < _pending_rows.size():
-		_append_one_pending_row(_pending_row_index)
-		_pending_row_index += 1
-		added += 1
-	if _pending_row_index >= _pending_rows.size():
-		_finish_incremental_swap()
+	_last_coalesced_poll_frame = frame
+
+	var mined_gen: int = GameStatistics.get_run_mined_resource_snapshot_generation()
+	var followup: bool = _followup_refresh_queued
+	if followup:
+		_followup_refresh_queued = false
+	var need_refresh: bool = followup or mined_gen != _last_applied_mined_generation or _dirty_viewport
+	if need_refresh:
+		_refresh_rows()
+		_last_applied_mined_generation = GameStatistics.get_run_mined_resource_snapshot_generation()
+
+	if visible:
+		queue_redraw()
 
 
 func _notification(what: int) -> void:
@@ -157,66 +155,9 @@ func _sync_viewport_width_from_viewport() -> void:
 		_viewport_w_for_bars = maxi(1, int(vp.get_visible_rect().size.x))
 
 
-func _run_mined_snapshot_is_empty() -> bool:
-	return GameStatistics.get_run_mined_resource_rows_sorted().is_empty()
-
-
 func _on_viewport_size_changed() -> void:
 	_sync_viewport_width_from_viewport()
 	_dirty_viewport = true
-	_ensure_viewport_refresh_ticker()
-
-
-func _on_mined_changed() -> void:
-	if _run_mined_snapshot_is_empty():
-		_stop_mined_refresh_ticker()
-		_stop_viewport_refresh_ticker()
-		_dirty_viewport = false
-		_refresh_rows()
-		return
-	_ensure_mined_refresh_ticker()
-
-
-func _stop_mined_refresh_ticker() -> void:
-	if _mined_refresh_timer != null:
-		_mined_refresh_timer.stop()
-
-
-func _stop_viewport_refresh_ticker() -> void:
-	if _viewport_refresh_timer != null:
-		_viewport_refresh_timer.stop()
-
-
-func _ensure_mined_refresh_ticker() -> void:
-	if _mined_refresh_timer.is_stopped():
-		_mined_refresh_timer.wait_time = maxf(0.001, mined_resource_refresh_interval_sec)
-		_refresh_rows()
-		_mined_refresh_timer.start()
-
-
-func _ensure_viewport_refresh_ticker() -> void:
-	if _viewport_refresh_timer.is_stopped():
-		_viewport_refresh_timer.wait_time = maxf(0.001, viewport_refresh_interval_sec)
-		_viewport_refresh_timer.start()
-
-
-func _on_mined_refresh_tick() -> void:
-	if _run_mined_snapshot_is_empty():
-		_stop_mined_refresh_ticker()
-		_refresh_rows()
-		return
-	_refresh_rows()
-
-
-func _on_viewport_refresh_tick() -> void:
-	if _dirty_viewport:
-		_refresh_rows()
-	if not _dirty_viewport:
-		_stop_viewport_refresh_ticker()
-
-
-func _on_followup_rebuild_timeout() -> void:
-	_refresh_rows()
 
 
 func _on_row_mouse_entered(type_id: int) -> void:
@@ -293,21 +234,12 @@ func _clear_rows_host() -> void:
 
 
 func _cancel_incremental_build() -> void:
-	set_process(false)
 	_incremental_rebuild_active = false
 	if _pending_rows_host != null:
 		_pending_rows_host.queue_free()
 		_pending_rows_host = null
 	_pending_rows.clear()
 	_pending_row_index = 0
-
-
-func _schedule_followup_rebuild() -> void:
-	if _followup_rebuild_timer == null or not _followup_rebuild_timer.is_stopped():
-		return
-	var tw := minf(mined_resource_refresh_interval_sec, viewport_refresh_interval_sec)
-	_followup_rebuild_timer.wait_time = maxf(0.001, tw)
-	_followup_rebuild_timer.start()
 
 
 func _recompute_hover_from_mouse() -> void:
@@ -419,11 +351,9 @@ func _start_incremental_rebuild(rows: Array[Dictionary], max_count: int) -> void
 	_pending_bar_full_w = maxi(8, int(roundf(float(_viewport_w_for_bars) * _BAR_FRAC_OF_VIEWPORT_W)))
 	_pending_row_index = 0
 	_incremental_rebuild_active = true
-	set_process(true)
 
 
 func _finish_incremental_swap() -> void:
-	set_process(false)
 	_incremental_rebuild_active = false
 
 	var old_host: VBoxContainer = _rows_host
@@ -452,7 +382,7 @@ func _finish_incremental_swap() -> void:
 	var schedule_followup: bool = _followup_after_current_rebuild or _dirty_viewport
 	_followup_after_current_rebuild = false
 	if schedule_followup:
-		_schedule_followup_rebuild()
+		_followup_refresh_queued = true
 	else:
 		_dirty_viewport = false
 
@@ -462,8 +392,7 @@ func _refresh_rows() -> void:
 	if rows.is_empty():
 		_cancel_incremental_build()
 		_followup_after_current_rebuild = false
-		if _followup_rebuild_timer != null:
-			_followup_rebuild_timer.stop()
+		_followup_refresh_queued = false
 		_hover_type_id = -1
 		_clear_rows_host()
 		visible = false
@@ -478,8 +407,7 @@ func _refresh_rows() -> void:
 	if max_count <= 0:
 		_cancel_incremental_build()
 		_followup_after_current_rebuild = false
-		if _followup_rebuild_timer != null:
-			_followup_rebuild_timer.stop()
+		_followup_refresh_queued = false
 		_hover_type_id = -1
 		_clear_rows_host()
 		visible = false
