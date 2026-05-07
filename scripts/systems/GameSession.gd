@@ -20,7 +20,6 @@ const WEAPON_LASER_TARGET_WEAKEST := 1
 const WEAPON_LASER_TARGET_HIGHEST_VALUE := 2
 const WEAPON_LASER_TARGET_HIGHEST_DENSITY := 3
 
-const _STAGE_REVEAL_MAGIC := 0x52455632
 const _MINING_CHUNK_BYTES := 32 * 32
 const _BLOCK_DISCOVERY_SECTION := "block_discovery"
 const _PLANET1_SCENE := preload("res://scenes/planets/Planet1.tscn")
@@ -45,7 +44,7 @@ var career_blocks_destroyed: int = 0
 var _career_write_pending: bool = false
 ## Wall-clock start for mission timer (see `get_mission_elapsed_sec`); set in `begin_run()`.
 var _mission_start_ticks_msec: int = 0
-## `stage_id` (String) -> { type_id: true } for types seen (vision) or hit (damage).
+## `stage_id` (String) -> { type_id: true } for types hit (damage).
 var _stage_block_types_found: Dictionary = {}
 ## String slot key (`fuel_tank` / `drill` / `treads`) → dict composite key `"%d|%d" % [tier, pickup_index]` → true
 var _part_pickups_by_type: Dictionary = {}
@@ -164,7 +163,7 @@ func is_block_type_discovered(stage_id: StringName, type_id: int) -> bool:
 	return bool(_stage_block_types_found[stage_id].get(type_id, false))
 
 
-## Call when a solid block type is revealed or damaged (unlocks bestiary row on prep).
+## Call when a solid block type is damaged (unlocks bestiary row on prep).
 func mark_block_type_discovered(stage_id: StringName, type_id: int) -> void:
 	if type_id <= 0:
 		return
@@ -320,56 +319,7 @@ func get_mission_elapsed_sec() -> float:
 	return float(Time.get_ticks_msec() - _mission_start_ticks_msec) / 1000.0
 
 
-func _stage_reveal_path(stage_id: StringName) -> String:
-	var sid := String(stage_id).strip_edges()
-	sid = sid.replace("/", "_").replace("\\", "_")
-	return "user://stage_%s_reveal.dat" % sid
-
-
-## Returns Dictionary with Vector2i keys -> PackedByteArray reveal mask (`MiningWorld.CHUNK_SIZE²` bytes per chunk).
-func load_stage_reveal(stage_id: StringName) -> Dictionary:
-	var path := _stage_reveal_path(stage_id)
-	if not FileAccess.file_exists(path):
-		return {}
-	var f := FileAccess.open(path, FileAccess.READ)
-	if f == null:
-		push_error("GameSession.load_stage_reveal: cannot read %s" % path)
-		return {}
-	var magic := f.get_32()
-	if magic != _STAGE_REVEAL_MAGIC:
-		return {}
-	var count := f.get_32()
-	var out: Dictionary = {}
-	for _i in count:
-		var cx := f.get_32()
-		var cy := f.get_32()
-		var buf := f.get_buffer(_MINING_CHUNK_BYTES)
-		if buf.size() < _MINING_CHUNK_BYTES:
-			break
-		out[Vector2i(cx, cy)] = buf
-	return out
-
-
-func save_stage_reveal(stage_id: StringName, reveals: Dictionary) -> void:
-	var path := _stage_reveal_path(stage_id)
-	var f := FileAccess.open(path, FileAccess.WRITE)
-	if f == null:
-		push_error("GameSession.save_stage_reveal: cannot write %s" % path)
-		return
-	f.store_32(_STAGE_REVEAL_MAGIC)
-	f.store_32(reveals.size())
-	for k in reveals:
-		var v2: Vector2i = k
-		var barr: PackedByteArray = reveals[k]
-		f.store_32(v2.x)
-		f.store_32(v2.y)
-		var b := barr.duplicate()
-		if b.size() < _MINING_CHUNK_BYTES:
-			b.resize(_MINING_CHUNK_BYTES)
-		f.store_buffer(b)
-
-
-## Debug: wipe career save, money, upgrades, derived combat stats, and stage reveal files.
+## Debug: wipe career save, money, upgrades, derived combat stats.
 func reset_all_progress() -> void:
 	career_blocks_destroyed = 0
 	selected_ship_id = &"scout"
@@ -389,22 +339,8 @@ func reset_all_progress() -> void:
 	_stage_block_types_found.clear()
 	_career_write_pending = false
 	_write_career_to_disk()
-	_delete_all_stage_reveal_files()
 	GameStatistics.fuel_changed.emit(GameStatistics.fuel, GameStatistics.fuel_max)
 	GameStatistics.stats_changed.emit()
-
-
-func _delete_all_stage_reveal_files() -> void:
-	var dir := DirAccess.open("user://")
-	if dir == null:
-		return
-	dir.list_dir_begin()
-	var fname := dir.get_next()
-	while fname != "":
-		if not dir.current_is_dir() and fname.begins_with("stage_") and fname.ends_with("_reveal.dat"):
-			DirAccess.remove_absolute("user://" + fname)
-		fname = dir.get_next()
-	dir.list_dir_end()
 
 
 ## Commit this run’s block count to career and load Prep (fuel out, manual exit from debug, etc.).

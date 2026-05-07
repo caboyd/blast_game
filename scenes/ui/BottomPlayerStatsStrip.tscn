@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://1xvfat41l4vs"]
 
-[ext_resource type="Script" uid="uid://cj8wplayerstats01" path="res://scripts/ui/BottomPlayerStatsStrip.gd" id="1"]
+[ext_resource type="Script" uid="uid://4obypvoc6tjw" path="res://scripts/ui/BottomPlayerStatsStrip.gd" id="1"]
 
 [sub_resource type="StyleBoxFlat" id="StripPanel"]
 bg_color = Color(0.06, 0.08, 0.11, 0.62)
@@ -14,7 +14,7 @@ corner_radius_top_right = 6
 corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
 
-[node name="BottomPlayerStatsStrip" type="Control"]
+[node name="BottomPlayerStatsStrip" type="Control" unique_id=855025165]
 layout_mode = 3
 anchors_preset = 12
 anchor_top = 1.0
@@ -27,7 +27,7 @@ grow_vertical = 0
 mouse_filter = 2
 script = ExtResource("1")
 
-[node name="Center" type="CenterContainer" parent="."]
+[node name="Center" type="CenterContainer" parent="." unique_id=2122136613]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -36,19 +36,19 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="Panel" type="PanelContainer" parent="Center"]
+[node name="Panel" type="PanelContainer" parent="Center" unique_id=154711603]
 layout_mode = 2
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StripPanel")
 
-[node name="Margin" type="MarginContainer" parent="Center/Panel"]
+[node name="Margin" type="MarginContainer" parent="Center/Panel" unique_id=212972904]
 layout_mode = 2
 theme_override_constants/margin_left = 12
 theme_override_constants/margin_top = 6
 theme_override_constants/margin_right = 12
 theme_override_constants/margin_bottom = 6
 
-[node name="Label" type="Label" parent="Center/Panel/Margin"]
+[node name="Label" type="Label" parent="Center/Panel/Margin" unique_id=1124592526]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.9, 0.94, 1, 0.95)
 theme_override_colors/font_outline_color = Color(0.04, 0.05, 0.08, 0.85)

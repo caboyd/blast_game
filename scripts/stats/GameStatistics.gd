@@ -46,8 +46,6 @@ var _run_mined_type_colors: Dictionary = {}
 ## Master switch for world gizmos (mining ship hull/drill debug, conveyor bounds, viewport label). Toggled from `DebugOverlay` (F3 on prep or planet); default off so normal play stays clean.
 ## Persisted in `user://debug_prefs.cfg`.
 var debug_world_visuals: bool = false
-## Debug: reveals fog-of-war when enabled. Persisted with debug prefs.
-var debug_fog_disabled: bool = false
 
 ## Debug vehicle stat overrides (`DebugOverlay`). Persisted with debug prefs.
 const DEBUG_VEHICLE_OVERRIDE_MIN_FUEL_MAX := 1.0
@@ -68,9 +66,7 @@ var debug_mine_interval_override_value: float = 0.2
 ## Effective drill radius in **game** pixels (before ship scale); replaces base + upgrade bonus.
 var debug_drill_range_game_px_override_enabled: bool = false
 var debug_drill_range_game_px_override_value: float = 16.0
-## Vision radius in grid cells (`update_vision`).
-var debug_vision_radius_cells_override_enabled: bool = false
-var debug_vision_radius_cells_override_value: int = 12
+
 var debug_turn_rate_rad_s_override_enabled: bool = false
 var debug_turn_rate_rad_s_override_value: float = 9.0
 
@@ -107,7 +103,6 @@ func load_debug_preferences() -> void:
 		return
 	var sec := _DEBUG_PREFS_SECTION
 	debug_world_visuals = bool(c.get_value(sec, "world_visuals", debug_world_visuals))
-	debug_fog_disabled = bool(c.get_value(sec, "fog_disabled", debug_fog_disabled))
 	debug_camera_zoom_multiplier = clampf(
 		float(c.get_value(sec, "camera_zoom_mul", debug_camera_zoom_multiplier)),
 		_DEBUG_ZOOM_CLAMP_MIN,
@@ -143,14 +138,6 @@ func load_debug_preferences() -> void:
 		DEBUG_VEHICLE_OVERRIDE_MIN_DRILL_RANGE_GAME_PX,
 		2048.0,
 	)
-	debug_vision_radius_cells_override_enabled = bool(
-		c.get_value(sec, "vision_ovrd_en", debug_vision_radius_cells_override_enabled)
-	)
-	debug_vision_radius_cells_override_value = clampi(
-		int(c.get_value(sec, "vision_ovrd_val", debug_vision_radius_cells_override_value)),
-		1,
-		99,
-	)
 	debug_turn_rate_rad_s_override_enabled = bool(
 		c.get_value(sec, "turn_ovrd_en", debug_turn_rate_rad_s_override_enabled)
 	)
@@ -173,7 +160,6 @@ func _flush_debug_prefs_write() -> void:
 	var c := ConfigFile.new()
 	var sec := _DEBUG_PREFS_SECTION
 	c.set_value(sec, "world_visuals", debug_world_visuals)
-	c.set_value(sec, "fog_disabled", debug_fog_disabled)
 	c.set_value(sec, "camera_zoom_mul", debug_camera_zoom_multiplier)
 	c.set_value(sec, "gold_give_spin", debug_menu_gold_give_spin)
 	c.set_value(sec, "fuel_ovrd_en", debug_fuel_max_override_enabled)
@@ -186,23 +172,11 @@ func _flush_debug_prefs_write() -> void:
 	c.set_value(sec, "mine_ivl_ovrd_val", debug_mine_interval_override_value)
 	c.set_value(sec, "drill_px_ovrd_en", debug_drill_range_game_px_override_enabled)
 	c.set_value(sec, "drill_px_ovrd_val", debug_drill_range_game_px_override_value)
-	c.set_value(sec, "vision_ovrd_en", debug_vision_radius_cells_override_enabled)
-	c.set_value(sec, "vision_ovrd_val", debug_vision_radius_cells_override_value)
 	c.set_value(sec, "turn_ovrd_en", debug_turn_rate_rad_s_override_enabled)
 	c.set_value(sec, "turn_ovrd_val", debug_turn_rate_rad_s_override_value)
 	var err := c.save(_DEBUG_PREFS_PATH)
 	if err != OK:
 		push_error("GameStatistics._flush_debug_prefs_write failed: %s" % error_string(err))
-
-
-func set_debug_fog_disabled(on: bool) -> void:
-	debug_fog_disabled = on
-	var tree := get_tree()
-	if tree != null:
-		for n in tree.get_nodes_in_group(&"mining_world"):
-			if n.has_method(&"apply_debug_fog_visibility"):
-				n.apply_debug_fog_visibility()
-	save_debug_preferences()
 
 
 func notify_debug_fuel_max_override(enabled: bool, value: float) -> void:
@@ -241,12 +215,6 @@ func notify_debug_drill_range_game_px_override(enabled: bool, value_px: float) -
 		2048.0,
 	)
 	debug_drill_range_game_px_override_enabled = enabled
-	save_debug_preferences()
-
-
-func notify_debug_vision_radius_cells_override(enabled: bool, radius_cells: int) -> void:
-	debug_vision_radius_cells_override_value = clampi(radius_cells, 1, 99)
-	debug_vision_radius_cells_override_enabled = enabled
 	save_debug_preferences()
 
 

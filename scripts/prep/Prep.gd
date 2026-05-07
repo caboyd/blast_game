@@ -706,7 +706,7 @@ func _clear_shop_upgrades() -> void:
 	for i in range(_shop_upgrades.get_child_count() - 1, -1, -1):
 		var c: Node = _shop_upgrades.get_child(i)
 		_shop_upgrades.remove_child(c)
-		c.free()
+		c.queue_free()
 
 
 func _add_shop_section_header(title: String) -> void:

@@ -31,7 +31,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1")
-planet_id = null
 
 [node name="GameplayBlock" type="Control" parent="." unique_id=1248247386]
 layout_mode = 1

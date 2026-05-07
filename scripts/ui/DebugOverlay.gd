@@ -8,7 +8,6 @@ var _gold_spin: SpinBox
 var _gold_give: Button
 var _return_to_prep: Button
 var _debug_visuals: CheckButton
-var _disable_fog: CheckButton
 var _zoom_out: Button
 var _zoom_in: Button
 var _zoom_value: Label
@@ -23,8 +22,6 @@ var _mine_rate_ovrd: CheckBox
 var _mine_rate_spin: SpinBox
 var _drill_ovrd: CheckBox
 var _drill_spin: SpinBox
-var _vision_ovrd: CheckBox
-var _vision_spin: SpinBox
 var _turn_ovrd: CheckBox
 var _turn_spin: SpinBox
 
@@ -34,7 +31,6 @@ func _ready() -> void:
 	_gold_give = get_node_or_null("Panel/VBox/GoldRow/GoldGive") as Button
 	_return_to_prep = get_node_or_null("Panel/VBox/ReturnToPrep") as Button
 	_debug_visuals = get_node_or_null("Panel/VBox/DebugVisuals") as CheckButton
-	_disable_fog = get_node_or_null("Panel/VBox/DisableFog") as CheckButton
 	_zoom_out = get_node_or_null("Panel/VBox/ZoomRow/ZoomOut") as Button
 	_zoom_in = get_node_or_null("Panel/VBox/ZoomRow/ZoomIn") as Button
 	_zoom_value = get_node_or_null("Panel/VBox/ZoomRow/ZoomValue") as Label
@@ -49,8 +45,6 @@ func _ready() -> void:
 	_mine_rate_spin = get_node_or_null("Panel/VBox/DbgMineRateRow/DbgMineRateSpin") as SpinBox
 	_drill_ovrd = get_node_or_null("Panel/VBox/DbgDrillRangeRow/DbgDrillOvrd") as CheckBox
 	_drill_spin = get_node_or_null("Panel/VBox/DbgDrillRangeRow/DbgDrillSpin") as SpinBox
-	_vision_ovrd = get_node_or_null("Panel/VBox/DbgVisionRow/DbgVisionOvrd") as CheckBox
-	_vision_spin = get_node_or_null("Panel/VBox/DbgVisionRow/DbgVisionSpin") as SpinBox
 	_turn_ovrd = get_node_or_null("Panel/VBox/DbgTurnRow/DbgTurnOvrd") as CheckBox
 	_turn_spin = get_node_or_null("Panel/VBox/DbgTurnRow/DbgTurnSpin") as SpinBox
 
@@ -68,9 +62,6 @@ func _ready() -> void:
 	if _debug_visuals:
 		_debug_visuals.button_pressed = GameStatistics.debug_world_visuals
 		_debug_visuals.toggled.connect(_on_debug_visuals_toggled)
-	if _disable_fog:
-		_disable_fog.button_pressed = GameStatistics.debug_fog_disabled
-		_disable_fog.toggled.connect(_on_disable_fog_toggled)
 	if _zoom_out:
 		_zoom_out.pressed.connect(_on_zoom_out_pressed)
 	if _zoom_in:
@@ -118,10 +109,6 @@ func _on_debug_visuals_toggled(pressed: bool) -> void:
 	_apply_debug_visuals(pressed)
 
 
-func _on_disable_fog_toggled(pressed: bool) -> void:
-	GameStatistics.set_debug_fog_disabled(pressed)
-
-
 func _on_zoom_out_pressed() -> void:
 	_adjust_debug_zoom(-1)
 
@@ -161,12 +148,6 @@ func _wire_debug_vehicle_overrides() -> void:
 	if _drill_spin:
 		_drill_spin.value = GameStatistics.debug_drill_range_game_px_override_value
 		_drill_spin.value_changed.connect(_on_dbg_drill_spin_changed)
-	if _vision_ovrd:
-		_vision_ovrd.button_pressed = GameStatistics.debug_vision_radius_cells_override_enabled
-		_vision_ovrd.toggled.connect(_on_dbg_vision_ovrd_toggled)
-	if _vision_spin:
-		_vision_spin.value = float(GameStatistics.debug_vision_radius_cells_override_value)
-		_vision_spin.value_changed.connect(_on_dbg_vision_spin_changed)
 	if _turn_ovrd:
 		_turn_ovrd.button_pressed = GameStatistics.debug_turn_rate_rad_s_override_enabled
 		_turn_ovrd.toggled.connect(_on_dbg_turn_ovrd_toggled)
@@ -223,19 +204,6 @@ func _on_dbg_drill_ovrd_toggled(pressed: bool) -> void:
 func _on_dbg_drill_spin_changed(v: float) -> void:
 	if _drill_ovrd and _drill_ovrd.button_pressed:
 		GameStatistics.notify_debug_drill_range_game_px_override(true, float(v))
-
-
-func _on_dbg_vision_ovrd_toggled(pressed: bool) -> void:
-	if _vision_spin:
-		GameStatistics.notify_debug_vision_radius_cells_override(
-			pressed,
-			int(round(float(_vision_spin.value)))
-		)
-
-
-func _on_dbg_vision_spin_changed(v: float) -> void:
-	if _vision_ovrd and _vision_ovrd.button_pressed:
-		GameStatistics.notify_debug_vision_radius_cells_override(true, int(round(v)))
 
 
 func _on_dbg_turn_ovrd_toggled(pressed: bool) -> void:

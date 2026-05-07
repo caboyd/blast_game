@@ -187,12 +187,7 @@ func get_effective_mine_damage_per_tick() -> float:
 
 
 func get_effective_vision_radius_cells() -> int:
-	if GameStatistics.debug_vision_radius_cells_override_enabled:
-		return GameStatistics.debug_vision_radius_cells_override_value
-	return maxi(
-		1,
-		ShipDataRegistry.apply_effects_for_stat_int(&"vision_radius_cells", _base_vision_radius_cells)
-	)
+	return maxi(1, ShipDataRegistry.apply_effects_for_stat_int(&"vision_radius_cells", _base_vision_radius_cells))
 
 
 func get_effective_move_speed_px_s() -> float:
@@ -267,8 +262,6 @@ func _physics_process(delta: float) -> void:
 	_tick_weapon_chain_lightning(delta)
 
 	GameStatistics.consume_fuel(get_effective_fuel_drain_per_second() * delta)
-
-	grid.update_vision(_front_world(), get_effective_vision_radius_cells())
 
 	if GameStatistics.fuel <= 0.0 and not _fuel_out_emitted:
 		_fuel_out_emitted = true

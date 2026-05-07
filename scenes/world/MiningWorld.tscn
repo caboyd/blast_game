@@ -37,4 +37,3 @@ jitter_scale_min = 0.4
 jitter_scale_max = 0.65
 jitter_rotation_degrees_max = 180.0
 
-[node name="FogVisual" type="Sprite2D" parent="." unique_id=1293813776]

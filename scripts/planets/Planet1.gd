@@ -56,42 +56,36 @@ const PART_PICKUP_DEFS: Array[Dictionary] = [
 		"part_id": &"part_fuel_tank_t1",
 		"pickup_index": 0,
 		"persistence": PartRegistry.PICKUP_PERSISTENCE_ONCE,
-		"spawn_reveal_mode": MiningWorld.SPAWN_REVEAL_FULL,
 	},
 	{
 		"pickup_id": &"planet1_part_fuel_tank_t1_i1",
 		"part_id": &"part_fuel_tank_t1",
 		"pickup_index": 1,
 		"persistence": PartRegistry.PICKUP_PERSISTENCE_ONCE,
-		"spawn_reveal_mode": MiningWorld.SPAWN_REVEAL_NORMAL,
 	},
 	{
 		"pickup_id": &"planet1_part_drill_t1_i0",
 		"part_id": &"part_drill_t1",
 		"pickup_index": 0,
-		"persistence": PartRegistry.PICKUP_PERSISTENCE_ONCE,
-		"spawn_reveal_mode": MiningWorld.SPAWN_REVEAL_FULL,
+		"persistence": PartRegistry.PICKUP_PERSISTENCE_ONCE,	
 	},
 	{
 		"pickup_id": &"planet1_part_drill_t1_i1",
 		"part_id": &"part_drill_t1",
 		"pickup_index": 1,
-		"persistence": PartRegistry.PICKUP_PERSISTENCE_ONCE,
-		"spawn_reveal_mode": MiningWorld.SPAWN_REVEAL_NORMAL,
+		"persistence": PartRegistry.PICKUP_PERSISTENCE_ONCE,	
 	},
 	{
 		"pickup_id": &"planet1_part_treads_t1_i0",
 		"part_id": &"part_treads_t1",
 		"pickup_index": 0,
-		"persistence": PartRegistry.PICKUP_PERSISTENCE_ONCE,
-		"spawn_reveal_mode": MiningWorld.SPAWN_REVEAL_FULL,
+		"persistence": PartRegistry.PICKUP_PERSISTENCE_ONCE,	
 	},
 	{
 		"pickup_id": &"planet1_part_treads_t1_i1",
 		"part_id": &"part_treads_t1",
 		"pickup_index": 1,
-		"persistence": PartRegistry.PICKUP_PERSISTENCE_ONCE,
-		"spawn_reveal_mode": MiningWorld.SPAWN_REVEAL_NORMAL,
+		"persistence": PartRegistry.PICKUP_PERSISTENCE_ONCE,	
 	},
 ]
 
@@ -140,7 +134,6 @@ func _ready() -> void:
 		_mining_world.configure_stage_generation(planet_id, Callable(self, "_generate_mining_world_chunk"))
 		var cell_colors: PackedColorArray = _cell_material_colors_packed()
 		_mining_world.set_cell_material_colors(cell_colors)
-		_mining_world.set_fog_base_color(cell_colors[PRIMARY_MATERIAL_TYPE])
 		if not _mining_world.block_broken.is_connected(_on_mining_block_broken_audio):
 			_mining_world.block_broken.connect(_on_mining_block_broken_audio)
 		AudioManager.bind_world_audio_mount(_mining_world)

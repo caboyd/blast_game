@@ -125,7 +125,6 @@ func _ready() -> void:
 		_mining_world.configure_stage_generation(planet_id, Callable(self, "_generate_mining_world_chunk"))
 		var cell_colors: PackedColorArray = _cell_material_colors_packed()
 		_mining_world.set_cell_material_colors(cell_colors)
-		_mining_world.set_fog_base_color(cell_colors[PRIMARY_MATERIAL_TYPE])
 		if not _mining_world.block_broken.is_connected(_on_mining_block_broken_audio):
 			_mining_world.block_broken.connect(_on_mining_block_broken_audio)
 		AudioManager.bind_world_audio_mount(_mining_world)
