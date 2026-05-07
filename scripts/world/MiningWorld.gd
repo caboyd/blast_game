@@ -82,6 +82,8 @@ static func get_chunk_center_world(chunk: Vector2i) -> Vector2:
 @export_range(1, 32) var shader_type_color_max: int = 8
 @export_range(0, 12) var chunk_preload_radius_chunks: int = 2
 @export_range(0, 24) var chunk_unload_radius_chunks: int = 5
+## When true, visited chunks stay in memory regardless of unload radius.
+@export var never_unload_chunks: bool = false
 
 ## Effective unload Chebyshev radius is max(`chunk_unload_radius_chunks`, preload + this).
 const _CHUNK_STREAM_UNLOAD_MARGIN_CHUNKS: int = 1
@@ -98,7 +100,7 @@ const _STONE_BLOB_DIRS: Array[Vector2i] = [
 	Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0),
 ]
 
-var _chunks: Dictionary = {} # Vector2i -> { cells, hp PackedByteArray }
+var _chunks: Dictionary = {} # Vector2i -> { cells, hp PackedByteArray, type_img: Image RG8 }
 
 var _chunk_stream_in_accum: int = 0
 var _chunk_stream_out_accum: int = 0
@@ -261,7 +263,8 @@ func _chunk_unload_radius_effective() -> int:
 
 func _maintain_chunk_streaming(cam_chunk: Vector2i) -> void:
 	_preload_chunks_near(cam_chunk, chunk_preload_radius_chunks)
-	_unload_chunks_farther_than(cam_chunk, _chunk_unload_radius_effective())
+	if not never_unload_chunks:
+		_unload_chunks_farther_than(cam_chunk, _chunk_unload_radius_effective())
 
 
 func _process(delta: float) -> void:
@@ -331,6 +334,55 @@ func _hp_for_type(type_id: int) -> int:
 	return clampi(int(TYPE_MAX_HP[type_id]), 0, 255)
 
 
+## RG8 image matching `_rebuild_terrain_textures`: R = type byte, G = hp / max_hp * 255, (0,0) = empty.
+func _rebuild_chunk_type_image(chunk_data: Dictionary) -> void:
+	var cells: PackedByteArray = chunk_data["cells"]
+	var hparr: PackedByteArray = chunk_data["hp"]
+	var n: int = cells.size()
+	var type_data := PackedByteArray()
+	type_data.resize(n * 2)
+	for i in n:
+		var t: int = int(cells[i])
+		var o: int = i * 2
+		if t != TYPE_EMPTY:
+			var max_hp: int = maxi(1, int(TYPE_MAX_HP[t]))
+			var hp: int = clampi(int(hparr[i]), 0, max_hp)
+			type_data[o] = t
+			type_data[o + 1] = int(round(float(hp) * 255.0 / float(max_hp)))
+	var img_variant: Variant = chunk_data.get("type_img", null)
+	var img: Image = img_variant as Image
+	if img == null or img.get_width() != CHUNK_SIZE or img.get_height() != CHUNK_SIZE:
+		img = Image.create(CHUNK_SIZE, CHUNK_SIZE, false, Image.FORMAT_RG8)
+		chunk_data["type_img"] = img
+	img.set_data(CHUNK_SIZE, CHUNK_SIZE, false, Image.FORMAT_RG8, type_data)
+
+
+func _sync_chunk_type_image_pixel(chunk_data: Dictionary, local_idx: int) -> void:
+	if local_idx < 0:
+		return
+	var cells: PackedByteArray = chunk_data["cells"]
+	var hparr: PackedByteArray = chunk_data["hp"]
+	if local_idx >= cells.size():
+		return
+	var img_variant: Variant = chunk_data.get("type_img", null)
+	var img: Image = img_variant as Image
+	if img == null or img.get_width() != CHUNK_SIZE or img.get_height() != CHUNK_SIZE:
+		_rebuild_chunk_type_image(chunk_data)
+		return
+	var t: int = int(cells[local_idx])
+	var lx: int = local_idx % CHUNK_SIZE
+	@warning_ignore("integer_division")
+	var ly: int = local_idx / CHUNK_SIZE
+	var r_byte: int = 0
+	var g_byte: int = 0
+	if t != TYPE_EMPTY:
+		r_byte = t
+		var max_hp: int = maxi(1, int(TYPE_MAX_HP[t]))
+		var hp: int = clampi(int(hparr[local_idx]), 0, max_hp)
+		g_byte = int(round(float(hp) * 255.0 / float(max_hp)))
+	img.set_pixel(lx, ly, Color(float(r_byte) / 255.0, float(g_byte) / 255.0, 0.0, 1.0))
+
+
 func _ensure_chunk(chunk: Vector2i) -> void:
 	if _chunks.has(chunk):
 		return
@@ -355,6 +407,7 @@ func _ensure_chunk(chunk: Vector2i) -> void:
 	else:
 		fill_chunk_with_type(chunk_data, TYPE_DIRT)
 	_apply_run_cell_edits(chunk, chunk_data)
+	_rebuild_chunk_type_image(chunk_data)
 	_terrain_dirty = true
 
 
@@ -599,6 +652,7 @@ func stamp_cell_overrides_for_chunk(chunk: Vector2i, overrides: Array[Dictionary
 		var h: int = int(o.get("hp", _hp_for_type(tid)))
 		cells[idx] = tid
 		hparr[idx] = clampi(h, 0, 255)
+	_rebuild_chunk_type_image(data)
 
 
 func stamp_square_shell_for_chunk(
@@ -620,6 +674,7 @@ func stamp_square_shell_for_chunk(
 			var type_id: int = center_type if dx == 0 and dy == 0 else shell_type
 			cells[idx] = type_id
 			hparr[idx] = _hp_for_type(type_id)
+	_rebuild_chunk_type_image(data)
 
 
 ## Soft terrain fill: Chebyshev radius `radius_cells` (square: ±radius on both axes). Ensures chunks.
@@ -628,6 +683,7 @@ func stamp_dirt_chebyshev_from_world(world_pos: Vector2, radius_cells: int) -> v
 		return
 	var center_cell := world_pos_to_cell(world_pos)
 	var dirt_hp: int = clampi(int(TYPE_MAX_HP[TYPE_DIRT]), 0, 255)
+	var touched_chunks: Dictionary = {}
 	for dy in range(-radius_cells, radius_cells + 1):
 		for dx in range(-radius_cells, radius_cells + 1):
 			var c := Vector2i(center_cell.x + dx, center_cell.y + dy)
@@ -640,6 +696,9 @@ func stamp_dirt_chebyshev_from_world(world_pos: Vector2, radius_cells: int) -> v
 			cells_ba[idx] = TYPE_DIRT
 			hp_ba[idx] = dirt_hp
 			_commit_run_edit_for_chunk_index(ch, idx)
+			touched_chunks[ch] = true
+	for ch_t in touched_chunks:
+		_rebuild_chunk_type_image(_chunks[ch_t as Vector2i])
 	_terrain_dirty = true
 
 
@@ -922,6 +981,7 @@ func _clear_fuel_cluster_if_cell_inside(
 				cells[li] = TYPE_EMPTY
 				hparr[li] = 0
 				_commit_run_edit_for_chunk_index(chunk_coord, li)
+				_sync_chunk_type_image_pixel(data, li)
 	return true
 
 
@@ -955,6 +1015,7 @@ func _damage_cell_abs(cell: Vector2i, amount: int, chain_depth: int = 0, cascade
 			var nh_f: int = clampi(new_hp_f, 0, 255)
 			hparr[idx] = nh_f
 			_commit_run_edit_for_chunk_index(ch, idx)
+			_sync_chunk_type_image_pixel(data, idx)
 			return hp_f - nh_f
 	var hp_before: int = int(hparr[idx])
 	var new_hp: int = hp_before - amount
@@ -973,12 +1034,14 @@ func _damage_cell_abs(cell: Vector2i, amount: int, chain_depth: int = 0, cascade
 			if not queued_bh:
 				GameStatistics.add_mined_cell_reward(amt)
 		_commit_run_edit_for_chunk_index(ch, idx)
+		_sync_chunk_type_image_pixel(data, idx)
 		block_broken.emit(cell_center_world(cell), broken_type_id)
 		_maybe_chain_explode_from_mined_break(cell, chain_depth, cascade_budget)
 		return hp_before
 	var nh: int = clampi(new_hp, 0, 255)
 	hparr[idx] = nh
 	_commit_run_edit_for_chunk_index(ch, idx)
+	_sync_chunk_type_image_pixel(data, idx)
 	return hp_before - nh
 
 
@@ -1139,6 +1202,7 @@ func _set_cell_type_empty_silent(cell: Vector2i) -> bool:
 	cells[idx] = TYPE_EMPTY
 	hparr[idx] = 0
 	_commit_run_edit_for_chunk_index(ch, idx)
+	_sync_chunk_type_image_pixel(data, idx)
 	return true
 
 
@@ -1258,42 +1322,38 @@ func _rebuild_terrain_textures() -> void:
 	var oy: int = _view_origin_cell.y
 	var w: int = _view_size_cells.x
 	var h: int = _view_size_cells.y
-	var pixel_count: int = w * h
-	var type_data := PackedByteArray()
-	type_data.resize(pixel_count * 2)
-
-	for iy in h:
-		var wy: int = oy + iy
-		var chunk_y: int = _floor_div(wy, CHUNK_SIZE)
-		var local_y: int = wy - chunk_y * CHUNK_SIZE
-		var ix: int = 0
-		while ix < w:
-			var wx: int = ox + ix
-			var chunk_x: int = _floor_div(wx, CHUNK_SIZE)
-			var local_x: int = wx - chunk_x * CHUNK_SIZE
-			var run_len: int = mini(w - ix, CHUNK_SIZE - local_x)
-			var ch := Vector2i(chunk_x, chunk_y)
+	_type_image.fill(Color(0, 0, 0, 0))
+	var cx0: int = _floor_div(ox, CHUNK_SIZE)
+	var cx1: int = _floor_div(ox + w - 1, CHUNK_SIZE)
+	var cy0: int = _floor_div(oy, CHUNK_SIZE)
+	var cy1: int = _floor_div(oy + h - 1, CHUNK_SIZE)
+	var chunk_tl_world_x: int
+	var chunk_tl_world_y: int
+	for ccy in range(cy0, cy1 + 1):
+		for ccx in range(cx0, cx1 + 1):
+			var ch := Vector2i(ccx, ccy)
 			_ensure_chunk(ch)
 			var data: Dictionary = _chunks[ch]
-			var cells: PackedByteArray = data["cells"]
-			var hparr: PackedByteArray = data["hp"]
-			var chunk_idx: int = local_y * CHUNK_SIZE + local_x
-			var pixel_idx: int = iy * w + ix
-			var type_idx: int = pixel_idx * 2
-
-			for _i in run_len:
-				var t: int = int(cells[chunk_idx])
-				if t != TYPE_EMPTY:
-					var max_hp: int = maxi(1, int(TYPE_MAX_HP[t]))
-					var hp: int = clampi(int(hparr[chunk_idx]), 0, max_hp)
-					type_data[type_idx] = t
-					type_data[type_idx + 1] = int(round(float(hp) * 255.0 / float(max_hp)))
-				chunk_idx += 1
-				pixel_idx += 1
-				type_idx += 2
-			ix += run_len
-
-	_type_image.set_data(w, h, false, Image.FORMAT_RG8, type_data)
+			var type_src: Image = data["type_img"] as Image
+			if type_src == null:
+				_rebuild_chunk_type_image(data)
+				type_src = data["type_img"] as Image
+			chunk_tl_world_x = ccx * CHUNK_SIZE
+			chunk_tl_world_y = ccy * CHUNK_SIZE
+			var ix0: int = maxi(chunk_tl_world_x, ox)
+			var iy0: int = maxi(chunk_tl_world_y, oy)
+			var ix1: int = mini(chunk_tl_world_x + CHUNK_SIZE - 1, ox + w - 1)
+			var iy1: int = mini(chunk_tl_world_y + CHUNK_SIZE - 1, oy + h - 1)
+			if ix0 > ix1 or iy0 > iy1:
+				continue
+			var src_rect := Rect2i(
+				ix0 - chunk_tl_world_x,
+				iy0 - chunk_tl_world_y,
+				ix1 - ix0 + 1,
+				iy1 - iy0 + 1
+			)
+			var dst := Vector2i(ix0 - ox, iy0 - oy)
+			_type_image.blit_rect(type_src, src_rect, dst)
 	_type_texture.update(_type_image)
 
 	_sync_shader_texture_params()
