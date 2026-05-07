@@ -416,10 +416,9 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_right = 6.0
-offset_bottom = 2.0
 grow_horizontal = 2
 grow_vertical = 2
+clip_contents = true
 theme_override_constants/margin_left = 12
 theme_override_constants/margin_top = 10
 theme_override_constants/margin_right = 12
@@ -451,6 +450,7 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 18
 text = "Upgrades"
 horizontal_alignment = 1
+autowrap_mode = 3
 
 [node name="PrepShopBatchRow" type="HBoxContainer" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner" unique_id=340891043]
 unique_name_in_owner = true
@@ -463,11 +463,20 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(96, 28)
 layout_mode = 2
 focus_mode = 0
+clip_text = true
+text_overrun_behavior = 3
 text = "Buy: 1x"
 
-[node name="PrepShopUpgradesList" type="VBoxContainer" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner" unique_id=353491670]
+[node name="PrepShopUpgradesScroll" type="ScrollContainer" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner" unique_id=353491669]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 1
+
+[node name="PrepShopUpgradesList" type="VBoxContainer" parent="Margin/RootVBox/Row/ShopPanel/ShopMargin/ShopInner/PrepShopUpgradesScroll" unique_id=353491670]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 8
 

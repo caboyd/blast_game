@@ -20,6 +20,51 @@ const _PREVIEW_SCALE := Vector2(8, 8)
 const _DUMMY_SHIP_STUB_COUNT := 10
 const _STUB_SHIP_PREFIX := "_prep_stub_"
 const _SHIP_PICK_SCROLL_STEP_PX := 140
+const WEAPON_LASER_UNLOCK_ID := &"weapon_laser"
+const WEAPON_BOMB_UNLOCK_ID := &"weapon_bomb"
+const WEAPON_MISSILE_UNLOCK_ID := &"weapon_missile"
+const WEAPON_GRAVITY_PULL_UNLOCK_ID := &"weapon_gravity_pull"
+const WEAPON_CHAIN_LIGHTNING_UNLOCK_ID := &"weapon_chain_lightning"
+## Child tuning upgrades (must exist in `weapon_systems.tres`). Shown only when [member WEAPON_LASER_UNLOCK_ID] is purchased.
+const WEAPON_LASER_CHILD_UPGRADE_IDS: Array[StringName] = [
+	&"weapon_laser_range",
+	&"weapon_laser_damage",
+	&"weapon_laser_fire_rate",
+	&"weapon_laser_width",
+	&"weapon_laser_pierce",
+]
+const WEAPON_LASER_SHOP_GROUP_INSET_PX := 18
+## Missile tuning rows in `weapon_systems.tres`; indented under Missile System when unlocked.
+const WEAPON_MISSILE_CHILD_UPGRADE_IDS: Array[StringName] = [
+	&"weapon_missile_range",
+	&"weapon_missile_damage",
+	&"weapon_missile_fire_rate",
+	&"weapon_missile_speed",
+]
+## Bomb tuning rows in `weapon_systems.tres`; indented under Bomb System when unlocked.
+const WEAPON_BOMB_CHILD_UPGRADE_IDS: Array[StringName] = [
+	&"weapon_bomb_range",
+	&"weapon_bomb_damage",
+	&"weapon_bomb_fire_rate",
+	&"weapon_bomb_blast_radius",
+]
+## Chain Lightning children; indented like laser when unlocked.
+const WEAPON_CHAIN_LIGHTNING_CHILD_UPGRADE_IDS: Array[StringName] = [
+	&"weapon_chain_lightning_range",
+	&"weapon_chain_lightning_damage",
+	&"weapon_chain_lightning_fire_rate",
+	&"weapon_chain_lightning_extra_chains",
+	&"weapon_chain_lightning_arc_radius",
+	&"weapon_chain_lightning_conductivity",
+]
+const BLOCK_EFFECT_UNLOCK_SHOP_ID := &"block_explosive_unlock"
+const BLOCK_EFFECT_SHOP_GROUP_INSET_PX := 18
+## Child upgrades from `block_effects.tres`; shown only when [member BLOCK_EFFECT_UNLOCK_SHOP_ID] is purchased.
+const BLOCK_EFFECT_NESTED_SHOP_IDS: Array[StringName] = [
+	&"block_explosive_chance",
+	&"block_explosive_damage",
+	&"block_explosive_radius",
+]
 
 @export_group("Part Overlay")
 @export var prep_parts_overlay_margins := Vector4(16.0, 14.0, 16.0, 14.0)
@@ -70,6 +115,7 @@ const _SHIP_PICK_SCROLL_STEP_PX := 140
 
 var _upgrade_batch_index: int = 0
 var _ship_pick_buttons: Dictionary = {}  # StringName -> Button
+var _last_shop_layout_key: String = ""
 ## Root from `ShipData.ship_scene` (implements mining API from `ShipBase`).
 var _preview_ship: Node2D
 var _shop_row_info_labels: Array[Label] = []
@@ -79,6 +125,8 @@ var _part_tooltip: Control
 func _ready() -> void:
 	_stats_tabs.set_tab_title(0, "Ship")
 	_stats_tabs.set_tab_title(1, "Progress")
+	if _shop_upgrades_label:
+		_shop_upgrades_label.text = "Shop"
 	if _ship_tabs:
 		_ship_tabs.set_tab_title(0, "Ship")
 		_ship_tabs.set_tab_title(1, "Stage")
@@ -627,6 +675,30 @@ func _refresh_ship_stats() -> void:
 			_mining_power_per_sec_label.text = "Mining Power / s: —"
 
 
+func _compute_shop_layout_key() -> String:
+	var parts: PackedStringArray = PackedStringArray()
+	parts.append(String(GameSession.selected_ship_id))
+	if ShipDataRegistry.get_active() != null:
+		for u in ShipDataRegistry.get_active_ship_upgrades():
+			if u != null:
+				parts.append(String(u.get("id")))
+	parts.append("laser_%d" % UpgradeBus.get_level(WEAPON_LASER_UNLOCK_ID))
+	parts.append("bomb_%d" % UpgradeBus.get_level(WEAPON_BOMB_UNLOCK_ID))
+	parts.append("missile_%d" % UpgradeBus.get_level(WEAPON_MISSILE_UNLOCK_ID))
+	for mid in WEAPON_MISSILE_CHILD_UPGRADE_IDS:
+		parts.append(String(mid))
+	parts.append("gravity_%d" % UpgradeBus.get_level(WEAPON_GRAVITY_PULL_UNLOCK_ID))
+	parts.append("cl_%d" % UpgradeBus.get_level(WEAPON_CHAIN_LIGHTNING_UNLOCK_ID))
+	for cid in WEAPON_LASER_CHILD_UPGRADE_IDS:
+		parts.append(String(cid))
+	for bid in WEAPON_BOMB_CHILD_UPGRADE_IDS:
+		parts.append("%s:%d" % [String(bid), UpgradeBus.get_level(bid)])
+	parts.append("be_unlock:%d" % UpgradeBus.get_level(BLOCK_EFFECT_UNLOCK_SHOP_ID))
+	for bid in BLOCK_EFFECT_NESTED_SHOP_IDS:
+		parts.append("%s:%d" % [String(bid), UpgradeBus.get_level(bid)])
+	return "|".join(parts)
+
+
 func _clear_shop_upgrades() -> void:
 	_shop_row_info_labels.clear()
 	if _shop_upgrades == null:
@@ -637,17 +709,28 @@ func _clear_shop_upgrades() -> void:
 		c.free()
 
 
-func _add_shop_row(upgrade_id: StringName) -> void:
+func _add_shop_section_header(title: String) -> void:
 	if _shop_upgrades == null:
 		return
-	var row := VBoxContainer.new()
-	row.set_meta("upgrade_id", upgrade_id)
-	row.add_theme_constant_override("separation", 2)
+	var header_wrap := VBoxContainer.new()
+	header_wrap.set_meta("is_section_header", true)
+	var lbl := Label.new()
+	lbl.text = title
+	lbl.add_theme_font_size_override(&"font_size", 15)
+	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header_wrap.add_child(lbl)
+	_shop_upgrades.add_child(header_wrap)
+
+
+func _add_shop_row(upgrade_id: StringName, left_inset_px: int = 0) -> void:
+	if _shop_upgrades == null:
+		return
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 2)
 	var info := Label.new()
 	_shop_row_info_labels.append(info)
-	row.add_child(info)
-	var buy_row := HBoxContainer.new()
-	buy_row.add_theme_constant_override("separation", 8)
+	col.add_child(info)
 	var tier_stack := Control.new()
 	tier_stack.custom_minimum_size = Vector2(0, 32)
 	tier_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -662,21 +745,81 @@ func _add_shop_row(upgrade_id: StringName) -> void:
 	tier_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tier_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	tier_stack.add_child(tier_lbl)
+	var btn_row := HBoxContainer.new()
+	btn_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	btn_row.alignment = BoxContainer.ALIGNMENT_END
 	var btn := Button.new()
 	btn.custom_minimum_size = Vector2(96, 32)
+	btn.clip_text = true
+	btn.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	btn.pressed.connect(_on_dynamic_shop_purchase.bind(upgrade_id))
-	buy_row.add_child(tier_stack)
-	buy_row.add_child(btn)
-	row.add_child(buy_row)
-	_shop_upgrades.add_child(row)
-	# Stash for refresh
-	row.set_meta("info", info)
-	row.set_meta("bar", bar)
-	row.set_meta("tier_lbl", tier_lbl)
-	row.set_meta("btn", btn)
+	btn_row.add_child(btn)
+	col.add_child(tier_stack)
+	col.add_child(btn_row)
+	var shop_root: Control
+	if left_inset_px > 0:
+		var hb := HBoxContainer.new()
+		var sp := Control.new()
+		sp.custom_minimum_size.x = float(left_inset_px)
+		hb.add_child(sp)
+		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		hb.add_child(col)
+		shop_root = hb
+	else:
+		shop_root = col
+	_shop_upgrades.add_child(shop_root)
+	shop_root.set_meta("upgrade_id", upgrade_id)
+	shop_root.set_meta("info", info)
+	shop_root.set_meta("bar", bar)
+	shop_root.set_meta("tier_lbl", tier_lbl)
+	shop_root.set_meta("btn", btn)
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	shop_root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+
+func _add_laser_target_priority_row() -> void:
+	if _shop_upgrades == null:
+		return
+	var row := MarginContainer.new()
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_theme_constant_override("margin_left", WEAPON_LASER_SHOP_GROUP_INSET_PX)
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 6)
+	vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var lbl := Label.new()
+	lbl.text = "Laser target priority"
+	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var opt := OptionButton.new()
+	opt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	opt.clip_text = true
+	opt.fit_to_longest_item = false
+	opt.add_item("Highest current HP (healthiest)")
+	opt.add_item("Lowest current HP (weakest)")
+	opt.add_item("Highest destroy $ reward")
+	opt.add_item("Most adjacent solid blocks")
+	var p: int = clampi(
+		GameSession.weapon_laser_target_priority,
+		GameSession.WEAPON_LASER_TARGET_HEALTHIEST,
+		GameSession.WEAPON_LASER_TARGET_HIGHEST_DENSITY
+	)
+	opt.select(p)
+	if not opt.item_selected.is_connected(_on_laser_target_priority_selected):
+		opt.item_selected.connect(_on_laser_target_priority_selected)
+	vb.add_child(lbl)
+	vb.add_child(opt)
+	row.add_child(vb)
+	_shop_upgrades.add_child(row)
+
+
+func _on_laser_target_priority_selected(idx: int) -> void:
+	GameSession.weapon_laser_target_priority = clampi(
+		idx,
+		GameSession.WEAPON_LASER_TARGET_HEALTHIEST,
+		GameSession.WEAPON_LASER_TARGET_HIGHEST_DENSITY
+	)
+	GameSession.save_career()
 
 
 func _refresh_shop() -> void:
@@ -691,29 +834,63 @@ func _refresh_shop() -> void:
 		return
 	_refresh_shop_batch_button()
 	if _shop_upgrades:
-		# Build rows on first use or if empty / count mismatch
-		var up_ids: Array[StringName] = []
-		for u in ShipDataRegistry.get_active_ship_upgrades():
-			if u != null:
-				up_ids.append(u.get("id") as StringName)
-		if _shop_upgrades.get_child_count() != up_ids.size():
+		var layout_key := _compute_shop_layout_key()
+		if layout_key != _last_shop_layout_key:
+			_last_shop_layout_key = layout_key
 			_clear_shop_upgrades()
-			for ui in up_ids:
-				_add_shop_row(ui)
-		# If still empty (e.g. no data), try building once
-		if _shop_upgrades.get_child_count() == 0 and not up_ids.is_empty():
-			for ui in up_ids:
-				_add_shop_row(ui)
+			_add_shop_section_header("Vehicle Upgrades")
+			for u in ShipDataRegistry.get_active_ship_upgrades():
+				if u != null:
+					_add_shop_row(u.get("id") as StringName)
+			_add_shop_section_header("Weapon Systems")
+			if ShipDataRegistry.has_upgrade(WEAPON_LASER_UNLOCK_ID):
+				_add_shop_row(WEAPON_LASER_UNLOCK_ID)
+				if UpgradeBus.get_level(WEAPON_LASER_UNLOCK_ID) >= 1:
+					_add_laser_target_priority_row()
+					for cid in WEAPON_LASER_CHILD_UPGRADE_IDS:
+						if ShipDataRegistry.has_upgrade(cid):
+							_add_shop_row(cid, WEAPON_LASER_SHOP_GROUP_INSET_PX)
+			if ShipDataRegistry.has_upgrade(WEAPON_BOMB_UNLOCK_ID):
+				_add_shop_row(WEAPON_BOMB_UNLOCK_ID)
+				if UpgradeBus.get_level(WEAPON_BOMB_UNLOCK_ID) >= 1:
+					for bid in WEAPON_BOMB_CHILD_UPGRADE_IDS:
+						if ShipDataRegistry.has_upgrade(bid):
+							_add_shop_row(bid, WEAPON_LASER_SHOP_GROUP_INSET_PX)
+			if ShipDataRegistry.has_upgrade(WEAPON_MISSILE_UNLOCK_ID):
+				_add_shop_row(WEAPON_MISSILE_UNLOCK_ID)
+				if UpgradeBus.get_level(WEAPON_MISSILE_UNLOCK_ID) >= 1:
+					for mid in WEAPON_MISSILE_CHILD_UPGRADE_IDS:
+						if ShipDataRegistry.has_upgrade(mid):
+							_add_shop_row(mid, WEAPON_LASER_SHOP_GROUP_INSET_PX)
+			if ShipDataRegistry.has_upgrade(WEAPON_GRAVITY_PULL_UNLOCK_ID):
+				_add_shop_row(WEAPON_GRAVITY_PULL_UNLOCK_ID)
+			if ShipDataRegistry.has_upgrade(WEAPON_CHAIN_LIGHTNING_UNLOCK_ID):
+				_add_shop_row(WEAPON_CHAIN_LIGHTNING_UNLOCK_ID)
+				if UpgradeBus.get_level(WEAPON_CHAIN_LIGHTNING_UNLOCK_ID) >= 1:
+					for cid in WEAPON_CHAIN_LIGHTNING_CHILD_UPGRADE_IDS:
+						if ShipDataRegistry.has_upgrade(cid):
+							_add_shop_row(cid, WEAPON_LASER_SHOP_GROUP_INSET_PX)
+			_add_shop_section_header("Block Effects")
+			if ShipDataRegistry.has_upgrade(BLOCK_EFFECT_UNLOCK_SHOP_ID):
+				_add_shop_row(BLOCK_EFFECT_UNLOCK_SHOP_ID)
+				if UpgradeBus.get_level(BLOCK_EFFECT_UNLOCK_SHOP_ID) >= 1:
+					for bid in BLOCK_EFFECT_NESTED_SHOP_IDS:
+						if ShipDataRegistry.has_upgrade(bid):
+							_add_shop_row(bid, BLOCK_EFFECT_SHOP_GROUP_INSET_PX)
 		_shop_row_info_labels.clear()
 		for i in _shop_upgrades.get_child_count():
-			var row: VBoxContainer = _shop_upgrades.get_child(i) as VBoxContainer
-			if row == null:
+			var row_root: Control = _shop_upgrades.get_child(i) as Control
+			if row_root == null:
 				continue
-			var upgrade_id: StringName = row.get_meta("upgrade_id") as StringName
-			var info: Label = row.get_meta("info") as Label
-			var bar: ProgressBar = row.get_meta("bar") as ProgressBar
-			var tier_lbl: Label = row.get_meta("tier_lbl") as Label
-			var btn: Button = row.get_meta("btn") as Button
+			if row_root.get_meta("is_section_header", false):
+				continue
+			if not row_root.has_meta("upgrade_id"):
+				continue
+			var upgrade_id: StringName = row_root.get_meta("upgrade_id") as StringName
+			var info: Label = row_root.get_meta("info") as Label
+			var bar: ProgressBar = row_root.get_meta("bar") as ProgressBar
+			var tier_lbl: Label = row_root.get_meta("tier_lbl") as Label
+			var btn: Button = row_root.get_meta("btn") as Button
 			if info:
 				_shop_row_info_labels.append(info)
 			_set_shop_tier_label(upgrade_id, tier_lbl)
@@ -751,7 +928,11 @@ func _set_shop_info_label(upgrade_id: StringName, label: Label) -> void:
 			var snap_line: String = _shop_format_snapshot_line(ud_snap, st_snap, contrib)
 			if not snap_line.is_empty():
 				snap_parts.append(snap_line)
-		label.text = " · ".join(snap_parts)
+		if snap_parts.is_empty():
+			var flavor_max: String = str(ud_snap.get("shop_description")).strip_edges()
+			label.text = flavor_max if not flavor_max.is_empty() else "Unlocked."
+		else:
+			label.text = " · ".join(snap_parts)
 		return
 	var req: int = _current_upgrade_batch_request()
 	var n_afford: int = UpgradeBus.get_purchase_count_for_request(
@@ -766,7 +947,11 @@ func _set_shop_info_label(upgrade_id: StringName, label: Label) -> void:
 		if not line.is_empty():
 			parts.append(line)
 	if parts.is_empty():
-		label.text = ""
+		var ud0: Resource = ShipDataRegistry.get_upgrade(upgrade_id)
+		var flavor0: String = (
+			str(ud0.get("shop_description")).strip_edges() if ud0 != null else ""
+		)
+		label.text = flavor0
 		return
 	var prefix: String = ""
 	if n_disp > 1:
@@ -805,13 +990,42 @@ func _shop_decimal_places_for_stat(st: StringName) -> int:
 	match String(st):
 		"mine_damage_per_tick", "drill_range_bonus_game_px":
 			return 2
+		"weapon_laser_cooldown_s":
+			return 2
+		"weapon_missile_cooldown_s":
+			return 2
+		"weapon_chain_lightning_cooldown_s":
+			return 2
+		"weapon_bomb_cooldown_s":
+			return 2
+		"weapon_laser_range_game_px", "weapon_laser_beam_width_game_px":
+			return 1
+		"weapon_missile_range_game_px", "weapon_missile_travel_speed_game_px_s":
+			return 1
+		"weapon_chain_lightning_range_game_px":
+			return 1
+		"weapon_bomb_range_game_px", "weapon_bomb_blast_radius_game_px":
+			return 1
+		"weapon_chain_lightning_chain_damage_multiplier":
+			return 2
 		"money_double_chance", "turn_rate_rad_s":
 			return 1
+		"block_explosion_chance":
+			return 2
+		"block_explosion_damage", "block_explosion_radius_cells":
+			return 2
 		_:
 			return 0
 
 
+func _shop_format_chance_probability_as_percent(v: float) -> String:
+	## `v` is 0..1; show as percent with enough precision for typical proc values (~0.01–0.3).
+	return "%.2f%%" % (v * 100.0)
+
+
 func _shop_format_stat_value(v: float, st: StringName) -> String:
+	if st == &"block_explosion_chance":
+		return _shop_format_chance_probability_as_percent(v)
 	return _shop_format_number_plain(v, _shop_decimal_places_for_stat(st))
 
 

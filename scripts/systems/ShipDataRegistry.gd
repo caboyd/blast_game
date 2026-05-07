@@ -12,6 +12,8 @@ const _SHIP_DATA_SCRIPT = preload("res://scripts/data/ShipData.gd")
 const _ShipUpgradeEffectScript = preload("res://scripts/data/ShipUpgradeEffect.gd")
 
 const _SHIPS_DIR := "res://data/ships/"
+const _WEAPON_SYSTEMS_MANIFEST_PATH := "res://data/power_systems/weapon_systems.tres"
+const _BLOCK_EFFECTS_MANIFEST_PATH := "res://data/power_systems/block_effects.tres"
 const _SHIP_DATA_MANIFEST: Array[Resource] = [
 	preload("res://data/ships/scout.tres"),
 	preload("res://data/ships/prospector.tres"),
@@ -22,9 +24,129 @@ var _ships_by_id: Dictionary = {}  # StringName -> ShipData Resource
 var _ship_ids_sorted: Array[StringName] = []
 ## First definition per `prep_sort_index` order (matches former `get_upgrade` scan).
 var _upgrade_by_id: Dictionary = {}  # StringName -> upgrade resource
+## `ShipUpgradeData` rows from `block_effects.tres`; used for effect stacking (not tied to a single ship).
+var _block_effect_manifest_upgrades: Array = []
 var _loaded := false
 var _loading := false
 var initialized := false
+## `ShipUpgradeData` rows from `weapon_systems.tres`; used for effect stacking (not tied to a single ship).
+var _weapon_manifest_upgrades: Array = []
+
+
+func is_weapon_laser_tuning_stat(stat: StringName) -> bool:
+	match String(stat):
+		"weapon_laser_range_game_px", "weapon_laser_damage", "weapon_laser_cooldown_s":
+			return true
+		"weapon_laser_beam_width_game_px", "weapon_laser_pierce_count":
+			return true
+		_:
+			return false
+
+
+func is_weapon_missile_tuning_stat(stat: StringName) -> bool:
+	match String(stat):
+		"weapon_missile_range_game_px", "weapon_missile_damage", "weapon_missile_cooldown_s":
+			return true
+		"weapon_missile_travel_speed_game_px_s":
+			return true
+		_:
+			return false
+
+
+func is_weapon_chain_lightning_tuning_stat(stat: StringName) -> bool:
+	match String(stat):
+		"weapon_chain_lightning_range_game_px", "weapon_chain_lightning_damage", "weapon_chain_lightning_cooldown_s":
+			return true
+		"weapon_chain_lightning_max_extra_chains", "weapon_chain_lightning_arc_radius_cells":
+			return true
+		"weapon_chain_lightning_chain_damage_multiplier":
+			return true
+		_:
+			return false
+
+
+func is_weapon_bomb_tuning_stat(stat: StringName) -> bool:
+	match String(stat):
+		"weapon_bomb_range_game_px", "weapon_bomb_blast_radius_game_px", "weapon_bomb_cooldown_s":
+			return true
+		"weapon_bomb_damage":
+			return true
+		_:
+			return false
+
+
+func get_weapon_laser_stat_base(stat: StringName) -> float:
+	match String(stat):
+		"weapon_laser_range_game_px":
+			return 88.0
+		"weapon_laser_damage":
+			return 1.0
+		"weapon_laser_cooldown_s":
+			return 0.85
+		"weapon_laser_beam_width_game_px":
+			return 2.0
+		"weapon_laser_pierce_count":
+			return 0.0
+		_:
+			return 0.0
+
+
+func get_weapon_chain_lightning_stat_base(stat: StringName) -> float:
+	match String(stat):
+		"weapon_chain_lightning_range_game_px":
+			return 78.0
+		"weapon_chain_lightning_damage":
+			return 1.0
+		"weapon_chain_lightning_cooldown_s":
+			return 1.05
+		"weapon_chain_lightning_max_extra_chains":
+			return 1.0
+		"weapon_chain_lightning_arc_radius_cells":
+			return 1.0
+		"weapon_chain_lightning_chain_damage_multiplier":
+			return 0.62
+		_:
+			return 0.0
+
+
+func get_weapon_missile_stat_base(stat: StringName) -> float:
+	match String(stat):
+		"weapon_missile_range_game_px":
+			return 80.0
+		"weapon_missile_damage":
+			return 3.0
+		"weapon_missile_cooldown_s":
+			return 1.1
+		"weapon_missile_travel_speed_game_px_s":
+			return 320.0
+		_:
+			return 0.0
+
+
+func get_weapon_bomb_stat_base(stat: StringName) -> float:
+	match String(stat):
+		"weapon_bomb_range_game_px":
+			return 76.0
+		"weapon_bomb_blast_radius_game_px":
+			return 18.0
+		"weapon_bomb_cooldown_s":
+			return 3.15
+		"weapon_bomb_damage":
+			return 2.0
+		_:
+			return 0.0
+
+
+func _get_stat_base_for_preview(stat: StringName) -> float:
+	if is_weapon_laser_tuning_stat(stat):
+		return get_weapon_laser_stat_base(stat)
+	if is_weapon_missile_tuning_stat(stat):
+		return get_weapon_missile_stat_base(stat)
+	if is_weapon_chain_lightning_tuning_stat(stat):
+		return get_weapon_chain_lightning_stat_base(stat)
+	if is_weapon_bomb_tuning_stat(stat):
+		return get_weapon_bomb_stat_base(stat)
+	return _get_base_for_active_ship_stat(stat)
 
 
 func init() -> void:
@@ -121,6 +243,76 @@ func _rebuild_upgrade_index() -> void:
 			var uid: StringName = u.get("id") as StringName
 			if not _upgrade_by_id.has(uid):
 				_upgrade_by_id[uid] = u
+	_merge_weapon_system_upgrades_into_index()
+	_merge_block_effect_upgrades_into_index()
+
+
+func _merge_weapon_system_upgrades_into_index() -> void:
+	_weapon_manifest_upgrades.clear()
+	var manifest_res: Resource = load(_WEAPON_SYSTEMS_MANIFEST_PATH) as Resource
+	if manifest_res == null:
+		push_error("ShipDataRegistry: missing %s" % _WEAPON_SYSTEMS_MANIFEST_PATH)
+		return
+	var list: Variant = manifest_res.get("upgrades")
+	if list is Array:
+		for u in list as Array:
+			if u == null:
+				continue
+			var uid: StringName = u.get("id") as StringName
+			if String(uid).is_empty():
+				continue
+			_weapon_manifest_upgrades.append(u)
+			if not _upgrade_by_id.has(uid):
+				_upgrade_by_id[uid] = u
+
+
+func _merge_block_effect_upgrades_into_index() -> void:
+	_block_effect_manifest_upgrades.clear()
+	var manifest_res: Resource = load(_BLOCK_EFFECTS_MANIFEST_PATH) as Resource
+	if manifest_res == null:
+		push_error("ShipDataRegistry: missing %s" % _BLOCK_EFFECTS_MANIFEST_PATH)
+		return
+	var list: Variant = manifest_res.get("upgrades")
+	if list is Array:
+		for u in list as Array:
+			if u == null:
+				continue
+			var uid: StringName = u.get("id") as StringName
+			if String(uid).is_empty():
+				continue
+			_block_effect_manifest_upgrades.append(u)
+			if not _upgrade_by_id.has(uid):
+				_upgrade_by_id[uid] = u
+
+
+func _apply_weapon_manifest_effects(stat: StringName, v: float) -> float:
+	for ud in _weapon_manifest_upgrades:
+		if ud == null:
+			continue
+		var uid: StringName = ud.get("id") as StringName
+		var lvl: int = UpgradeBus.get_level(uid)
+		if lvl <= 0:
+			continue
+		var effs: Array = ud.get("effects") as Array
+		for eff in effs:
+			if eff != null and _ShipUpgradeEffectScript.normalize_effect_stat_id(eff.get("stat")) == stat:
+				v = _ShipUpgradeEffectScript.apply_effect(v, lvl, eff)
+	return v
+
+
+func _apply_block_effect_manifest_effects(stat: StringName, v: float) -> float:
+	for ud in _block_effect_manifest_upgrades:
+		if ud == null:
+			continue
+		var uid: StringName = ud.get("id") as StringName
+		var lvl: int = UpgradeBus.get_level(uid)
+		if lvl <= 0:
+			continue
+		var effs: Array = ud.get("effects") as Array
+		for eff in effs:
+			if eff != null and _ShipUpgradeEffectScript.normalize_effect_stat_id(eff.get("stat")) == stat:
+				v = _ShipUpgradeEffectScript.apply_effect(v, lvl, eff)
+	return v
 
 
 func reload_active() -> void:
@@ -246,7 +438,7 @@ func apply_effects_for_stat(stat: StringName, base: float) -> float:
 	ensure_loaded()
 	var v: float = base
 	if _ship_ids_sorted.is_empty():
-		return v
+		return _apply_block_effect_manifest_effects(stat, _apply_weapon_manifest_effects(stat, v))
 	for sid in _ship_ids_sorted:
 		var sdata: Resource = _ships_by_id.get(sid)
 		if sdata == null:
@@ -263,7 +455,7 @@ func apply_effects_for_stat(stat: StringName, base: float) -> float:
 			for eff in effs:
 				if eff != null and _ShipUpgradeEffectScript.normalize_effect_stat_id(eff.get("stat")) == stat:
 					v = _ShipUpgradeEffectScript.apply_effect(v, lvl, eff)
-	return v
+	return _apply_block_effect_manifest_effects(stat, _apply_weapon_manifest_effects(stat, v))
 
 
 func apply_effects_for_stat_int(stat: StringName, base: int) -> int:
@@ -279,9 +471,11 @@ func _get_base_for_active_ship_stat(stat: StringName) -> float:
 
 ## Effective value of `stat` if `focus_upgrade_id` were at `focus_level` and all other upgrades keep current career levels.
 func preview_effective_stat(stat: StringName, focus_upgrade_id: StringName, focus_level: int) -> float:
-	var v: float = _get_base_for_active_ship_stat(stat)
+	var v: float = _get_stat_base_for_preview(stat)
 	if _ship_ids_sorted.is_empty():
-		return v
+		return _preview_block_effect_manifest_effective_stat(
+			stat, focus_upgrade_id, focus_level, _preview_weapon_manifest_effective_stat(stat, focus_upgrade_id, focus_level, v)
+		)
 	for sid in _ship_ids_sorted:
 		var sdata: Resource = _ships_by_id.get(sid)
 		if sdata == null:
@@ -298,14 +492,51 @@ func preview_effective_stat(stat: StringName, focus_upgrade_id: StringName, focu
 			for eff in effs:
 				if eff != null and _ShipUpgradeEffectScript.normalize_effect_stat_id(eff.get("stat")) == stat:
 					v = _ShipUpgradeEffectScript.apply_effect(v, lvl, eff)
+	return _preview_block_effect_manifest_effective_stat(
+		stat, focus_upgrade_id, focus_level, _preview_weapon_manifest_effective_stat(stat, focus_upgrade_id, focus_level, v)
+	)
+
+
+func _preview_weapon_manifest_effective_stat(
+	stat: StringName, focus_upgrade_id: StringName, focus_level: int, v: float
+) -> float:
+	for ud in _weapon_manifest_upgrades:
+		if ud == null:
+			continue
+		var uid: StringName = ud.get("id") as StringName
+		var lvl: int = focus_level if uid == focus_upgrade_id else UpgradeBus.get_level(uid)
+		if lvl <= 0:
+			continue
+		var effs: Array = ud.get("effects") as Array
+		for eff in effs:
+			if eff != null and _ShipUpgradeEffectScript.normalize_effect_stat_id(eff.get("stat")) == stat:
+				v = _ShipUpgradeEffectScript.apply_effect(v, lvl, eff)
+	return v
+
+
+func _preview_block_effect_manifest_effective_stat(
+	stat: StringName, focus_upgrade_id: StringName, focus_level: int, v: float
+) -> float:
+	for ud in _block_effect_manifest_upgrades:
+		if ud == null:
+			continue
+		var uid: StringName = ud.get("id") as StringName
+		var lvl: int = focus_level if uid == focus_upgrade_id else UpgradeBus.get_level(uid)
+		if lvl <= 0:
+			continue
+		var effs: Array = ud.get("effects") as Array
+		for eff in effs:
+			if eff != null and _ShipUpgradeEffectScript.normalize_effect_stat_id(eff.get("stat")) == stat:
+				v = _ShipUpgradeEffectScript.apply_effect(v, lvl, eff)
 	return v
 
 
 ## Each entry: `stat`, `before`, `after`, `delta` for buying `additional_levels` from current career level.
 func preview_upgrade_stat_deltas(upgrade_id: StringName, additional_levels: int) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
-	if _active == null or additional_levels <= 0:
+	if additional_levels <= 0:
 		return out
+	ensure_loaded()
 	var ud: Resource = get_upgrade(upgrade_id)
 	if ud == null:
 		return out

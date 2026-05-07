@@ -1,0 +1,412 @@
+[gd_resource type="Resource" script_class="PowerSystemUpgradesManifest" load_steps=48 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/PowerSystemUpgradesManifest.gd" id="1_manifest"]
+[ext_resource type="Script" path="res://scripts/data/ShipUpgradeData.gd" id="2_sud"]
+[ext_resource type="Script" path="res://scripts/data/ShipUpgradeEffect.gd" id="3_eff"]
+
+[sub_resource type="Resource" id="up_laser"]
+script = ExtResource("2_sud")
+id = &"weapon_laser"
+shop_display_name = "Laser System"
+shop_description = "During mining, automatically fires at solid blocks in range. Ignores drill type filters."
+base_cost = 175
+cost_operation = "add"
+cost_value = 0.0
+max_level = 1
+effects = Array[ExtResource("3_eff")]([])
+
+[sub_resource type="Resource" id="up_missile"]
+script = ExtResource("2_sud")
+id = &"weapon_missile"
+shop_display_name = "Missile System"
+shop_description = "During mining, launches missiles forward into terrain on a cooldown. Ignores drill type filters."
+base_cost = 195
+cost_operation = "add"
+cost_value = 0.0
+max_level = 1
+effects = Array[ExtResource("3_eff")]([])
+
+[sub_resource type="Resource" id="up_bomb"]
+script = ExtResource("2_sud")
+id = &"weapon_bomb"
+shop_display_name = "Bomb System"
+shop_description = "During mining, arms explosives on a ~3.15s fuse and damages all solid cells in an ~18 game-px blast (~2 HP/cell) within ~76 game-px range. Ignores drill type filters."
+base_cost = 240
+cost_operation = "add"
+cost_value = 0.0
+max_level = 1
+effects = Array[ExtResource("3_eff")]([])
+
+[sub_resource type="Resource" id="eff_bomb_range"]
+script = ExtResource("3_eff")
+stat = "weapon_bomb_range_game_px"
+operation = "add"
+value = 5.5
+
+[sub_resource type="Resource" id="up_bomb_range"]
+script = ExtResource("2_sud")
+id = &"weapon_bomb_range"
+shop_display_name = "bomb range (px)"
+shop_description = "Each level increases how far bombs can target (game pixels)."
+base_cost = 24
+cost_operation = "multiply"
+cost_value = 1.17
+max_level = 10
+effects = Array[ExtResource("3_eff")]([SubResource("eff_bomb_range")])
+
+[sub_resource type="Resource" id="eff_bomb_blast"]
+script = ExtResource("3_eff")
+stat = "weapon_bomb_blast_radius_game_px"
+operation = "add"
+value = 1.4
+
+[sub_resource type="Resource" id="up_bomb_blast"]
+script = ExtResource("2_sud")
+id = &"weapon_bomb_blast_radius"
+shop_display_name = "blast radius (px)"
+shop_description = "Each level widens the explosive footprint (game pixels)."
+base_cost = 28
+cost_operation = "multiply"
+cost_value = 1.18
+max_level = 10
+effects = Array[ExtResource("3_eff")]([SubResource("eff_bomb_blast")])
+
+[sub_resource type="Resource" id="eff_bomb_cd"]
+script = ExtResource("3_eff")
+stat = "weapon_bomb_cooldown_s"
+operation = "multiply"
+value = 0.965
+
+[sub_resource type="Resource" id="up_bomb_fire_rate"]
+script = ExtResource("2_sud")
+id = &"weapon_bomb_fire_rate"
+shop_display_name = "bomb interval"
+shop_description = "Each level multiplies time between bombs; values below 1.0 arm faster."
+base_cost = 34
+cost_operation = "multiply"
+cost_value = 1.2
+max_level = 10
+effects = Array[ExtResource("3_eff")]([SubResource("eff_bomb_cd")])
+
+[sub_resource type="Resource" id="eff_bomb_dmg"]
+script = ExtResource("3_eff")
+stat = "weapon_bomb_damage"
+operation = "add"
+value = 1.0
+
+[sub_resource type="Resource" id="up_bomb_damage"]
+script = ExtResource("2_sud")
+id = &"weapon_bomb_damage"
+shop_display_name = "bomb HP / cell"
+shop_description = "Each level adds damage applied to every cell in the blast."
+base_cost = 30
+cost_operation = "multiply"
+cost_value = 1.2
+max_level = 12
+effects = Array[ExtResource("3_eff")]([SubResource("eff_bomb_dmg")])
+
+[sub_resource type="Resource" id="up_cl"]
+script = ExtResource("2_sud")
+id = &"weapon_chain_lightning"
+shop_display_name = "Chain Lightning"
+shop_description = "During mining, arcs lightning to a solid block in range, then chains to nearby solids with decaying damage. Ignores drill type filters."
+base_cost = 210
+cost_operation = "add"
+cost_value = 0.0
+max_level = 1
+effects = Array[ExtResource("3_eff")]([])
+
+[sub_resource type="Resource" id="up_gravity_pull"]
+script = ExtResource("2_sud")
+id = &"weapon_gravity_pull"
+shop_display_name = "Gravity Pull"
+shop_description = "During mining, periodically damages solid terrain in a short radius around the ship. Ignores drill type filters."
+base_cost = 185
+cost_operation = "add"
+cost_value = 0.0
+max_level = 1
+effects = Array[ExtResource("3_eff")]([])
+
+[sub_resource type="Resource" id="eff_range"]
+script = ExtResource("3_eff")
+stat = "weapon_laser_range_game_px"
+operation = "add"
+value = 7.0
+
+[sub_resource type="Resource" id="up_range"]
+script = ExtResource("2_sud")
+id = &"weapon_laser_range"
+shop_display_name = "laser range (px)"
+shop_description = "Each level increases automatic laser reach (game pixels)."
+base_cost = 22
+cost_operation = "multiply"
+cost_value = 1.18
+max_level = 10
+effects = Array[ExtResource("3_eff")]([SubResource("eff_range")])
+
+[sub_resource type="Resource" id="eff_dmg"]
+script = ExtResource("3_eff")
+stat = "weapon_laser_damage"
+operation = "add"
+value = 1.0
+
+[sub_resource type="Resource" id="up_dmg"]
+script = ExtResource("2_sud")
+id = &"weapon_laser_damage"
+shop_display_name = "HP per shot"
+shop_description = "Each level adds raw damage applied to every cell the beam touches."
+base_cost = 28
+cost_operation = "multiply"
+cost_value = 1.22
+max_level = 14
+effects = Array[ExtResource("3_eff")]([SubResource("eff_dmg")])
+
+[sub_resource type="Resource" id="eff_cd"]
+script = ExtResource("3_eff")
+stat = "weapon_laser_cooldown_s"
+operation = "multiply"
+value = 0.965
+
+[sub_resource type="Resource" id="up_cd"]
+script = ExtResource("2_sud")
+id = &"weapon_laser_fire_rate"
+shop_display_name = "fire interval"
+shop_description = "Each level multiplies fire interval; values below 1.0 fire faster."
+base_cost = 35
+cost_operation = "multiply"
+cost_value = 1.2
+max_level = 10
+effects = Array[ExtResource("3_eff")]([SubResource("eff_cd")])
+
+[sub_resource type="Resource" id="eff_width"]
+script = ExtResource("3_eff")
+stat = "weapon_laser_beam_width_game_px"
+operation = "add"
+value = 1.2
+
+[sub_resource type="Resource" id="up_width"]
+script = ExtResource("2_sud")
+id = &"weapon_laser_width"
+shop_display_name = "beam width"
+shop_description = "Widens the damage footprint around the beam (game pixels)."
+base_cost = 18
+cost_operation = "multiply"
+cost_value = 1.15
+max_level = 8
+effects = Array[ExtResource("3_eff")]([SubResource("eff_width")])
+
+[sub_resource type="Resource" id="eff_pierce"]
+script = ExtResource("3_eff")
+stat = "weapon_laser_pierce_count"
+operation = "add"
+value = 1.0
+
+[sub_resource type="Resource" id="up_pierce"]
+script = ExtResource("2_sud")
+id = &"weapon_laser_pierce"
+shop_display_name = "extra beam targets"
+shop_description = "Each level lets one volley damage one additional solid cell along the beam."
+base_cost = 45
+cost_operation = "multiply"
+cost_value = 1.25
+max_level = 5
+effects = Array[ExtResource("3_eff")]([SubResource("eff_pierce")])
+
+[sub_resource type="Resource" id="eff_cl_range"]
+script = ExtResource("3_eff")
+stat = "weapon_chain_lightning_range_game_px"
+operation = "add"
+value = 6.0
+
+[sub_resource type="Resource" id="up_cl_range"]
+script = ExtResource("2_sud")
+id = &"weapon_chain_lightning_range"
+shop_display_name = "lightning reach (px)"
+shop_description = "Each level increases first-strike range (game pixels)."
+base_cost = 24
+cost_operation = "multiply"
+cost_value = 1.17
+max_level = 10
+effects = Array[ExtResource("3_eff")]([SubResource("eff_cl_range")])
+
+[sub_resource type="Resource" id="eff_cl_dmg"]
+script = ExtResource("3_eff")
+stat = "weapon_chain_lightning_damage"
+operation = "add"
+value = 1.0
+
+[sub_resource type="Resource" id="up_cl_dmg"]
+script = ExtResource("2_sud")
+id = &"weapon_chain_lightning_damage"
+shop_display_name = "lightning HP (primary)"
+shop_description = "Adds damage to the first cell struck each volley (chains scale from this hit)."
+base_cost = 30
+cost_operation = "multiply"
+cost_value = 1.2
+max_level = 12
+effects = Array[ExtResource("3_eff")]([SubResource("eff_cl_dmg")])
+
+[sub_resource type="Resource" id="eff_cl_cd"]
+script = ExtResource("3_eff")
+stat = "weapon_chain_lightning_cooldown_s"
+operation = "multiply"
+value = 0.968
+
+[sub_resource type="Resource" id="up_cl_cd"]
+script = ExtResource("2_sud")
+id = &"weapon_chain_lightning_fire_rate"
+shop_display_name = "lightning interval"
+shop_description = "Each level multiplies strike cooldown; values below 1.0 strike faster."
+base_cost = 34
+cost_operation = "multiply"
+cost_value = 1.18
+max_level = 10
+effects = Array[ExtResource("3_eff")]([SubResource("eff_cl_cd")])
+
+[sub_resource type="Resource" id="eff_cl_extra"]
+script = ExtResource("3_eff")
+stat = "weapon_chain_lightning_max_extra_chains"
+operation = "add"
+value = 1.0
+
+[sub_resource type="Resource" id="up_cl_extra"]
+script = ExtResource("2_sud")
+id = &"weapon_chain_lightning_extra_chains"
+shop_display_name = "extra chain hops"
+shop_description = "Each level allows one additional chained cell per strike (bounded at runtime)."
+base_cost = 55
+cost_operation = "multiply"
+cost_value = 1.28
+max_level = 3
+effects = Array[ExtResource("3_eff")]([SubResource("eff_cl_extra")])
+
+[sub_resource type="Resource" id="eff_cl_arc"]
+script = ExtResource("3_eff")
+stat = "weapon_chain_lightning_arc_radius_cells"
+operation = "add"
+value = 1.0
+
+[sub_resource type="Resource" id="up_cl_arc"]
+script = ExtResource("2_sud")
+id = &"weapon_chain_lightning_arc_radius"
+shop_display_name = "chain arc (cells)"
+shop_description = "Increases Chebyshev neighborhood radius for chain hops."
+base_cost = 40
+cost_operation = "multiply"
+cost_value = 1.22
+max_level = 3
+effects = Array[ExtResource("3_eff")]([SubResource("eff_cl_arc")])
+
+[sub_resource type="Resource" id="eff_cl_cond"]
+script = ExtResource("3_eff")
+stat = "weapon_chain_lightning_chain_damage_multiplier"
+operation = "add"
+value = 0.04
+
+[sub_resource type="Resource" id="up_cl_cond"]
+script = ExtResource("2_sud")
+id = &"weapon_chain_lightning_conductivity"
+shop_display_name = "chain conductivity"
+shop_description = "Each level adds to per-hop damage multiplier (so chains retain more of the prior hit)."
+base_cost = 42
+cost_operation = "multiply"
+cost_value = 1.24
+max_level = 5
+effects = Array[ExtResource("3_eff")]([SubResource("eff_cl_cond")])
+
+[sub_resource type="Resource" id="eff_missile_range"]
+script = ExtResource("3_eff")
+stat = "weapon_missile_range_game_px"
+operation = "add"
+value = 6.5
+
+[sub_resource type="Resource" id="up_missile_range"]
+script = ExtResource("2_sud")
+id = &"weapon_missile_range"
+shop_display_name = "missile reach (px)"
+shop_description = "Each level increases missile targeting range (game pixels)."
+base_cost = 24
+cost_operation = "multiply"
+cost_value = 1.17
+max_level = 10
+effects = Array[ExtResource("3_eff")]([SubResource("eff_missile_range")])
+
+[sub_resource type="Resource" id="eff_missile_dmg"]
+script = ExtResource("3_eff")
+stat = "weapon_missile_damage"
+operation = "add"
+value = 1.0
+
+[sub_resource type="Resource" id="up_missile_damage"]
+script = ExtResource("2_sud")
+id = &"weapon_missile_damage"
+shop_display_name = "missile impact HP"
+shop_description = "Each level adds damage to the struck cell."
+base_cost = 32
+cost_operation = "multiply"
+cost_value = 1.2
+max_level = 12
+effects = Array[ExtResource("3_eff")]([SubResource("eff_missile_dmg")])
+
+[sub_resource type="Resource" id="eff_missile_cd"]
+script = ExtResource("3_eff")
+stat = "weapon_missile_cooldown_s"
+operation = "multiply"
+value = 0.966
+
+[sub_resource type="Resource" id="up_missile_fire_rate"]
+script = ExtResource("2_sud")
+id = &"weapon_missile_fire_rate"
+shop_display_name = "missile interval"
+shop_description = "Each level multiplies launch cooldown; values below 1.0 launch faster."
+base_cost = 36
+cost_operation = "multiply"
+cost_value = 1.19
+max_level = 10
+effects = Array[ExtResource("3_eff")]([SubResource("eff_missile_cd")])
+
+[sub_resource type="Resource" id="eff_missile_spd"]
+script = ExtResource("3_eff")
+stat = "weapon_missile_travel_speed_game_px_s"
+operation = "add"
+value = 22.0
+
+[sub_resource type="Resource" id="up_missile_speed"]
+script = ExtResource("2_sud")
+id = &"weapon_missile_speed"
+shop_display_name = "missile flight speed"
+shop_description = "Each level adds travel speed (game pixels per second)."
+base_cost = 22
+cost_operation = "multiply"
+cost_value = 1.16
+max_level = 10
+effects = Array[ExtResource("3_eff")]([SubResource("eff_missile_spd")])
+
+[resource]
+script = ExtResource("1_manifest")
+upgrades = Array[ExtResource("2_sud")]([
+	SubResource("up_laser"),
+	SubResource("up_missile"),
+	SubResource("up_missile_range"),
+	SubResource("up_missile_damage"),
+	SubResource("up_missile_fire_rate"),
+	SubResource("up_missile_speed"),
+	SubResource("up_bomb"),
+	SubResource("up_bomb_range"),
+	SubResource("up_bomb_blast"),
+	SubResource("up_bomb_fire_rate"),
+	SubResource("up_bomb_damage"),
+	SubResource("up_cl"),
+	SubResource("up_gravity_pull"),
+	SubResource("up_range"),
+	SubResource("up_dmg"),
+	SubResource("up_cd"),
+	SubResource("up_width"),
+	SubResource("up_pierce"),
+	SubResource("up_cl_range"),
+	SubResource("up_cl_dmg"),
+	SubResource("up_cl_cd"),
+	SubResource("up_cl_extra"),
+	SubResource("up_cl_arc"),
+	SubResource("up_cl_cond"),
+])

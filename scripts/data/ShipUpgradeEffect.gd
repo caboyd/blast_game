@@ -14,7 +14,29 @@ const OP_MULTIPLY := "multiply"
 	"fuel_max",
 	"fuel_drain_per_second",
 	"drill_range_bonus_game_px",
-	"money_double_chance"
+	"money_double_chance",
+	"block_explosion_chance",
+	"block_explosion_damage",
+	"block_explosion_radius_cells",
+	"weapon_laser_range_game_px",
+	"weapon_laser_damage",
+	"weapon_laser_cooldown_s",
+	"weapon_laser_beam_width_game_px",
+	"weapon_laser_pierce_count",
+	"weapon_chain_lightning_range_game_px",
+	"weapon_chain_lightning_damage",
+	"weapon_chain_lightning_cooldown_s",
+	"weapon_chain_lightning_max_extra_chains",
+	"weapon_chain_lightning_arc_radius_cells",
+	"weapon_chain_lightning_chain_damage_multiplier",
+	"weapon_missile_range_game_px",
+	"weapon_missile_damage",
+	"weapon_missile_cooldown_s",
+	"weapon_missile_travel_speed_game_px_s",
+	"weapon_bomb_range_game_px",
+	"weapon_bomb_blast_radius_game_px",
+	"weapon_bomb_cooldown_s",
+	"weapon_bomb_damage"
 )
 var stat: String = "mine_damage_per_tick"
 

@@ -14,7 +14,7 @@ const GAME_VIEWPORT_SIZE: Vector2i = Vector2i(1280, 720)
 const CELLS_PER_HALF_VIEW: int = 10
 const CELL_SIZE_PX: float = 8.0
 const DEBUG_CAMERA_ZOOM_STEP: float = 1.15
-const DEBUG_CAMERA_ZOOM_MIN: float = 0.2
+const DEBUG_CAMERA_ZOOM_MIN: float = 0.01
 const DEBUG_CAMERA_ZOOM_MAX: float = 2.0
 
 ## Planet 2 warped-ring generation (distance in chunk space from origin).

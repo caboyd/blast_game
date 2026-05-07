@@ -12,6 +12,13 @@ const _CAREER_KEY_BLOCKS := "total_blocks_destroyed"
 const _CAREER_KEY_MONEY := "money"
 const _CAREER_KEY_SELECTED_SHIP := "selected_ship_id"
 const _CAREER_KEY_SELECTED_STAGE := "selected_stage_id"
+const _CAREER_KEY_WEAPON_LASER_TARGET := "weapon_laser_target_priority"
+
+## Prep / runtime: automatic laser targeting when [member weapon_laser_target_priority] matches.
+const WEAPON_LASER_TARGET_HEALTHIEST := 0
+const WEAPON_LASER_TARGET_WEAKEST := 1
+const WEAPON_LASER_TARGET_HIGHEST_VALUE := 2
+const WEAPON_LASER_TARGET_HIGHEST_DENSITY := 3
 
 const _STAGE_REVEAL_MAGIC := 0x52455632
 const _MINING_CHUNK_BYTES := 32 * 32
@@ -31,6 +38,8 @@ const STAGE_PLANET_SCENES: Dictionary = {
 
 var selected_ship_id: StringName = &"scout"
 var selected_stage_id: StringName = &"planet1"
+## No money cost; clamped to [member WEAPON_LASER_TARGET_HEALTHIEST] .. [member WEAPON_LASER_TARGET_HIGHEST_DENSITY].
+var weapon_laser_target_priority: int = WEAPON_LASER_TARGET_HEALTHIEST
 ## Cumulative blocks destroyed across completed runs; saved to disk.
 var career_blocks_destroyed: int = 0
 var _career_write_pending: bool = false
@@ -103,6 +112,12 @@ func _load_career() -> void:
 	selected_stage_id = StringName(stage_raw)
 	if not STAGE_PLANET_SCENES.has(selected_stage_id):
 		selected_stage_id = &"planet1"
+	var pri_raw: int = int(
+		c.get_value(_CAREER_SECTION, _CAREER_KEY_WEAPON_LASER_TARGET, WEAPON_LASER_TARGET_HEALTHIEST)
+	)
+	weapon_laser_target_priority = clampi(
+		pri_raw, WEAPON_LASER_TARGET_HEALTHIEST, WEAPON_LASER_TARGET_HIGHEST_DENSITY
+	)
 	if ShipDataRegistry:
 		ShipDataRegistry.reload_active()
 	UpgradeBus.read_from_career_config(c)
@@ -131,6 +146,7 @@ func _write_career_to_disk() -> void:
 	c.set_value(_CAREER_SECTION, _CAREER_KEY_MONEY, GameStatistics.money)
 	c.set_value(_CAREER_SECTION, _CAREER_KEY_SELECTED_SHIP, String(selected_ship_id))
 	c.set_value(_CAREER_SECTION, _CAREER_KEY_SELECTED_STAGE, String(selected_stage_id))
+	c.set_value(_CAREER_SECTION, _CAREER_KEY_WEAPON_LASER_TARGET, weapon_laser_target_priority)
 	UpgradeBus.write_to_career_config(c)
 	PartRegistry.write_to_config_file(c)
 	write_part_pickup_collected_to_config(c)

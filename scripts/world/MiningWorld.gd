@@ -58,6 +58,10 @@ const SPAWN_REVEAL_FULL := &"full"
 const _GENERIC_PART_GROUND_PICKUP := preload(
 	"res://scenes/ship_parts/ground/part_ground_pickup.tscn"
 )
+const BLOCK_EXPLOSIVE_UNLOCK_ID := &"block_explosive_unlock"
+const _BLOCK_EXPLOSION_CHAIN_DEPTH_MAX := 5
+const _BLOCK_EXPLOSION_CASCADE_BUDGET := 22
+const _BlockExplosionFxScript = preload("res://scripts/world/BlockExplosionFx.gd")
 
 
 func display_color_for_mined_type(type_id: int) -> Color:
@@ -859,7 +863,7 @@ func mine_at_world(world_pos: Vector2, damage: int, mine_radius_px: float) -> in
 			if dx * dx + dy * dy > r2:
 				continue
 			var c := Vector2i(center.x + dx, center.y + dy)
-			hp_removed_total += _damage_cell_abs(c, damage)
+			hp_removed_total += _damage_cell_abs(c, damage, 0, null)
 
 	if hp_removed_total > 0:
 		_terrain_dirty = true
@@ -870,7 +874,7 @@ func mine_at_world(world_pos: Vector2, damage: int, mine_radius_px: float) -> in
 func mine_cell_at_world_point(world_pos: Vector2, damage: int) -> int:
 	if damage <= 0:
 		return 0
-	var hp_removed: int = _damage_cell_abs(world_pos_to_cell(world_pos), damage)
+	var hp_removed: int = _damage_cell_abs(world_pos_to_cell(world_pos), damage, 0, null)
 	if hp_removed > 0:
 		_terrain_dirty = true
 	return hp_removed
@@ -893,7 +897,7 @@ func mine_cells_under_hull_world(world_hull: PackedVector2Array, damage: int) ->
 	for cy in range(min_cy, max_cy + 1):
 		for cx in range(min_cx, max_cx + 1):
 			if _cell_world_rect_overlaps_hull(cx, cy, world_hull):
-				hp_removed_total += _damage_cell_abs(Vector2i(cx, cy), damage)
+				hp_removed_total += _damage_cell_abs(Vector2i(cx, cy), damage, 0, null)
 	if hp_removed_total > 0:
 		_terrain_dirty = true
 	return hp_removed_total
@@ -975,7 +979,7 @@ func _clear_fuel_cluster_if_cell_inside(
 	return true
 
 
-func _damage_cell_abs(cell: Vector2i, amount: int) -> int:
+func _damage_cell_abs(cell: Vector2i, amount: int, chain_depth: int = 0, cascade_budget: Variant = null) -> int:
 	var ch := _cell_to_chunk_coord(cell)
 	_ensure_chunk(ch)
 	var data: Dictionary = _chunks[ch]
@@ -1000,6 +1004,7 @@ func _damage_cell_abs(cell: Vector2i, amount: int) -> int:
 				if TYPE_FUEL >= 0 and TYPE_FUEL < TYPE_MONEY.size():
 					GameStatistics.add_mined_cell_reward(int(TYPE_MONEY[TYPE_FUEL]))
 				block_broken.emit(cell_center_world(cell), TYPE_FUEL)
+				_maybe_chain_explode_from_mined_break(cell, chain_depth, cascade_budget)
 				return hp_f
 			var nh_f: int = clampi(new_hp_f, 0, 255)
 			hparr[idx] = nh_f
@@ -1023,11 +1028,59 @@ func _damage_cell_abs(cell: Vector2i, amount: int) -> int:
 				GameStatistics.add_mined_cell_reward(amt)
 		_commit_run_edit_for_chunk_index(ch, idx)
 		block_broken.emit(cell_center_world(cell), broken_type_id)
+		_maybe_chain_explode_from_mined_break(cell, chain_depth, cascade_budget)
 		return hp_before
 	var nh: int = clampi(new_hp, 0, 255)
 	hparr[idx] = nh
 	_commit_run_edit_for_chunk_index(ch, idx)
 	return hp_before - nh
+
+
+func _maybe_chain_explode_from_mined_break(
+	cell: Vector2i, chain_depth: int, cascade_budget: Variant
+) -> void:
+	if UpgradeBus.get_level(BLOCK_EXPLOSIVE_UNLOCK_ID) < 1:
+		return
+	if chain_depth >= _BLOCK_EXPLOSION_CHAIN_DEPTH_MAX:
+		return
+	var chance: float = clampf(
+		ShipDataRegistry.apply_effects_for_stat(&"block_explosion_chance", 0.0), 0.0, 1.0
+	)
+	if chance <= 0.0 or randf() >= chance:
+		return
+	var b: Dictionary
+	if cascade_budget is Dictionary:
+		b = cascade_budget
+	else:
+		b = {"left": _BLOCK_EXPLOSION_CASCADE_BUDGET}
+	if int(b["left"]) <= 0:
+		return
+	b["left"] = int(b["left"]) - 1
+	var dmg: int = maxi(1, int(round(ShipDataRegistry.apply_effects_for_stat(&"block_explosion_damage", 1.0))))
+	var r_cells: int = maxi(
+		1, int(round(ShipDataRegistry.apply_effects_for_stat(&"block_explosion_radius_cells", 1.0)))
+	)
+	var world_c: Vector2 = cell_center_world(cell)
+	_spawn_block_explosion_visual(world_c, float(r_cells) * CELL_SIZE_PX)
+	var nd: int = chain_depth + 1
+	for dy in range(-r_cells, r_cells + 1):
+		for dx in range(-r_cells, r_cells + 1):
+			if dx == 0 and dy == 0:
+				continue
+			if maxi(absi(dx), absi(dy)) > r_cells:
+				continue
+			var ncell: Vector2i = Vector2i(cell.x + dx, cell.y + dy)
+			var removed: int = _damage_cell_abs(ncell, dmg, nd, b)
+			if removed > 0:
+				_terrain_dirty = true
+
+
+func _spawn_block_explosion_visual(world_center: Vector2, ring_radius_px: float) -> void:
+	var fx: Node = _BlockExplosionFxScript.new()
+	add_child(fx)
+	(fx as Node2D).global_position = world_center
+	if fx.has_method(&"setup"):
+		fx.call(&"setup", ring_radius_px)
 
 
 ## Clears solid in every cell whose world AABB touches `center_world` + `radius_world` circle. No money / destroy stats.
@@ -1104,7 +1157,7 @@ func mine_solid_in_circle_world(
 						break
 				if not allowed:
 					continue
-			hp_total += _damage_cell_abs(cell_v, damage)
+			hp_total += _damage_cell_abs(cell_v, damage, 0, null)
 	if hp_total > 0:
 		_terrain_dirty = true
 	return hp_total

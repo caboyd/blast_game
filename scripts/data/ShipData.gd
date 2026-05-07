@@ -39,5 +39,11 @@ func get_base_float_for_stat(stat: StringName) -> float:
 			return 0.0
 		"money_double_chance":
 			return 0.0
+		"block_explosion_chance":
+			return 0.0
+		"block_explosion_damage":
+			return 1.0
+		"block_explosion_radius_cells":
+			return 1.0
 		_:
 			return 0.0

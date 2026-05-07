@@ -33,7 +33,7 @@ var _flags_emit := GPUParticles2D.EMIT_FLAG_POSITION \
 
 func _ready() -> void:
 	add_to_group(GROUP)
-	amount = 20000
+	amount = 2000000
 	emitting = false
 	draw_order = GPUParticles2D.DRAW_ORDER_REVERSE_LIFETIME
 	lifetime = 600 #the engine stops rendering particles after this time even if they are still alive

@@ -1,0 +1,77 @@
+[gd_resource type="Resource" script_class="PowerSystemUpgradesManifest" load_steps=12 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/PowerSystemUpgradesManifest.gd" id="1_manifest"]
+[ext_resource type="Script" path="res://scripts/data/ShipUpgradeData.gd" id="2_sud"]
+[ext_resource type="Script" path="res://scripts/data/ShipUpgradeEffect.gd" id="3_eff"]
+
+[sub_resource type="Resource" id="eff_unlock_base"]
+script = ExtResource("3_eff")
+stat = "block_explosion_chance"
+operation = "add"
+value = 0.015
+
+[sub_resource type="Resource" id="eff_chance"]
+script = ExtResource("3_eff")
+stat = "block_explosion_chance"
+operation = "add"
+value = 0.01
+
+[sub_resource type="Resource" id="eff_damage"]
+script = ExtResource("3_eff")
+stat = "block_explosion_damage"
+operation = "add"
+value = 1.5
+
+[sub_resource type="Resource" id="eff_radius"]
+script = ExtResource("3_eff")
+stat = "block_explosion_radius_cells"
+operation = "add"
+value = 1.0
+
+[sub_resource type="Resource" id="up_unlock"]
+script = ExtResource("2_sud")
+id = &"block_explosive_unlock"
+shop_display_name = "Explosive Blocks"
+shop_description = "When unlocked, destroyed blocks can trigger explosions that damage nearby terrain. Upgrade blast chance, damage, and radius below."
+base_cost = 220
+cost_operation = "add"
+cost_value = 0.0
+max_level = 1
+effects = Array[ExtResource("3_eff")]([SubResource("eff_unlock_base")])
+
+[sub_resource type="Resource" id="up_chance"]
+script = ExtResource("2_sud")
+id = &"block_explosive_chance"
+shop_display_name = "blast proc chance"
+shop_description = ""
+base_cost = 38
+cost_operation = "multiply"
+cost_value = 1.11
+max_level = 20
+effects = Array[ExtResource("3_eff")]([SubResource("eff_chance")])
+
+[sub_resource type="Resource" id="up_damage"]
+script = ExtResource("2_sud")
+id = &"block_explosive_damage"
+shop_display_name = "explosion damage"
+shop_description = ""
+base_cost = 48
+cost_operation = "multiply"
+cost_value = 1.13
+max_level = 15
+effects = Array[ExtResource("3_eff")]([SubResource("eff_damage")])
+
+[sub_resource type="Resource" id="up_radius"]
+script = ExtResource("2_sud")
+id = &"block_explosive_radius"
+shop_display_name = "explosion radius (cells)"
+shop_description = ""
+base_cost = 42
+cost_operation = "multiply"
+cost_value = 1.12
+max_level = 12
+effects = Array[ExtResource("3_eff")]([SubResource("eff_radius")])
+
+[resource]
+script = ExtResource("1_manifest")
+upgrades = Array[ExtResource("2_sud")]([SubResource("up_unlock"), SubResource("up_chance"), SubResource("up_damage"), SubResource("up_radius")])

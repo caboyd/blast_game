@@ -28,7 +28,44 @@ func _ready() -> void:
 	await get_tree().process_frame
 
 	UpgradeBus._levels.clear()
-	_assert_true(UpgradeBus.get_max_level(&"fuel_tank") > 0, "fuel tank max level")
+	_assert_true(ShipDataRegistry.has_upgrade(&"weapon_chain_lightning"), "chain lightning in registry")
+	_assert_true(UpgradeBus.get_max_level(&"weapon_chain_lightning") == 1, "chain lightning single level")
+	_assert_true(ShipDataRegistry.has_upgrade(&"weapon_chain_lightning_range"), "chain lightning range in registry")
+	_assert_true(UpgradeBus.get_max_level(&"weapon_chain_lightning_range") >= 2, "chain lightning range multi level")
+	_assert_true(UpgradeBus.get_max_level(&"weapon_laser") == 1, "weapon laser single level")
+	_assert_true(ShipDataRegistry.has_upgrade(&"weapon_laser"), "weapon laser in registry")
+	_assert_true(UpgradeBus.get_max_level(&"weapon_bomb") == 1, "weapon bomb single level")
+	_assert_true(ShipDataRegistry.has_upgrade(&"weapon_bomb"), "weapon bomb in registry")
+	_assert_true(ShipDataRegistry.has_upgrade(&"weapon_bomb_range"), "weapon bomb range in registry")
+	_assert_true(UpgradeBus.get_max_level(&"weapon_bomb_range") >= 2, "weapon bomb range has multiple levels")
+	_assert_true(ShipDataRegistry.has_upgrade(&"block_explosive_unlock"), "block explosive unlock in registry")
+	_assert_true(UpgradeBus.get_max_level(&"block_explosive_unlock") == 1, "explosive blocks single-level unlock")
+	_assert_true(ShipDataRegistry.has_upgrade(&"block_explosive_chance"), "block explosive chance in registry")
+	_assert_true(ShipDataRegistry.has_upgrade(&"weapon_laser_range"), "laser range upgrade in registry")
+	_assert_true(UpgradeBus.get_max_level(&"weapon_laser_range") >= 2, "laser range has multiple levels")
+	_assert_true(ShipDataRegistry.has_upgrade(&"weapon_missile"), "weapon missile in registry")
+	_assert_true(UpgradeBus.get_max_level(&"weapon_missile") == 1, "weapon missile single level")
+	_assert_true(UpgradeBus.get_max_level(&"weapon_gravity_pull") == 1, "weapon gravity pull single level")
+	_assert_true(ShipDataRegistry.has_upgrade(&"weapon_gravity_pull"), "weapon gravity pull in registry")
+	UpgradeBus._levels.clear()
+	GameStatistics.money = 100000
+	_assert_true(UpgradeBus.try_purchase_count(&"weapon_missile", 1), "weapon missile purchase succeeds")
+	_assert_true(UpgradeBus.is_maxed(&"weapon_missile"), "weapon missile maxed after buy")
+	_assert_true(not UpgradeBus.try_purchase_count(&"weapon_missile", 1), "weapon missile over-purchase blocked")
+	_assert_true(ShipDataRegistry.has_upgrade(&"weapon_missile_range"), "weapon missile range upgrade in registry")
+	_assert_true(UpgradeBus.get_max_level(&"weapon_missile_range") >= 2, "weapon missile range has multiple levels")
+
+	UpgradeBus._levels.clear()
+	GameStatistics.money = 100000
+	_assert_true(UpgradeBus.try_purchase_count(&"weapon_bomb", 1), "weapon bomb purchase succeeds")
+	_assert_true(UpgradeBus.is_maxed(&"weapon_bomb"), "weapon bomb maxed after buy")
+	_assert_true(not UpgradeBus.try_purchase_count(&"weapon_bomb", 1), "weapon bomb over-purchase blocked")
+
+	UpgradeBus._levels.clear()
+	GameStatistics.money = 100000
+	_assert_true(UpgradeBus.try_purchase_count(&"weapon_gravity_pull", 1), "weapon gravity pull purchase succeeds")
+	_assert_true(UpgradeBus.is_maxed(&"weapon_gravity_pull"), "weapon gravity pull maxed after buy")
+	_assert_true(not UpgradeBus.try_purchase_count(&"weapon_gravity_pull", 1), "weapon gravity pull over-purchase blocked")
 
 	UpgradeBus._levels[&"visibility_range"] = 3
 	UpgradeBus._levels[&"ship_speed"] = 4

@@ -9,6 +9,28 @@ const PHYSICS_LAYER_MINING_SHIP_FOR_PICKUPS: int = 1 << 5
 
 signal out_of_fuel
 
+const WEAPON_LASER_UPGRADE_ID := &"weapon_laser"
+const _LASER_BEAM_FLASH_S := 0.09
+const WEAPON_MISSILE_UPGRADE_ID := &"weapon_missile"
+## Baseline missile tuning lives in [method ShipDataRegistry.get_weapon_missile_stat_base]; upgraded via `weapon_systems.tres`.
+const WEAPON_MISSILE_FLIGHT_TIME_MIN_S := 0.07
+const WEAPON_MISSILE_FLIGHT_TIME_MAX_S := 0.32
+## Half-angle (rad) in front of the ship; cells outside the cone are not missile targets.
+const WEAPON_MISSILE_FIRE_CONE_HALF_ANGLE_RAD: float = 1.222  # ~70°
+
+const WEAPON_BOMB_UPGRADE_ID := &"weapon_bomb"
+const WEAPON_CHAIN_LIGHTNING_UPGRADE_ID := &"weapon_chain_lightning"
+const _CHAIN_LIGHTNING_FLASH_S := 0.11
+const _CHAIN_LIGHTNING_ABS_HOP_CAP := 8
+
+const WEAPON_GRAVITY_PULL_UPGRADE_ID := &"weapon_gravity_pull"
+## Gravity Pull — Option A (terrain): [method MiningWorld.mine_solid_in_circle_world] at the ship with empty type filter. Tuning is code constants (first vertical slice).
+const _WEAPON_GRAVITY_PULL_COOLDOWN_S := 2.35
+const _WEAPON_GRAVITY_PULL_RANGE_GAME_PX := 52.0
+const _WEAPON_GRAVITY_PULL_DAMAGE_PER_CELL := 1
+
+const _WeaponBombFxScript = preload("res://scripts/world/WeaponBombFx.gd")
+
 var _hull_shape: CollisionShape2D
 var _drill_shape: CollisionShape2D
 
@@ -37,6 +59,27 @@ var _debug_layer: Node2D
 var _tread_cycle_t: float = 0.0
 var _tread_stopping: bool = false
 var _audio_listener_2d: AudioListener2D
+
+var _laser_cooldown_t: float = 0.0
+var _laser_beam_flash_t: float = 0.0
+var _laser_beam: Line2D
+
+var _missile_cooldown_t: float = 0.0
+var _missile_tracer: Line2D
+var _missile_flight_active: bool = false
+var _missile_flight_elapsed_s: float = 0.0
+var _missile_flight_duration_s: float = 0.0
+var _missile_from_world: Vector2 = Vector2.ZERO
+var _missile_to_world: Vector2 = Vector2.ZERO
+var _missile_impact_world: Vector2 = Vector2.ZERO
+
+var _bomb_cooldown_t: float = 0.0
+
+var _chain_lightning_cooldown_t: float = 0.0
+var _chain_lightning_line: Line2D
+var _chain_lightning_flash_t: float = 0.0
+
+var _gravity_pull_cooldown_t: float = 0.0
 
 
 func _ready() -> void:
@@ -78,6 +121,28 @@ func _ready() -> void:
 	_audio_listener_2d = AudioListener2D.new()
 	_audio_listener_2d.name = &"AudioListener2D"
 	add_child(_audio_listener_2d)
+	_laser_beam = Line2D.new()
+	_laser_beam.width = 2.0
+	_laser_beam.default_color = Color(0.95, 0.25, 0.55, 0.92)
+	_laser_beam.z_index = 6
+	_laser_beam.visible = false
+	add_child(_laser_beam)
+	_missile_tracer = Line2D.new()
+	_missile_tracer.width = 3.2
+	_missile_tracer.default_color = Color(0.95, 0.55, 0.12, 0.95)
+	_missile_tracer.z_index = 5
+	_missile_tracer.visible = false
+	add_child(_missile_tracer)
+	_chain_lightning_line = Line2D.new()
+	_chain_lightning_line.width = 2.8
+	_chain_lightning_line.default_color = Color(0.22, 0.88, 1.0, 0.94)
+	_chain_lightning_line.antialiased = true
+	_chain_lightning_line.joint_mode = Line2D.LINE_JOINT_ROUND
+	_chain_lightning_line.begin_cap_mode = Line2D.LINE_CAP_ROUND
+	_chain_lightning_line.end_cap_mode = Line2D.LINE_CAP_ROUND
+	_chain_lightning_line.z_index = 8
+	_chain_lightning_line.visible = false
+	add_child(_chain_lightning_line)
 
 
 func _setup_pickup_overlap_area() -> void:
@@ -195,6 +260,11 @@ func _physics_process(delta: float) -> void:
 	_move_with_collision(step)
 
 	_tick_mining(delta)
+	_tick_weapon_laser(delta)
+	_tick_weapon_missile(delta)
+	_tick_weapon_bomb(delta)
+	_tick_weapon_gravity_pull(delta)
+	_tick_weapon_chain_lightning(delta)
 
 	GameStatistics.consume_fuel(get_effective_fuel_drain_per_second() * delta)
 
@@ -465,6 +535,645 @@ func _tick_mining(delta: float) -> void:
 		var hp_removed: int = grid.mine_solid_in_circle_world(drill_c, drill_r, whole, allowed)
 		if hp_removed > 0:
 			AudioManager.play_dirt_mine(drill_c)
+
+
+func _laser_range_game_px() -> float:
+	return ShipDataRegistry.apply_effects_for_stat(
+		&"weapon_laser_range_game_px",
+		ShipDataRegistry.get_weapon_laser_stat_base(&"weapon_laser_range_game_px")
+	)
+
+
+func _laser_damage_amount() -> int:
+	var v: float = ShipDataRegistry.apply_effects_for_stat(
+		&"weapon_laser_damage",
+		ShipDataRegistry.get_weapon_laser_stat_base(&"weapon_laser_damage")
+	)
+	return maxi(1, int(round(v)))
+
+
+func _laser_cooldown_s() -> float:
+	var v: float = ShipDataRegistry.apply_effects_for_stat(
+		&"weapon_laser_cooldown_s",
+		ShipDataRegistry.get_weapon_laser_stat_base(&"weapon_laser_cooldown_s")
+	)
+	return maxf(0.05, v)
+
+
+func _laser_beam_width_game_px() -> float:
+	var v: float = ShipDataRegistry.apply_effects_for_stat(
+		&"weapon_laser_beam_width_game_px",
+		ShipDataRegistry.get_weapon_laser_stat_base(&"weapon_laser_beam_width_game_px")
+	)
+	return maxf(0.5, v)
+
+
+func _laser_pierce_extra_count() -> int:
+	return maxi(
+		0,
+		ShipDataRegistry.apply_effects_for_stat_int(
+			&"weapon_laser_pierce_count",
+			int(round(ShipDataRegistry.get_weapon_laser_stat_base(&"weapon_laser_pierce_count")))
+		)
+	)
+
+
+func _laser_width_world_radius() -> float:
+	return _laser_beam_width_game_px() * 0.5 * _game_to_world_radius_scale()
+
+
+func _laser_priority_metric(cell: Vector2i) -> float:
+	var pri: int = GameSession.weapon_laser_target_priority
+	match pri:
+		GameSession.WEAPON_LASER_TARGET_HEALTHIEST:
+			return float(grid.get_cell_hp_at(cell))
+		GameSession.WEAPON_LASER_TARGET_WEAKEST:
+			return -float(grid.get_cell_hp_at(cell))
+		GameSession.WEAPON_LASER_TARGET_HIGHEST_VALUE:
+			var ti: int = grid.get_cell_type_at(cell)
+			if ti >= 0 and ti < MiningWorld.TYPE_MONEY.size():
+				return float(MiningWorld.TYPE_MONEY[ti])
+			return 0.0
+		GameSession.WEAPON_LASER_TARGET_HIGHEST_DENSITY:
+			return float(_laser_neighbor_solid_count(cell))
+		_:
+			return float(grid.get_cell_hp_at(cell))
+
+
+func _laser_neighbor_solid_count(cell: Vector2i) -> int:
+	var n: int = 0
+	for dy in range(-1, 2):
+		for dx in range(-1, 2):
+			if dx == 0 and dy == 0:
+				continue
+			var o: Vector2i = Vector2i(cell.x + dx, cell.y + dy)
+			var ctr: Vector2 = Vector2(
+				(float(o.x) + 0.5) * MiningWorld.CELL_SIZE_PX, (float(o.y) + 0.5) * MiningWorld.CELL_SIZE_PX
+			)
+			if grid.is_solid_world(ctr):
+				n += 1
+	return n
+
+
+func _laser_tie_break_prefer(a: Vector2i, b: Vector2i) -> bool:
+	var da: float = grid.cell_center_world(a).distance_squared_to(global_position)
+	var db: float = grid.cell_center_world(b).distance_squared_to(global_position)
+	if da < db:
+		return true
+	if da > db:
+		return false
+	if a.x != b.x:
+		return a.x < b.x
+	return a.y < b.y
+
+
+func _laser_cell_preferred_over(a: Vector2i, b: Vector2i) -> bool:
+	var ma: float = _laser_priority_metric(a)
+	var mb: float = _laser_priority_metric(b)
+	if ma > mb + 1e-5:
+		return true
+	if mb > ma + 1e-5:
+		return false
+	return _laser_tie_break_prefer(a, b)
+
+
+func _pick_laser_target_cell() -> Variant:
+	return _pick_priority_solid_cell_in_world_radius(_laser_range_world_px())
+
+
+## Solid cell within `range_world_px` of the ship, using laser prep priority / tie-break (shared with Bomb).
+func _pick_priority_solid_cell_in_world_radius(range_world_px: float) -> Variant:
+	var center: Vector2 = global_position
+	var r: float = range_world_px
+	if r <= 0.0 or grid == null:
+		return null
+	var cs: float = MiningWorld.CELL_SIZE_PX
+	var cx0: int = int(floor((center.x - r) / cs))
+	var cx1: int = int(floor((center.x + r) / cs))
+	var cy0: int = int(floor((center.y - r) / cs))
+	var cy1: int = int(floor((center.y + r) / cs))
+	var has_best: bool = false
+	var best: Vector2i = Vector2i.ZERO
+	for cy in range(cy0, cy1 + 1):
+		for cx in range(cx0, cx1 + 1):
+			if not _circle_overlaps_cell_rect(center, r, cx, cy):
+				continue
+			var ctr := Vector2((float(cx) + 0.5) * cs, (float(cy) + 0.5) * cs)
+			if not grid.is_solid_world(ctr):
+				continue
+			var cand: Vector2i = Vector2i(cx, cy)
+			if not has_best or _laser_cell_preferred_over(cand, best):
+				best = cand
+				has_best = true
+	if not has_best:
+		return null
+	return best
+
+
+func _laser_cells_along_beam(primary: Vector2i) -> Array[Vector2i]:
+	var out: Array[Vector2i] = [primary]
+	var extra: int = _laser_pierce_extra_count()
+	var dir_world: Vector2 = grid.cell_center_world(primary) - global_position
+	if dir_world.length_squared() < 1e-8:
+		dir_world = Vector2.RIGHT
+	else:
+		dir_world = dir_world.normalized()
+	var cur: Vector2i = primary
+	for _i in extra:
+		var nxt: Variant = _laser_next_solid_cell_along_dir(cur, dir_world)
+		if nxt == null:
+			break
+		cur = nxt as Vector2i
+		out.append(cur)
+	return out
+
+
+func _laser_next_solid_cell_along_dir(from_cell: Vector2i, dir_world: Vector2) -> Variant:
+	var from_ctr: Vector2 = grid.cell_center_world(from_cell)
+	var step: float = MiningWorld.CELL_SIZE_PX * 0.92
+	var probe: Vector2 = from_ctr + dir_world * step
+	var cand: Vector2i = grid.world_pos_to_cell(probe)
+	if cand != from_cell and grid.is_solid_world(grid.cell_center_world(cand)):
+		return cand
+	var d := Vector2i(
+		(1 if dir_world.x > 0.25 else (-1 if dir_world.x < -0.25 else 0)),
+		(1 if dir_world.y > 0.25 else (-1 if dir_world.y < -0.25 else 0))
+	)
+	if d == Vector2i.ZERO:
+		d = Vector2i(1, 0)
+	for _k in 2:
+		var try_cell: Vector2i = from_cell + d
+		if grid.is_solid_world(grid.cell_center_world(try_cell)):
+			return try_cell
+		d = Vector2i(-d.y, d.x)
+	return null
+
+
+func _laser_collect_damage_cells(center_cells: Array[Vector2i]) -> Array[Vector2i]:
+	var wr: float = _laser_width_world_radius()
+	var seen: Dictionary = {}
+	var ordered: Array[Vector2i] = []
+	for cell in center_cells:
+		var ring: Array[Vector2i] = grid.get_mineable_cells_in_circle_world(
+			grid.cell_center_world(cell), wr, PackedInt32Array()
+		)
+		for c in ring:
+			if seen.has(c):
+				continue
+			seen[c] = true
+			ordered.append(c)
+	return ordered
+
+
+func _laser_volley_damage_cells(cells: Array[Vector2i]) -> int:
+	var dmg: int = _laser_damage_amount()
+	var total: int = 0
+	for c in cells:
+		total += grid.mine_cell_at_world_point(grid.cell_center_world(c), dmg)
+	return total
+
+
+func _laser_range_world_px() -> float:
+	return maxf(0.0, _laser_range_game_px()) * _game_to_world_radius_scale()
+
+
+func _flash_laser_beam(target_world: Vector2) -> void:
+	if _laser_beam == null:
+		return
+	_laser_beam.width = maxf(1.0, _laser_beam_width_game_px() * _game_to_world_radius_scale())
+	_laser_beam.clear_points()
+	_laser_beam.add_point(Vector2.ZERO)
+	_laser_beam.add_point(to_local(target_world))
+	_laser_beam.visible = true
+	_laser_beam_flash_t = _LASER_BEAM_FLASH_S
+
+
+func _missile_range_game_px() -> float:
+	return maxf(
+		0.0,
+		ShipDataRegistry.apply_effects_for_stat(
+			&"weapon_missile_range_game_px",
+			ShipDataRegistry.get_weapon_missile_stat_base(&"weapon_missile_range_game_px")
+		)
+	)
+
+
+func _missile_damage_amount() -> int:
+	var v: float = ShipDataRegistry.apply_effects_for_stat(
+		&"weapon_missile_damage",
+		ShipDataRegistry.get_weapon_missile_stat_base(&"weapon_missile_damage")
+	)
+	return maxi(1, int(round(v)))
+
+
+func _missile_cooldown_s() -> float:
+	var v: float = ShipDataRegistry.apply_effects_for_stat(
+		&"weapon_missile_cooldown_s",
+		ShipDataRegistry.get_weapon_missile_stat_base(&"weapon_missile_cooldown_s")
+	)
+	return maxf(0.05, v)
+
+
+func _missile_travel_speed_game_px_s() -> float:
+	return maxf(
+		1.0,
+		ShipDataRegistry.apply_effects_for_stat(
+			&"weapon_missile_travel_speed_game_px_s",
+			ShipDataRegistry.get_weapon_missile_stat_base(&"weapon_missile_travel_speed_game_px_s")
+		)
+	)
+
+
+func _missile_range_world_px() -> float:
+	return _missile_range_game_px() * _game_to_world_radius_scale()
+
+
+func _missile_travel_speed_world_px_s() -> float:
+	return _missile_travel_speed_game_px_s() * _game_to_world_radius_scale()
+
+
+func _missile_forward_world() -> Vector2:
+	var d: Vector2 = transform.x
+	if d.length_squared() < 1e-8:
+		return Vector2.RIGHT
+	return d.normalized()
+
+
+func _pick_missile_target_cell() -> Variant:
+	var center: Vector2 = global_position
+	var r: float = _missile_range_world_px()
+	if r <= 0.0 or grid == null:
+		return null
+	var fwd: Vector2 = _missile_forward_world()
+	var cs: float = MiningWorld.CELL_SIZE_PX
+	var cx0: int = int(floor((center.x - r) / cs))
+	var cx1: int = int(floor((center.x + r) / cs))
+	var cy0: int = int(floor((center.y - r) / cs))
+	var cy1: int = int(floor((center.y + r) / cs))
+	var has_best: bool = false
+	var best: Vector2i = Vector2i.ZERO
+	var best_d2: float = 0.0
+	for cy in range(cy0, cy1 + 1):
+		for cx in range(cx0, cx1 + 1):
+			if not _circle_overlaps_cell_rect(center, r, cx, cy):
+				continue
+			var ctr := Vector2((float(cx) + 0.5) * cs, (float(cy) + 0.5) * cs)
+			if not grid.is_solid_world(ctr):
+				continue
+			var to_c: Vector2 = ctr - center
+			var d2: float = to_c.length_squared()
+			if d2 < 1e-8:
+				continue
+			var ang: float = fwd.angle_to(to_c)
+			if absf(ang) > WEAPON_MISSILE_FIRE_CONE_HALF_ANGLE_RAD:
+				continue
+			if not has_best or d2 < best_d2:
+				best = Vector2i(cx, cy)
+				best_d2 = d2
+				has_best = true
+	if not has_best:
+		return null
+	return best
+
+
+func _missile_finish_flight() -> void:
+	_missile_flight_active = false
+	if _missile_tracer != null:
+		_missile_tracer.visible = false
+	var w: Vector2 = _missile_impact_world
+	var removed: int = grid.mine_cell_at_world_point(w, _missile_damage_amount())
+	if removed > 0:
+		AudioManager.play_dirt_mine(w)
+
+
+func _tick_weapon_missile(delta: float) -> void:
+	if follower_visual_only or grid == null:
+		return
+	if UpgradeBus.get_level(WEAPON_MISSILE_UPGRADE_ID) < 1:
+		return
+	if _missile_flight_active:
+		_missile_flight_elapsed_s += delta
+		var u: float = clampf(_missile_flight_elapsed_s / _missile_flight_duration_s, 0.0, 1.0)
+		var head_world: Vector2 = _missile_from_world.lerp(_missile_to_world, u)
+		if _missile_tracer != null:
+			_missile_tracer.clear_points()
+			_missile_tracer.add_point(to_local(_missile_from_world))
+			_missile_tracer.add_point(to_local(head_world))
+			_missile_tracer.default_color.a = lerpf(0.55, 1.0, u)
+			_missile_tracer.visible = true
+		if _missile_flight_elapsed_s >= _missile_flight_duration_s:
+			_missile_finish_flight()
+		return
+	_missile_cooldown_t -= delta
+	if _missile_cooldown_t > 0.0:
+		return
+	_missile_cooldown_t = _missile_cooldown_s()
+	var target: Variant = _pick_missile_target_cell()
+	if target == null:
+		return
+	var cell: Vector2i = target as Vector2i
+	_missile_impact_world = grid.cell_center_world(cell)
+	_missile_from_world = _front_world()
+	var dist: float = _missile_from_world.distance_to(_missile_impact_world)
+	var spd: float = _missile_travel_speed_world_px_s()
+	var dur: float = dist / spd
+	dur = clampf(dur, WEAPON_MISSILE_FLIGHT_TIME_MIN_S, WEAPON_MISSILE_FLIGHT_TIME_MAX_S)
+	_missile_flight_duration_s = dur
+	_missile_flight_elapsed_s = 0.0
+	_missile_to_world = _missile_impact_world
+	_missile_flight_active = true
+
+
+func _tick_weapon_laser(delta: float) -> void:
+	if follower_visual_only or grid == null:
+		return
+	if _laser_beam != null and _laser_beam.visible:
+		_laser_beam_flash_t -= delta
+		if _laser_beam_flash_t <= 0.0:
+			_laser_beam.visible = false
+	if UpgradeBus.get_level(WEAPON_LASER_UPGRADE_ID) < 1:
+		return
+	_laser_cooldown_t -= delta
+	if _laser_cooldown_t > 0.0:
+		return
+	_laser_cooldown_t = _laser_cooldown_s()
+	var primary: Variant = _pick_laser_target_cell()
+	if primary == null:
+		return
+	var beam_world: Vector2 = grid.cell_center_world(primary as Vector2i)
+	var beam_centers: Array[Vector2i] = _laser_cells_along_beam(primary as Vector2i)
+	var to_damage: Array[Vector2i] = _laser_collect_damage_cells(beam_centers)
+	var removed: int = _laser_volley_damage_cells(to_damage)
+	if removed > 0:
+		AudioManager.play_dirt_mine(beam_world)
+	_flash_laser_beam(beam_world)
+
+
+func _chain_lightning_range_game_px() -> float:
+	return ShipDataRegistry.apply_effects_for_stat(
+		&"weapon_chain_lightning_range_game_px",
+		ShipDataRegistry.get_weapon_chain_lightning_stat_base(&"weapon_chain_lightning_range_game_px")
+	)
+
+
+func _chain_lightning_damage_primary() -> int:
+	var v: float = ShipDataRegistry.apply_effects_for_stat(
+		&"weapon_chain_lightning_damage",
+		ShipDataRegistry.get_weapon_chain_lightning_stat_base(&"weapon_chain_lightning_damage")
+	)
+	return maxi(1, int(round(v)))
+
+
+func _chain_lightning_cooldown_s() -> float:
+	var v: float = ShipDataRegistry.apply_effects_for_stat(
+		&"weapon_chain_lightning_cooldown_s",
+		ShipDataRegistry.get_weapon_chain_lightning_stat_base(&"weapon_chain_lightning_cooldown_s")
+	)
+	return maxf(0.08, v)
+
+
+func _chain_lightning_max_extra_chains_runtime() -> int:
+	var v: int = ShipDataRegistry.apply_effects_for_stat_int(
+		&"weapon_chain_lightning_max_extra_chains",
+		int(round(ShipDataRegistry.get_weapon_chain_lightning_stat_base(&"weapon_chain_lightning_max_extra_chains")))
+	)
+	return mini(_CHAIN_LIGHTNING_ABS_HOP_CAP, maxi(0, v))
+
+
+func _chain_lightning_arc_radius_cells() -> int:
+	return maxi(
+		1,
+		ShipDataRegistry.apply_effects_for_stat_int(
+			&"weapon_chain_lightning_arc_radius_cells",
+			int(round(ShipDataRegistry.get_weapon_chain_lightning_stat_base(&"weapon_chain_lightning_arc_radius_cells")))
+		)
+	)
+
+
+func _chain_lightning_hop_damage_ratio() -> float:
+	var v: float = ShipDataRegistry.apply_effects_for_stat(
+		&"weapon_chain_lightning_chain_damage_multiplier",
+		ShipDataRegistry.get_weapon_chain_lightning_stat_base(&"weapon_chain_lightning_chain_damage_multiplier")
+	)
+	return clampf(v, 0.12, 0.99)
+
+
+func _chain_lightning_range_world_px() -> float:
+	return maxf(0.0, _chain_lightning_range_game_px()) * _game_to_world_radius_scale()
+
+
+func _pick_chain_lightning_primary_cell() -> Variant:
+	var center: Vector2 = global_position
+	var r: float = _chain_lightning_range_world_px()
+	if r <= 0.0 or grid == null:
+		return null
+	var cs: float = MiningWorld.CELL_SIZE_PX
+	var cx0: int = int(floor((center.x - r) / cs))
+	var cx1: int = int(floor((center.x + r) / cs))
+	var cy0: int = int(floor((center.y - r) / cs))
+	var cy1: int = int(floor((center.y + r) / cs))
+	var has_best: bool = false
+	var best: Vector2i = Vector2i.ZERO
+	for cy in range(cy0, cy1 + 1):
+		for cx in range(cx0, cx1 + 1):
+			if not _circle_overlaps_cell_rect(center, r, cx, cy):
+				continue
+			var ctr := Vector2((float(cx) + 0.5) * cs, (float(cy) + 0.5) * cs)
+			if not grid.is_solid_world(ctr):
+				continue
+			var cand: Vector2i = Vector2i(cx, cy)
+			if not has_best or _laser_cell_preferred_over(cand, best):
+				best = cand
+				has_best = true
+	if not has_best:
+		return null
+	return best
+
+
+func _pick_chain_lightning_next_cell(from_cell: Vector2i, visited: Dictionary) -> Variant:
+	var r_cells: int = _chain_lightning_arc_radius_cells()
+	var has_best: bool = false
+	var best: Vector2i = Vector2i.ZERO
+	for dy in range(-r_cells, r_cells + 1):
+		for dx in range(-r_cells, r_cells + 1):
+			if dx == 0 and dy == 0:
+				continue
+			if maxi(abs(dx), abs(dy)) > r_cells:
+				continue
+			var cand: Vector2i = Vector2i(from_cell.x + dx, from_cell.y + dy)
+			if visited.has(cand):
+				continue
+			if not grid.is_solid_world(grid.cell_center_world(cand)):
+				continue
+			if not has_best or _laser_cell_preferred_over(cand, best):
+				best = cand
+				has_best = true
+	if not has_best:
+		return null
+	return best
+
+
+func _flash_chain_lightning_path_world(world_points: PackedVector2Array) -> void:
+	if _chain_lightning_line == null or world_points.is_empty():
+		return
+	_chain_lightning_line.clear_points()
+	var prev_local: Vector2 = to_local(world_points[0])
+	_chain_lightning_line.add_point(prev_local)
+	for i in range(1, world_points.size()):
+		var next_local: Vector2 = to_local(world_points[i])
+		var mid: Vector2 = (prev_local + next_local) * 0.5
+		var seg: Vector2 = next_local - prev_local
+		var perp: Vector2 = Vector2(-seg.y, seg.x)
+		if perp.length_squared() > 1e-4:
+			perp = perp.normalized() * minf(6.0, seg.length() * 0.25)
+		else:
+			perp = Vector2.ZERO
+		if (i & 1) == 1:
+			perp = -perp
+		_chain_lightning_line.add_point(mid + perp)
+		_chain_lightning_line.add_point(next_local)
+		prev_local = next_local
+	_chain_lightning_line.width = maxf(2.0, 2.6 * _game_to_world_radius_scale())
+	_chain_lightning_line.visible = true
+	_chain_lightning_flash_t = _CHAIN_LIGHTNING_FLASH_S
+
+
+func _tick_weapon_chain_lightning(delta: float) -> void:
+	if follower_visual_only or grid == null:
+		return
+	if _chain_lightning_line != null and _chain_lightning_line.visible:
+		_chain_lightning_flash_t -= delta
+		if _chain_lightning_flash_t <= 0.0:
+			_chain_lightning_line.visible = false
+	if UpgradeBus.get_level(WEAPON_CHAIN_LIGHTNING_UPGRADE_ID) < 1:
+		return
+	_chain_lightning_cooldown_t -= delta
+	if _chain_lightning_cooldown_t > 0.0:
+		return
+	_chain_lightning_cooldown_t = _chain_lightning_cooldown_s()
+	var primary: Variant = _pick_chain_lightning_primary_cell()
+	if primary == null:
+		return
+	var pcell: Vector2i = primary as Vector2i
+	var visited: Dictionary = {}
+	visited[pcell] = true
+	var path_world: PackedVector2Array = PackedVector2Array()
+	path_world.append(global_position)
+	path_world.append(grid.cell_center_world(pcell))
+	var d0: int = _chain_lightning_damage_primary()
+	var removed_total: int = grid.mine_cell_at_world_point(grid.cell_center_world(pcell), d0)
+	var mult: float = _chain_lightning_hop_damage_ratio()
+	var hop_dmg: int = maxi(1, int(round(float(d0) * mult)))
+	var from_cell: Vector2i = pcell
+	var extra_cap: int = _chain_lightning_max_extra_chains_runtime()
+	for _i in range(extra_cap):
+		var nxt: Variant = _pick_chain_lightning_next_cell(from_cell, visited)
+		if nxt == null:
+			break
+		var nc: Vector2i = nxt as Vector2i
+		visited[nc] = true
+		path_world.append(grid.cell_center_world(nc))
+		removed_total += grid.mine_cell_at_world_point(grid.cell_center_world(nc), hop_dmg)
+		hop_dmg = maxi(1, int(round(float(hop_dmg) * mult)))
+		from_cell = nc
+	if removed_total > 0:
+		AudioManager.play_dirt_mine(grid.cell_center_world(pcell))
+	_flash_chain_lightning_path_world(path_world)
+
+
+func _bomb_range_game_px() -> float:
+	return ShipDataRegistry.apply_effects_for_stat(
+		&"weapon_bomb_range_game_px",
+		ShipDataRegistry.get_weapon_bomb_stat_base(&"weapon_bomb_range_game_px")
+	)
+
+
+func _bomb_blast_radius_game_px() -> float:
+	return ShipDataRegistry.apply_effects_for_stat(
+		&"weapon_bomb_blast_radius_game_px",
+		ShipDataRegistry.get_weapon_bomb_stat_base(&"weapon_bomb_blast_radius_game_px")
+	)
+
+
+func _bomb_cooldown_s() -> float:
+	var v: float = ShipDataRegistry.apply_effects_for_stat(
+		&"weapon_bomb_cooldown_s",
+		ShipDataRegistry.get_weapon_bomb_stat_base(&"weapon_bomb_cooldown_s")
+	)
+	return maxf(0.05, v)
+
+
+func _bomb_damage_per_cell() -> int:
+	var v: float = ShipDataRegistry.apply_effects_for_stat(
+		&"weapon_bomb_damage",
+		ShipDataRegistry.get_weapon_bomb_stat_base(&"weapon_bomb_damage")
+	)
+	return maxi(1, int(round(v)))
+
+
+func _bomb_range_world_px() -> float:
+	return maxf(0.0, _bomb_range_game_px()) * _game_to_world_radius_scale()
+
+
+func _bomb_blast_radius_world_px() -> float:
+	return maxf(0.0, _bomb_blast_radius_game_px()) * _game_to_world_radius_scale()
+
+
+func _spawn_bomb_fx(world_center: Vector2, blast_radius_world: float) -> void:
+	if grid == null:
+		return
+	var fx: Node = _WeaponBombFxScript.new()
+	grid.add_child(fx)
+	(fx as Node2D).global_position = world_center
+	if fx.has_method(&"setup"):
+		fx.call(&"setup", blast_radius_world)
+
+
+func _tick_weapon_bomb(delta: float) -> void:
+	if follower_visual_only or grid == null:
+		return
+	if UpgradeBus.get_level(WEAPON_BOMB_UPGRADE_ID) < 1:
+		return
+	_bomb_cooldown_t -= delta
+	if _bomb_cooldown_t > 0.0:
+		return
+	_bomb_cooldown_t = _bomb_cooldown_s()
+	var epicenter: Variant = _pick_priority_solid_cell_in_world_radius(_bomb_range_world_px())
+	if epicenter == null:
+		return
+	var epicenter_world: Vector2 = grid.cell_center_world(epicenter as Vector2i)
+	var blast_r: float = _bomb_blast_radius_world_px()
+	var dmg: int = _bomb_damage_per_cell()
+	var removed: int = grid.mine_solid_in_circle_world(
+		epicenter_world, blast_r, dmg, PackedInt32Array()
+	)
+	_spawn_bomb_fx(epicenter_world, blast_r)
+	if removed > 0:
+		AudioManager.play_dirt_mine(epicenter_world)
+
+
+func _gravity_pull_radius_world_px() -> float:
+	return maxf(0.0, _WEAPON_GRAVITY_PULL_RANGE_GAME_PX) * _game_to_world_radius_scale()
+
+
+func _tick_weapon_gravity_pull(delta: float) -> void:
+	if follower_visual_only or grid == null:
+		return
+	if UpgradeBus.get_level(WEAPON_GRAVITY_PULL_UPGRADE_ID) < 1:
+		return
+	_gravity_pull_cooldown_t -= delta
+	if _gravity_pull_cooldown_t > 0.0:
+		return
+	_gravity_pull_cooldown_t = maxf(0.05, _WEAPON_GRAVITY_PULL_COOLDOWN_S)
+	var r: float = _gravity_pull_radius_world_px()
+	if r <= 0.0:
+		return
+	var dmg: int = maxi(1, _WEAPON_GRAVITY_PULL_DAMAGE_PER_CELL)
+	var removed: int = grid.mine_solid_in_circle_world(
+		global_position, r, dmg, PackedInt32Array()
+	)
+	if removed > 0:
+		AudioManager.play_dirt_mine(global_position)
 
 
 class _MiningDebugLayer extends Node2D:
