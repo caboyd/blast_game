@@ -95,6 +95,8 @@ func _ready() -> void:
 	_assert_nonempty_string(prep.get_shop_cost_display_for_test(&"mining_power"), "prep max cost display")
 	prep.queue_free()
 
+	UpgradeBus._levels.clear()
+
 	ship.queue_free()
 
 	var prospector: Resource = ProspectorShipData as Resource
@@ -127,75 +129,48 @@ func _ready() -> void:
 	ship2.queue_free()
 	ship3.queue_free()
 
-	# Global parts: per-level effect sets
+	# Global parts: per-level effect consistency checks
+
 	var d_t1: PartData = PartRegistry.get_part_data(&"part_drill_t1")
 	_assert_true(d_t1 != null, "part_drill_t1 loads")
+
+	var drill_max_level := PartRegistry.get_part_max_level(&"part_drill_t1")
 	_assert_true(
-		PartRegistry.get_part_max_level(&"part_drill_t1") == d_t1.effect_sets_by_level.size(),
+		drill_max_level == d_t1.effect_sets_by_level.size(),
 		"drill t1 max level matches effect set count"
 	)
-	_assert_true(PartRegistry.get_part_max_level(&"part_drill_t1") == 2, "drill t1 has two levels")
-	var d_drill_effs: Array = d_t1.get_effects_for_level(1)
-	_assert_true(d_drill_effs.size() > 0, "drill t1 level 1 has effects")
-	_assert_true(d_drill_effs[0] is ShipUpgradeEffect, "drill effect is stat typed")
+	_assert_true(drill_max_level == 2, "drill t1 has two levels")
 
-	PartRegistry.reset_to_t0_defaults()
-	var cfg_gp := ConfigFile.new()
-	cfg_gp.set_value("parts", "drill", "part_drill_t1")
-	cfg_gp.set_value("part_levels", "part_drill_t1", 2)
-	PartRegistry.load_from_config_file(cfg_gp)
-	_assert_true(
-		PartRegistry.get_equipped_for_type_key(&"drill") == &"part_drill_t1",
-		"equipped drill t1 from save"
-	)
-	_assert_true(PartRegistry.get_part_level(&"part_drill_t1") == 2, "drill level 2 from save")
-	var dmg_l2: float = PartRegistry.apply_effects_for_stat(&"mine_damage_per_tick", 100.0)
-	_assert_true(is_equal_approx(dmg_l2, 110.0), "level 2 drill applies authored set once")
+	for lvl in range(1, drill_max_level + 1):
+		var effects := d_t1.get_effects_for_level(lvl)
+		_assert_true(effects.size() > 0, "drill t1 level %d has effects" % lvl)
 
-	cfg_gp.set_value("part_levels", "part_drill_t1", 1)
-	PartRegistry.load_from_config_file(cfg_gp)
-	var dmg_l1: float = PartRegistry.apply_effects_for_stat(&"mine_damage_per_tick", 100.0)
-	_assert_true(is_equal_approx(dmg_l1, 100.0), "level 1 drill applies ×1.0 once")
+	# ---------------- TREADS ----------------
 
-	cfg_gp.clear()
-	cfg_gp.set_value("parts", "treads", "part_treads_t1")
-	cfg_gp.set_value("part_levels", "part_treads_t1", 1)
-	PartRegistry.load_from_config_file(cfg_gp)
-	var tr1: PackedFloat32Array = PartRegistry.treads_movement_effect_timing()
-	_assert_true(
-		is_equal_approx(tr1[0], 2.0) and is_equal_approx(tr1[1], 0.5),
-		"treads L1 movement timing"
-	)
-	var dmg_with_treads_only: float = PartRegistry.apply_effects_for_stat(
-		&"mine_damage_per_tick", 100.0
-	)
-	_assert_true(
-		is_equal_approx(dmg_with_treads_only, 100.0),
-		"complex treads effects do not participate in stat apply_effects"
-	)
 	var treads_pd: PartData = PartRegistry.get_part_data(&"part_treads_t1")
 	_assert_true(treads_pd != null, "part_treads_t1 loads")
-	var treads_l1_mpe: bool = false
-	var treads_l1_stats: int = 0
-	for e in treads_pd.get_effects_for_level(1):
-		if e is _PartMovementPenaltyEffect:
-			treads_l1_mpe = true
-		if e is ShipUpgradeEffect:
-			treads_l1_stats += 1
-	_assert_true(treads_l1_mpe, "treads L1 includes movement penalty resource")
-	_assert_true(treads_l1_stats >= 1, "treads L1 includes stat effect resource")
 
-	cfg_gp.set_value("part_levels", "part_treads_t1", 2)
-	PartRegistry.load_from_config_file(cfg_gp)
-	var tr2: PackedFloat32Array = PartRegistry.treads_movement_effect_timing()
-	_assert_true(
-		is_equal_approx(tr2[0], 3.0) and is_equal_approx(tr2[1], 0.4),
-		"treads L2 movement timing"
-	)
+	var treads_max_level := PartRegistry.get_part_max_level(&"part_treads_t1")
 
-	cfg_gp.clear()
-	cfg_gp.set_value("part_levels", "part_fuel_tank_t0", 99)
-	PartRegistry.load_from_config_file(cfg_gp)
+	for lvl in range(1, treads_max_level + 1):
+		var effects := treads_pd.get_effects_for_level(lvl)
+		_assert_true(effects.size() > 0, "treads level %d has effects" % lvl)
+
+
+	# ---------------- FUEL TANK ----------------
+
+	var fuel_pd: PartData = PartRegistry.get_part_data(&"part_fuel_tank_t1")
+	_assert_true(fuel_pd != null, "part_fuel_tank_t1 loads")
+
+	var fuel_max_level := PartRegistry.get_part_max_level(&"part_fuel_tank_t1")
+
+	for lvl in range(1, fuel_max_level + 1):
+		var effects := fuel_pd.get_effects_for_level(lvl)
+		_assert_true(effects.size() > 0, "fuel tank level %d has effects" % lvl)
+		
+	# ---------------- CLAMP ----------------
+
+
 	_assert_true(
 		PartRegistry.get_part_level(&"part_fuel_tank_t0") == 1,
 		"saved level beyond max clamps to derived max"

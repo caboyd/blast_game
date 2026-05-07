@@ -6,7 +6,6 @@
 [ext_resource type="Script" uid="uid://dbmf6jiisv031" path="res://scripts/data/PartVisualData.gd" id="4_vis"]
 [ext_resource type="Script" uid="uid://b2fxsetlvl01u" path="res://scripts/data/PartEffectSet.gd" id="5_eset"]
 [ext_resource type="PackedScene" uid="uid://cgk8ncbrfbq3s" path="res://scenes/ship_parts/treads/ground/part_treads_t1_ground.tscn" id="5_grnd"]
-[ext_resource type="Script" uid="uid://b3i1q5327tyb5" path="res://scripts/data/PartMovementPenaltyEffect.gd" id="6_mpe"]
 [ext_resource type="Script" uid="uid://mf14x1dbtowp" path="res://scripts/data/PartEffect.gd" id="eff_base"]
 
 [sub_resource type="Resource" id="eff_sp"]
@@ -16,15 +15,9 @@ operation = "multiply"
 value = 0.9
 metadata/_custom_type_script = "uid://drjo0qypkcvo3"
 
-[sub_resource type="Resource" id="eff_stop"]
-script = ExtResource("6_mpe")
-every_s = 2.0
-duration_s = 0.5
-speed_multiplier = 0.75
-
 [sub_resource type="Resource" id="set_l1"]
 script = ExtResource("5_eset")
-effects = Array[ExtResource("eff_base")]([SubResource("eff_sp"), SubResource("eff_stop")])
+effects = Array[ExtResource("eff_base")]([SubResource("eff_sp")])
 
 [sub_resource type="Resource" id="Resource_mprdu"]
 script = ExtResource("2")
