@@ -47,6 +47,7 @@ const _MISSION_SHIP_CHAIN_TAIL_TURN_RATE_MIN_RAD_S := 0.35
 ## instanced `ViewportInfoOverlay` scene, whose owner is the overlay root, not
 ## the planet root, so unique-name resolution wouldn't reach them otherwise.
 var _viewport_info: Label
+var _type_texture_info: Label
 var _cell_hover_overlay: Label
 
 var _ship: Node2D
@@ -61,6 +62,7 @@ var _vp_h: int = 720
 
 func _ready() -> void:
 	_viewport_info = find_child("ViewportInfo", true, false) as Label
+	_type_texture_info = find_child("TypeTextureInfo", true, false) as Label
 	_cell_hover_overlay = find_child("CellHoverOverlay", true, false) as Label
 	AudioManager.set_drilling(false, Vector2.ZERO, false)
 	MiningMissionUI.attach_fuel_bar_for_mining_host(self)
@@ -71,6 +73,9 @@ func _ready() -> void:
 		_mining_world.set_cell_material_colors(_cell_material_colors_packed())
 		if not _mining_world.block_broken.is_connected(_on_mining_block_broken_audio):
 			_mining_world.block_broken.connect(_on_mining_block_broken_audio)
+		if not _mining_world.type_texture_resized.is_connected(_on_mining_world_type_texture_resized):
+			_mining_world.type_texture_resized.connect(_on_mining_world_type_texture_resized)
+		_on_mining_world_type_texture_resized(_mining_world.get_type_texture_pixel_size())
 		AudioManager.bind_world_audio_mount(_mining_world)
 		_post_world_configure()
 	_spawn_mission_ship()
@@ -102,6 +107,8 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
+	if _mining_world != null and _mining_world.type_texture_resized.is_connected(_on_mining_world_type_texture_resized):
+		_mining_world.type_texture_resized.disconnect(_on_mining_world_type_texture_resized)
 	AudioManager.bind_world_audio_mount(null)
 
 
@@ -425,16 +432,30 @@ func _refresh_viewport_info() -> void:
 	var h: int = _vp_h
 	var r: float = float(w) / float(h) if h != 0 else 0.0
 	var line1: String = "%d×%d px  •  W:H = %.4f:1" % [w, h, r]
+	var body: String = line1
 	if _mining_world != null and _ship != null:
 		var chunk: Vector2i = _mining_world.get_chunk_for_world_pos(_ship.global_position)
 		var cell: Vector2i = _mining_world.world_pos_to_cell(_ship.global_position)
 		var lx: int = cell.x - chunk.x * MiningWorld.CHUNK_SIZE
 		var ly: int = cell.y - chunk.y * MiningWorld.CHUNK_SIZE
-		_viewport_info.text = "%s\nchunk (%d, %d)  •  in-chunk (%d, %d)" % [
+		body = "%s\nchunk (%d, %d)  •  in-chunk (%d, %d)" % [
 			line1, chunk.x, chunk.y, lx, ly,
 		]
+	if _mining_world != null:
+		body += "\nchunks stream +%d/s  −%d/s" % [
+			_mining_world.get_chunk_stream_in_per_sec(),
+			_mining_world.get_chunk_stream_out_per_sec(),
+		]
+	_viewport_info.text = body
+
+
+func _on_mining_world_type_texture_resized(pixel_size: Vector2i) -> void:
+	if _type_texture_info == null:
+		return
+	if pixel_size.x > 0 and pixel_size.y > 0:
+		_type_texture_info.text = "type_tex %d×%d px" % [pixel_size.x, pixel_size.y]
 	else:
-		_viewport_info.text = line1
+		_type_texture_info.text = "type_tex —"
 
 
 func _mouse_world_on_game_viewport() -> Vector2:

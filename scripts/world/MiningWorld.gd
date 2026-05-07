@@ -2,6 +2,7 @@ class_name MiningWorld
 extends Node2D
 
 signal block_broken(world_pos: Vector2, type_id: int)
+signal type_texture_resized(pixel_size: Vector2i)
 
 const CHUNK_SIZE := 32
 const CELL_SIZE_PX := 8.0
@@ -82,6 +83,9 @@ static func get_chunk_center_world(chunk: Vector2i) -> Vector2:
 @export_range(0, 12) var chunk_preload_radius_chunks: int = 2
 @export_range(0, 24) var chunk_unload_radius_chunks: int = 5
 
+## Effective unload Chebyshev radius is max(`chunk_unload_radius_chunks`, preload + this).
+const _CHUNK_STREAM_UNLOAD_MARGIN_CHUNKS: int = 1
+
 
 const _VEIN_NEIGHBOR_DIRS: Array[Vector2i] = [
 	Vector2i(-1, -1), Vector2i(0, -1), Vector2i(1, -1),
@@ -95,6 +99,12 @@ const _STONE_BLOB_DIRS: Array[Vector2i] = [
 ]
 
 var _chunks: Dictionary = {} # Vector2i -> { cells, hp PackedByteArray }
+
+var _chunk_stream_in_accum: int = 0
+var _chunk_stream_out_accum: int = 0
+var _chunk_stream_window_s: float = 0.0
+var _chunk_stream_in_per_sec: int = 0
+var _chunk_stream_out_per_sec: int = 0
 
 var _view_origin_cell: Vector2i = Vector2i.ZERO
 var _view_size_cells: Vector2i = Vector2i.ZERO
@@ -188,6 +198,11 @@ func configure_stage_generation(new_stage_id: StringName, chunk_generator: Calla
 		_debris_field.refresh_debris_backend_for_stage()
 		_debris_field.clear_all()
 	_chunks.clear()
+	_chunk_stream_in_accum = 0
+	_chunk_stream_out_accum = 0
+	_chunk_stream_window_s = 0.0
+	_chunk_stream_in_per_sec = 0
+	_chunk_stream_out_per_sec = 0
 	_run_cell_edits.clear()
 	_terrain_dirty = true
 
@@ -216,6 +231,7 @@ func unload_chunk_for_streaming(chunk: Vector2i) -> void:
 		_debris_field.on_chunk_unloaded(chunk)
 	if not _chunks.has(chunk):
 		return
+	_chunk_stream_out_accum += 1
 	_chunks.erase(chunk)
 
 
@@ -236,9 +252,35 @@ func _unload_chunks_farther_than(cam_chunk: Vector2i, unload_r: int) -> void:
 		unload_chunk_for_streaming(ch)
 
 
+func _chunk_unload_radius_effective() -> int:
+	return maxi(
+		chunk_unload_radius_chunks,
+		chunk_preload_radius_chunks + _CHUNK_STREAM_UNLOAD_MARGIN_CHUNKS
+	)
+
+
 func _maintain_chunk_streaming(cam_chunk: Vector2i) -> void:
 	_preload_chunks_near(cam_chunk, chunk_preload_radius_chunks)
-	_unload_chunks_farther_than(cam_chunk, chunk_unload_radius_chunks)
+	_unload_chunks_farther_than(cam_chunk, _chunk_unload_radius_effective())
+
+
+func _process(delta: float) -> void:
+	_chunk_stream_window_s += delta
+	if _chunk_stream_window_s >= 1.0:
+		var inv_s: float = 1.0 / _chunk_stream_window_s
+		_chunk_stream_in_per_sec = int(round(_chunk_stream_in_accum * inv_s))
+		_chunk_stream_out_per_sec = int(round(_chunk_stream_out_accum * inv_s))
+		_chunk_stream_in_accum = 0
+		_chunk_stream_out_accum = 0
+		_chunk_stream_window_s = 0.0
+
+
+func get_chunk_stream_in_per_sec() -> int:
+	return _chunk_stream_in_per_sec
+
+
+func get_chunk_stream_out_per_sec() -> int:
+	return _chunk_stream_out_per_sec
 
 
 func _commit_run_edit_for_chunk_index(chunk: Vector2i, local_idx: int) -> void:
@@ -292,6 +334,7 @@ func _hp_for_type(type_id: int) -> int:
 func _ensure_chunk(chunk: Vector2i) -> void:
 	if _chunks.has(chunk):
 		return
+	_chunk_stream_in_accum += 1
 	var rng := RandomNumberGenerator.new()
 	rng.seed = _chunk_rng_seed(chunk)
 
@@ -1136,6 +1179,12 @@ func set_camera_view_world_rect(rect: Rect2) -> void:
 		_debris_field.update_camera_rect(rect)
 
 
+func get_type_texture_pixel_size() -> Vector2i:
+	if _type_image == null:
+		return Vector2i.ZERO
+	return Vector2i(_type_image.get_width(), _type_image.get_height())
+
+
 func _resize_view_textures(w: int, h: int) -> void:
 	if w < 1 or h < 1:
 		return
@@ -1151,6 +1200,7 @@ func _resize_view_textures(w: int, h: int) -> void:
 		_world_visual.centered = false
 
 	_sync_shader_texture_params()
+	type_texture_resized.emit(Vector2i(w, h))
 
 
 func _update_visual_positions() -> void:
